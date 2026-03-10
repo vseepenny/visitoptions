@@ -63,7 +63,7 @@ function PatientTypesCell({ item }) {
   );
 }
 
-export default function VisitOptionsTable({ items, allowedPatientTypes, paymentConfig, onChange }) {
+export default function VisitOptionsTable({ items, allowedPatientTypes, paymentConfig, roomIntakeFields, roomNotesTemplate, onChange }) {
   const [modal, setModal] = useState(null);
 
   const handleSave = (formData) => {
@@ -222,6 +222,8 @@ export default function VisitOptionsTable({ items, allowedPatientTypes, paymentC
           existing={modal.mode === 'edit' ? modal.item : null}
           allowedPatientTypes={allowedPatientTypes}
           paymentConfig={paymentConfig}
+          roomIntakeFields={roomIntakeFields}
+          roomNotesTemplate={roomNotesTemplate}
           onSave={handleSave}
           onClose={() => setModal(null)}
         />

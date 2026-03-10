@@ -48,6 +48,23 @@ export const DURATIONS = ['15 min', '30 min', '45 min', '60 min', '90 min', '120
 export const TYPES = ['1:1', 'Group'];
 export const MODES = ['Video', 'Phone', 'In-person', 'Chat'];
 
+export const ROOM_DEFAULT_INTAKE_FIELDS = [
+  { id: 'chief_complaint',   label: 'Chief Complaint',       required: true,  enabled: true  },
+  { id: 'medical_history',   label: 'Medical History',       required: false, enabled: true  },
+  { id: 'medications',       label: 'Current Medications',   required: false, enabled: true  },
+  { id: 'allergies',         label: 'Allergies',             required: false, enabled: true  },
+  { id: 'insurance_info',    label: 'Insurance Information', required: false, enabled: false },
+  { id: 'emergency_contact', label: 'Emergency Contact',     required: false, enabled: false },
+];
+
+export const ROOM_DEFAULT_NOTES_TEMPLATE = `Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n`;
+
+export const NOTES_PRESETS = {
+  soap:     `Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n`,
+  progress: `Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n`,
+  blank:    ``,
+};
+
 export const defaultSchedule = DAYS.map((day) => ({
   day,
   closed: day === 'Sunday' || day === 'Saturday',
@@ -68,6 +85,8 @@ export const defaultVisitOptions = [
     mode: 'Video',
     visible: true,
     patientTypes: ['self-pay', 'insurance'],
+    intakeInherited: true,
+    notesInherited: true,
     pricing: {
       'self-pay': { method: 'specific', amount: '150', fallback: '' },
       'insurance': {
@@ -87,6 +106,8 @@ export const defaultVisitOptions = [
     mode: 'Video',
     visible: true,
     patientTypes: ['self-pay', 'group-covered', 'insurance'],
+    intakeInherited: true,
+    notesInherited: true,
     pricing: {
       'self-pay': { method: 'specific', amount: '75', fallback: '' },
       'group-covered': {

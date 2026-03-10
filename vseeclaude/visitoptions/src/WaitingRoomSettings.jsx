@@ -2,9 +2,9 @@ import { useState, useCallback } from 'react';
 import Breadcrumb from './components/Breadcrumb';
 import OperatingHours from './components/OperatingHours';
 import PatientTypes from './components/PatientTypes';
-import PaymentSettings from './components/PaymentSettings';
+import RoomVisitDefaults from './components/RoomVisitDefaults';
 import VisitOptionsTable from './components/VisitOptionsTable';
-import { defaultSchedule, defaultVisitOptions, defaultPaymentConfig } from './data/initialData';
+import { defaultSchedule, defaultVisitOptions, defaultPaymentConfig, ROOM_DEFAULT_INTAKE_FIELDS, ROOM_DEFAULT_NOTES_TEMPLATE } from './data/initialData';
 
 const INITIAL_STATE = {
   roomName: "Dr. Provider's Waiting Room 1",
@@ -18,6 +18,8 @@ const INITIAL_STATE = {
   visibility: 'public',
   patientTypes: ['self-pay', 'group-covered', 'insurance'],
   paymentConfig: defaultPaymentConfig,
+  roomIntakeFields: ROOM_DEFAULT_INTAKE_FIELDS,
+  roomNotesTemplate: ROOM_DEFAULT_NOTES_TEMPLATE,
   visitOptions: defaultVisitOptions,
 };
 
@@ -218,11 +220,15 @@ export default function WaitingRoomSettings() {
 
             <div className="divider" style={{ margin: 0 }} />
 
-            {/* Payment Settings */}
-            <PaymentSettings
+            {/* Visit Defaults (Payment, Intake Form, Visit Notes) */}
+            <RoomVisitDefaults
               enabledTypes={state.patientTypes}
-              config={state.paymentConfig}
-              onChange={(val) => update('paymentConfig', val)}
+              paymentConfig={state.paymentConfig}
+              onPaymentChange={(val) => update('paymentConfig', val)}
+              intakeFields={state.roomIntakeFields}
+              notesTemplate={state.roomNotesTemplate}
+              onIntakeChange={(val) => update('roomIntakeFields', val)}
+              onNotesChange={(val) => update('roomNotesTemplate', val)}
             />
 
             <div className="divider" style={{ margin: 0 }} />
@@ -232,6 +238,8 @@ export default function WaitingRoomSettings() {
               items={state.visitOptions}
               allowedPatientTypes={state.patientTypes}
               paymentConfig={state.paymentConfig}
+              roomIntakeFields={state.roomIntakeFields}
+              roomNotesTemplate={state.roomNotesTemplate}
               onChange={(val) => update('visitOptions', val)}
             />
           </div>

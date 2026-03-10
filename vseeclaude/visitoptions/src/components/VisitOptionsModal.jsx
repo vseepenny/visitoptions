@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DURATIONS, TYPES, MODES } from '../data/initialData';
+import { DURATIONS, TYPES, MODES, NOTES_PRESETS, ROOM_DEFAULT_INTAKE_FIELDS } from '../data/initialData';
 import { PATIENT_TYPES } from './PatientTypes';
 
 /* ── Pricing constants ───────────────────────────────────── */
@@ -54,22 +54,9 @@ const MODAL_TABS = [
   { id: 'notes',    label: 'Visit Notes' },
 ];
 
-/* ── Intake form presets ─────────────────────────────────── */
+/* ── Intake form presets (sourced from initialData) ─────── */
 
-const PRESET_INTAKE_FIELDS = [
-  { id: 'chief_complaint',   label: 'Chief Complaint',        required: true },
-  { id: 'medical_history',   label: 'Medical History',        required: false },
-  { id: 'medications',       label: 'Current Medications',    required: false },
-  { id: 'allergies',         label: 'Allergies',              required: false },
-  { id: 'insurance_info',    label: 'Insurance Information',  required: false },
-  { id: 'emergency_contact', label: 'Emergency Contact',      required: false },
-];
-
-const NOTES_PRESETS = {
-  soap: `Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n`,
-  progress: `Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n`,
-  blank: '',
-};
+const PRESET_INTAKE_FIELDS = ROOM_DEFAULT_INTAKE_FIELDS;
 
 /* ── Empty form state ────────────────────────────────────── */
 
@@ -82,15 +69,19 @@ const EMPTY = {
   visible: true,
   patientTypes: [],
   pricing: { ...DEFAULT_PT_PRICING },
-  intakeFields: PRESET_INTAKE_FIELDS.map((f) => ({ ...f, enabled: ['chief_complaint', 'medical_history', 'medications', 'allergies'].includes(f.id) })),
+  intakeInherited: true,
+  notesInherited: true,
+  intakeFields: PRESET_INTAKE_FIELDS.map((f) => ({ ...f })),
   notesTemplate: NOTES_PRESETS.soap,
 };
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function VisitOptionsModal({ existing, allowedPatientTypes, paymentConfig, onSave, onClose }) {
+export default function VisitOptionsModal({ existing, allowedPatientTypes, paymentConfig, roomIntakeFields, roomNotesTemplate, onSave, onClose }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
+    intakeInherited: existing.intakeInherited ?? false,
+    notesInherited: existing.notesInherited ?? false,
     intakeFields: existing.intakeFields ?? EMPTY.intakeFields,
     notesTemplate: existing.notesTemplate ?? EMPTY.notesTemplate,
   } : { ...EMPTY });
@@ -415,116 +406,156 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
           {/* ── Intake Form tab ── */}
           {activeTab === 'intake' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div>
-                <p className="form-label" style={{ marginBottom: 4 }}>Standard Fields</p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  Choose which fields patients fill out before this visit. Required fields must be completed before booking.
-                </p>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-                  {form.intakeFields.filter((f) => !f.custom).map((field, i, arr) => (
-                    <div key={field.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', background: field.enabled ? 'var(--surface)' : 'var(--grey-50)', gap: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <button
-                          role="switch"
-                          aria-checked={field.enabled}
-                          onClick={() => setIntakeField(field.id, { enabled: !field.enabled })}
-                          className={`toggle${field.enabled ? ' on' : ''}`}
-                          aria-label={`Toggle ${field.label}`}
-                        >
-                          <span className="toggle-track"><span className="toggle-thumb" /></span>
-                        </button>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: field.enabled ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{field.label}</span>
-                      </div>
-                      {field.enabled && (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={field.required}
-                            onChange={() => setIntakeField(field.id, { required: !field.required })}
-                          />
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Required</span>
-                        </label>
-                      )}
-                    </div>
-                  ))}
+              {/* Inherit toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use waiting room defaults</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Inherit the intake form configuration from this waiting room</p>
                 </div>
+                <button
+                  role="switch"
+                  aria-checked={form.intakeInherited}
+                  onClick={() => set('intakeInherited', !form.intakeInherited)}
+                  className={`toggle${form.intakeInherited ? ' on' : ''}`}
+                  aria-label="Use waiting room defaults for intake form"
+                >
+                  <span className="toggle-track"><span className="toggle-thumb" /></span>
+                </button>
               </div>
 
-              <div>
-                <p className="form-label" style={{ marginBottom: 4 }}>Custom Questions</p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  Add additional questions specific to this visit type.
-                </p>
-                {form.intakeFields.filter((f) => f.custom).length > 0 && (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 10 }}>
-                    {form.intakeFields.filter((f) => f.custom).map((field, i, arr) => (
-                      <div key={field.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', gap: 12 }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{field.label}</span>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={field.required} onChange={() => setIntakeField(field.id, { required: !field.required })} />
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Required</span>
-                        </label>
-                        <button onClick={() => removeField(field.id)} className="btn-icon danger" title="Remove" aria-label={`Remove ${field.label}`}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
+              {!form.intakeInherited && (
+                <>
+                  <div>
+                    <p className="form-label" style={{ marginBottom: 4 }}>Standard Fields</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                      Choose which fields patients fill out before this visit. Required fields must be completed before booking.
+                    </p>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+                      {form.intakeFields.filter((f) => !f.custom).map((field, i, arr) => (
+                        <div key={field.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', background: field.enabled ? 'var(--surface)' : 'var(--grey-50)', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <button
+                              role="switch"
+                              aria-checked={field.enabled}
+                              onClick={() => setIntakeField(field.id, { enabled: !field.enabled })}
+                              className={`toggle${field.enabled ? ' on' : ''}`}
+                              aria-label={`Toggle ${field.label}`}
+                            >
+                              <span className="toggle-track"><span className="toggle-thumb" /></span>
+                            </button>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: field.enabled ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{field.label}</span>
+                          </div>
+                          {field.enabled && (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={field.required}
+                                onChange={() => setIntakeField(field.id, { required: !field.required })}
+                              />
+                              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Required</span>
+                            </label>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="text"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomQuestion(); } }}
-                    placeholder="e.g. Do you have any previous surgeries?"
-                    className="input"
-                    style={{ flex: 1 }}
-                  />
-                  <button className="btn btn-secondary btn-sm" onClick={addCustomQuestion} disabled={!newQuestion.trim()}>
-                    Add
-                  </button>
-                </div>
-              </div>
+
+                  <div>
+                    <p className="form-label" style={{ marginBottom: 4 }}>Custom Questions</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                      Add additional questions specific to this visit type.
+                    </p>
+                    {form.intakeFields.filter((f) => f.custom).length > 0 && (
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', marginBottom: 10 }}>
+                        {form.intakeFields.filter((f) => f.custom).map((field, i, arr) => (
+                          <div key={field.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none', gap: 12 }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{field.label}</span>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                              <input type="checkbox" checked={field.required} onChange={() => setIntakeField(field.id, { required: !field.required })} />
+                              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Required</span>
+                            </label>
+                            <button onClick={() => removeField(field.id)} className="btn-icon danger" title="Remove" aria-label={`Remove ${field.label}`}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomQuestion(); } }}
+                        placeholder="e.g. Do you have any previous surgeries?"
+                        className="input"
+                        style={{ flex: 1 }}
+                      />
+                      <button className="btn btn-secondary btn-sm" onClick={addCustomQuestion} disabled={!newQuestion.trim()}>
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {/* ── Visit Notes tab ── */}
           {activeTab === 'notes' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <p className="form-label" style={{ marginBottom: 4 }}>Notes Template</p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  Pre-populate the visit notes editor with this template when a visit of this type begins.
-                </p>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  {[
-                    { key: 'soap',     label: 'SOAP' },
-                    { key: 'progress', label: 'Progress Note' },
-                    { key: 'blank',    label: 'Blank' },
-                  ].map((preset) => (
-                    <button
-                      key={preset.key}
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => set('notesTemplate', NOTES_PRESETS[preset.key])}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+              {/* Inherit toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use waiting room defaults</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Inherit the notes template from this waiting room</p>
                 </div>
-                <textarea
-                  value={form.notesTemplate}
-                  onChange={(e) => set('notesTemplate', e.target.value)}
-                  placeholder="Enter your visit notes template…"
-                  className="input"
-                  style={{ width: '100%', minHeight: 280, resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, padding: '10px 12px' }}
-                />
+                <button
+                  role="switch"
+                  aria-checked={form.notesInherited}
+                  onClick={() => set('notesInherited', !form.notesInherited)}
+                  className={`toggle${form.notesInherited ? ' on' : ''}`}
+                  aria-label="Use waiting room defaults for visit notes"
+                >
+                  <span className="toggle-track"><span className="toggle-thumb" /></span>
+                </button>
               </div>
+
+              {!form.notesInherited && (
+                <div>
+                  <p className="form-label" style={{ marginBottom: 4 }}>Notes Template</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                    Pre-populate the visit notes editor with this template when a visit of this type begins.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    {[
+                      { key: 'soap',     label: 'SOAP' },
+                      { key: 'progress', label: 'Progress Note' },
+                      { key: 'blank',    label: 'Blank' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => set('notesTemplate', NOTES_PRESETS[preset.key])}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={form.notesTemplate}
+                    onChange={(e) => set('notesTemplate', e.target.value)}
+                    placeholder="Enter your visit notes template…"
+                    className="input"
+                    style={{ width: '100%', minHeight: 280, resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, padding: '10px 12px' }}
+                  />
+                </div>
+              )}
             </div>
           )}
 

@@ -245,7 +245,7 @@ const TAB_META = {
   'insurance':     { label: 'Insurance',     color: 'var(--success)' },
 };
 
-export default function PaymentSettings({ enabledTypes, config, onChange }) {
+export default function PaymentSettings({ enabledTypes, config, onChange, noHeader }) {
   const activeTabs = PATIENT_TYPES.filter((pt) => enabledTypes.includes(pt.id));
   const [activeTab, setActiveTab] = useState(activeTabs[0]?.id ?? null);
 
@@ -257,8 +257,8 @@ export default function PaymentSettings({ enabledTypes, config, onChange }) {
   if (activeTabs.length === 0) {
     return (
       <section>
-        <p className="section-title">Payment Settings</p>
-        <div className="alert alert-warning" style={{ marginTop: 12 }}>
+        {!noHeader && <p className="section-title">Payment Settings</p>}
+        <div className="alert alert-warning" style={{ marginTop: noHeader ? 0 : 12 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
@@ -273,10 +273,14 @@ export default function PaymentSettings({ enabledTypes, config, onChange }) {
 
   return (
     <section>
-      <p className="section-title">Payment Settings</p>
-      <p className="section-desc" style={{ marginBottom: 16 }}>
-        Configure how payments are collected for each patient type. Prices can be overridden per visit option.
-      </p>
+      {!noHeader && (
+        <>
+          <p className="section-title">Payment Settings</p>
+          <p className="section-desc" style={{ marginBottom: 16 }}>
+            Configure how payments are collected for each patient type. Prices can be overridden per visit option.
+          </p>
+        </>
+      )}
 
       <div className="payment-panel">
         {/* Tabs */}
