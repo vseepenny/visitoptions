@@ -50,7 +50,7 @@ const TAB_COLOR = { 'self-pay': 'var(--info)', 'group-covered': 'var(--text-seco
 const MODAL_TABS = [
   { id: 'general',  label: 'General' },
   { id: 'payment',  label: 'Payment' },
-  { id: 'intake',   label: 'Intake Form' },
+  { id: 'intake',   label: 'Intake Flow' },
   { id: 'notes',    label: 'Visit Notes' },
 ];
 
@@ -410,14 +410,14 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600 }}>Use waiting room defaults</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Inherit the intake form configuration from this waiting room</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>Inherit the intake flow configuration from this waiting room</p>
                 </div>
                 <button
                   role="switch"
                   aria-checked={form.intakeInherited}
                   onClick={() => set('intakeInherited', !form.intakeInherited)}
                   className={`toggle${form.intakeInherited ? ' on' : ''}`}
-                  aria-label="Use waiting room defaults for intake form"
+                  aria-label="Use waiting room defaults for intake flow"
                 >
                   <span className="toggle-track"><span className="toggle-thumb" /></span>
                 </button>
@@ -428,7 +428,7 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
                   <div>
                     <p className="form-label" style={{ marginBottom: 4 }}>Standard Fields</p>
                     <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                      Choose which fields patients fill out before this visit. Required fields must be completed before booking.
+                      Choose which fields are included in the intake flow before this visit. Required fields must be completed before booking.
                     </p>
                     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
                       {form.intakeFields.filter((f) => !f.custom).map((field, i, arr) => (

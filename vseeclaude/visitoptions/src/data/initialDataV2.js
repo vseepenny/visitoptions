@@ -1,52 +1,12 @@
-import { defaultSchedule } from './initialData';
+import { defaultSchedule, defaultPaymentConfig } from './initialData';
 
-// ── Clinic-level template library ────────────────────────────
+// ── Clinic-level config ────────────────────────────────────
+// One per clinic. Payment config is set once here (not per-room).
+// Intake & notes templates are reusable across all rooms.
 
-export const initialClinicTemplates = {
+export const initialClinic = {
 
-  paymentProfiles: [
-    {
-      id: 'pp_1',
-      name: 'Standard Self-Pay',
-      type: 'self-pay',
-      config: {
-        acceptPayments: true,
-        processor: 'stripe',
-        stripeConnected: false,
-        timing: 'before',
-        defaultPrice: '50',
-        noShowFee: { enabled: false, amount: '25' },
-      },
-    },
-    {
-      id: 'pp_2',
-      name: 'Enterprise Group Plan',
-      type: 'group-covered',
-      config: {
-        requireGroupId: true,
-        requireReferral: false,
-        verificationAccess: {
-          verified:     { access: 'allow' },
-          not_verified: { access: 'block' },
-          pending:      { access: 'review' },
-          error:        { access: 'review' },
-        },
-      },
-    },
-    {
-      id: 'pp_3',
-      name: 'Standard Insurance',
-      type: 'insurance',
-      config: {
-        eligibilityAccess: {
-          eligible:     { access: 'allow' },
-          not_eligible: { access: 'block' },
-          pending:      { access: 'review' },
-          error:        { access: 'review' },
-        },
-      },
-    },
-  ],
+  paymentConfig: defaultPaymentConfig,
 
   intakeTemplates: [
     {
@@ -76,79 +36,15 @@ export const initialClinicTemplates = {
   ],
 
   notesTemplates: [
-    { id: 'nt_1', name: 'SOAP Note',      content: 'Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n' },
-    { id: 'nt_2', name: 'Progress Note',  content: 'Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n' },
-    { id: 'nt_3', name: 'Blank',          content: '' },
-  ],
-
-  visitOptionTemplates: [
-    {
-      id: 'vt_1',
-      name: 'New Patient Consult',
-      duration: '30 min',
-      type: '1:1',
-      slots: 1,
-      mode: 'Video',
-      defaultIntakeTemplateId: 'it_1',
-      defaultNotesTemplateId: 'nt_1',
-      defaultPricing: {
-        'self-pay':  { method: 'specific', amount: '150', fallback: '' },
-        'insurance': {
-          eligible:     { method: 'copay',    amount: '',    fallback: '30'  },
-          not_eligible: { method: 'specific', amount: '150', fallback: ''   },
-          pending:      { method: 'none',     amount: '',    fallback: ''   },
-          error:        { method: 'none',     amount: '',    fallback: ''   },
-        },
-      },
-    },
-    {
-      id: 'vt_2',
-      name: 'Urgent Care Visit',
-      duration: '15 min',
-      type: '1:1',
-      slots: 1,
-      mode: 'Video',
-      defaultIntakeTemplateId: 'it_1',
-      defaultNotesTemplateId: 'nt_1',
-      defaultPricing: {
-        'self-pay': { method: 'specific', amount: '75', fallback: '' },
-        'group-covered': {
-          verified:     { method: 'copay',    amount: '',   fallback: '20' },
-          not_verified: { method: 'specific', amount: '75', fallback: ''  },
-          pending:      { method: 'none',     amount: '',   fallback: ''  },
-          error:        { method: 'none',     amount: '',   fallback: ''  },
-        },
-        'insurance': {
-          eligible:     { method: 'copay',    amount: '',   fallback: '30' },
-          not_eligible: { method: 'specific', amount: '75', fallback: ''  },
-          pending:      { method: 'none',     amount: '',   fallback: ''  },
-          error:        { method: 'none',     amount: '',   fallback: ''  },
-        },
-      },
-    },
-    {
-      id: 'vt_3',
-      name: 'Follow-Up Visit',
-      duration: '15 min',
-      type: '1:1',
-      slots: 1,
-      mode: 'Video',
-      defaultIntakeTemplateId: 'it_1',
-      defaultNotesTemplateId: 'nt_2',
-      defaultPricing: {
-        'self-pay': { method: 'specific', amount: '50', fallback: '' },
-        'insurance': {
-          eligible:     { method: 'copay',    amount: '',   fallback: '20' },
-          not_eligible: { method: 'specific', amount: '50', fallback: ''  },
-          pending:      { method: 'none',     amount: '',   fallback: ''  },
-          error:        { method: 'none',     amount: '',   fallback: ''  },
-        },
-      },
-    },
+    { id: 'nt_1', name: 'SOAP Note',     content: 'Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n' },
+    { id: 'nt_2', name: 'Progress Note', content: 'Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n' },
+    { id: 'nt_3', name: 'Blank',         content: '' },
   ],
 };
 
 // ── Room V2 ────────────────────────────────────────────────
+// Visit options are defined directly per room (no template references).
+// intakeTemplateId / notesTemplateId null = inherit from room visitDefaults.
 
 export const initialRoomV2 = {
   roomName: "Dr. Provider's Waiting Room 1",
@@ -162,65 +58,61 @@ export const initialRoomV2 = {
   visibility: 'public',
   patientTypes: ['self-pay', 'group-covered', 'insurance'],
 
-  // References to clinic-level templates (replaces inline paymentConfig / roomIntakeFields / roomNotesTemplate)
+  // Room-level defaults: which clinic templates to use by default
   visitDefaults: {
-    paymentProfileIds: {
-      'self-pay':      'pp_1',
-      'group-covered': 'pp_2',
-      'insurance':     'pp_3',
-    },
     intakeTemplateId: 'it_1',
     notesTemplateId:  'nt_1',
   },
 
-  // Each item references a visitOptionTemplate + stores only overrides
+  // Direct visit option definitions — no templateId or overrides
   visitOptions: [
     {
-      id: 'rvo_1',
-      templateId: 'vt_1',
+      id: 'vo_1',
+      name: 'New Patient Consult',
+      duration: '30 min',
+      type: '1:1',
+      slots: 1,
+      mode: 'Video',
       visible: true,
       patientTypes: ['self-pay', 'insurance'],
-      overrides: {},   // fully inherited
-    },
-    {
-      id: 'rvo_2',
-      templateId: 'vt_2',
-      visible: true,
-      patientTypes: ['self-pay', 'group-covered', 'insurance'],
-      overrides: {
-        // This room charges less for self-pay urgent care
-        pricing: {
-          'self-pay': { method: 'specific', amount: '100', fallback: '' },
+      pricing: {
+        'self-pay':  { method: 'specific', amount: '150', fallback: '' },
+        'insurance': {
+          eligible:     { method: 'copay',    amount: '',    fallback: '30' },
+          not_eligible: { method: 'specific', amount: '150', fallback: ''  },
+          pending:      { method: 'none',     amount: '',    fallback: ''  },
+          error:        { method: 'none',     amount: '',    fallback: ''  },
         },
       },
+      intakeTemplateId: null,  // null = use room visitDefaults
+      notesTemplateId:  null,
+    },
+    {
+      id: 'vo_2',
+      name: 'Urgent Care Visit',
+      duration: '15 min',
+      type: '1:1',
+      slots: 1,
+      mode: 'Video',
+      visible: true,
+      patientTypes: ['self-pay', 'group-covered', 'insurance'],
+      pricing: {
+        'self-pay':      { method: 'specific', amount: '75', fallback: '' },
+        'group-covered': {
+          verified:     { method: 'copay',    amount: '',   fallback: '20' },
+          not_verified: { method: 'specific', amount: '75', fallback: ''  },
+          pending:      { method: 'none',     amount: '',   fallback: ''  },
+          error:        { method: 'none',     amount: '',   fallback: ''  },
+        },
+        'insurance': {
+          eligible:     { method: 'copay',    amount: '',   fallback: '30' },
+          not_eligible: { method: 'specific', amount: '75', fallback: ''  },
+          pending:      { method: 'none',     amount: '',   fallback: ''  },
+          error:        { method: 'none',     amount: '',   fallback: ''  },
+        },
+      },
+      intakeTemplateId: null,
+      notesTemplateId:  'nt_2',  // overrides room default — uses Progress Note
     },
   ],
 };
-
-// ── Resolver ────────────────────────────────────────────────
-
-export function resolveVisitOption(rvo, templates) {
-  const tmpl = templates.visitOptionTemplates.find(t => t.id === rvo.templateId);
-  if (!tmpl) return { ...rvo, overrideCount: 0 };
-  const ov = rvo.overrides ?? {};
-  const intakeTemplateId = ov.intakeTemplateId ?? tmpl.defaultIntakeTemplateId;
-  const notesTemplateId  = ov.notesTemplateId  ?? tmpl.defaultNotesTemplateId;
-  const intakeTmpl = templates.intakeTemplates.find(t => t.id === intakeTemplateId);
-  const notesTmpl  = templates.notesTemplates.find(t => t.id === notesTemplateId);
-  return {
-    name:            tmpl.name,
-    duration:        ov.duration  ?? tmpl.duration,
-    type:            ov.type      ?? tmpl.type,
-    slots:           ov.slots     ?? tmpl.slots,
-    mode:            ov.mode      ?? tmpl.mode,
-    visible:         rvo.visible,
-    patientTypes:    rvo.patientTypes,
-    pricing:         { ...tmpl.defaultPricing, ...(ov.pricing ?? {}) },
-    intakeTemplateId,
-    intakeFields:    ov.intakeFields ?? (intakeTmpl?.fields ?? []),
-    notesTemplateId,
-    notesContent:    ov.notesContent ?? (notesTmpl?.content ?? ''),
-    overrideCount:   Object.keys(ov).length,
-    templateName:    tmpl.name,
-  };
-}

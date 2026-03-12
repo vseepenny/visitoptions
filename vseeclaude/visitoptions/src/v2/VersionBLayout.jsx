@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import ClinicTemplatesPage from './ClinicTemplatesPage';
 import WaitingRoomSettingsV2 from './WaitingRoomSettingsV2';
-import { initialClinicTemplates, initialRoomV2 } from '../data/initialDataV2';
+import { initialClinic, initialRoomV2 } from '../data/initialDataV2';
 
 function Toast({ show, onDone }) {
   if (!show) return null;
@@ -20,9 +20,9 @@ function Toast({ show, onDone }) {
 }
 
 export default function VersionBLayout() {
-  const [page, setPage]           = useState('room');
-  const [templates, setTemplates] = useState(initialClinicTemplates);
-  const [room, setRoom]           = useState(initialRoomV2);
+  const [page, setPage]     = useState('room');
+  const [clinic, setClinic] = useState(initialClinic);
+  const [room, setRoom]     = useState(initialRoomV2);
   const [showSaved, setShowSaved] = useState(false);
 
   const handleSave = useCallback(() => setShowSaved(true), []);
@@ -47,11 +47,11 @@ export default function VersionBLayout() {
             Waiting Room
           </button>
           <button
-            onClick={() => setPage('templates')}
-            className={`navbar-link${page === 'templates' ? ' active' : ''}`}
+            onClick={() => setPage('clinic')}
+            className={`navbar-link${page === 'clinic' ? ' active' : ''}`}
             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            Clinic Templates
+            Clinic Settings
           </button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -64,12 +64,12 @@ export default function VersionBLayout() {
         </div>
       </nav>
 
-      {page === 'templates' ? (
-        <ClinicTemplatesPage templates={templates} onChange={setTemplates} />
+      {page === 'clinic' ? (
+        <ClinicTemplatesPage clinic={clinic} onChange={setClinic} />
       ) : (
         <WaitingRoomSettingsV2
           room={room}
-          templates={templates}
+          clinic={clinic}
           onChange={setRoom}
           onSave={handleSave}
         />

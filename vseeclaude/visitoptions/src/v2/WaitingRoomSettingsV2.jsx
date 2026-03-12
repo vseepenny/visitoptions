@@ -2,21 +2,9 @@ import { useState, useCallback } from 'react';
 import Breadcrumb from '../components/Breadcrumb';
 import OperatingHours from '../components/OperatingHours';
 import PatientTypes from '../components/PatientTypes';
-import { DURATIONS, MODES, TYPES } from '../data/initialData';
-import { resolveVisitOption } from '../data/initialDataV2';
 import RoomVisitOptionModal from './RoomVisitOptionModal';
 
 /* ── Helpers ──────────────────────────────────────────────── */
-
-const PT_TYPE_LABELS = { 'self-pay': 'Self-Pay', 'group-covered': 'Group-Covered', 'insurance': 'Insurance' };
-const PT_TYPE_COLORS = { 'self-pay': 'var(--info)', 'group-covered': 'var(--text-secondary)', 'insurance': 'var(--success)' };
-
-const MODE_ICONS = {
-  Video: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
-  Phone: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
-  'In-person': <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
-  Chat: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
-};
 
 function useDirty(initial) {
   const [savedStr, setSavedStr] = useState(JSON.stringify(initial));
@@ -34,65 +22,47 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
+const MODE_ICONS = {
+  Video:      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
+  Phone:      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
+  'In-person':<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
+  Chat:       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+};
+
+const PT_BADGES = {
+  'self-pay':      { cls: 'badge badge-info',    label: 'Self-Pay'  },
+  'group-covered': { cls: 'badge badge-neutral',  label: 'Group'     },
+  'insurance':     { cls: 'badge badge-success',  label: 'Insurance' },
+};
+
 /* ── Visit Defaults (V2) ──────────────────────────────────── */
 
-function VisitDefaultsV2({ visitDefaults, templates, onChange }) {
-  const { paymentProfileIds, intakeTemplateId, notesTemplateId } = visitDefaults;
-
-  const profilesForType = (type) => templates.paymentProfiles.filter(p => p.type === type);
-
-  const updateProfileId = (type, id) =>
-    onChange({ ...visitDefaults, paymentProfileIds: { ...paymentProfileIds, [type]: id } });
+function VisitDefaultsV2({ visitDefaults, clinic, onChange }) {
+  const { intakeTemplateId, notesTemplateId } = visitDefaults;
 
   return (
     <section>
       <p className="section-title">Visit Defaults</p>
       <p className="section-desc" style={{ marginBottom: 16 }}>
-        Reference clinic-level templates for payment, intake, and notes. Individual visit options can override these.
+        Default intake flow and notes template applied to all visit options in this room. Individual visit options can select a different template.
       </p>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
 
-        {/* Payment Profiles */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--grey-100)' }}>
-          <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: 'var(--text-secondary)', marginBottom: 12 }}>Payment Profiles</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {['self-pay', 'group-covered', 'insurance'].filter(t => true).map(type => {
-              const options = profilesForType(type);
-              if (options.length === 0) return null;
-              const current = options.find(p => p.id === paymentProfileIds?.[type]);
-              return (
-                <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: PT_TYPE_COLORS[type], minWidth: 120 }}>{PT_TYPE_LABELS[type]}</span>
-                  <select
-                    value={paymentProfileIds?.[type] ?? ''}
-                    onChange={e => updateProfileId(type, e.target.value)}
-                    className="input"
-                    style={{ height: 36, fontSize: 13, flex: 1, maxWidth: 320 }}
-                  >
-                    <option value="">— None —</option>
-                    {options.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Intake Form */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border)', gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Intake Form</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Default patient intake form for all visits in this room</p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Intake Flow</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Default intake flow for all visits in this room</p>
           </div>
           <select
             value={intakeTemplateId ?? ''}
-            onChange={e => onChange({ ...visitDefaults, intakeTemplateId: e.target.value })}
+            onChange={e => onChange({ ...visitDefaults, intakeTemplateId: e.target.value || null })}
             className="input"
             style={{ height: 36, fontSize: 13, width: 240 }}
           >
             <option value="">— None —</option>
-            {templates.intakeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {clinic.intakeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </div>
 
@@ -104,12 +74,12 @@ function VisitDefaultsV2({ visitDefaults, templates, onChange }) {
           </div>
           <select
             value={notesTemplateId ?? ''}
-            onChange={e => onChange({ ...visitDefaults, notesTemplateId: e.target.value })}
+            onChange={e => onChange({ ...visitDefaults, notesTemplateId: e.target.value || null })}
             className="input"
             style={{ height: 36, fontSize: 13, width: 240 }}
           >
             <option value="">— None —</option>
-            {templates.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {clinic.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </div>
 
@@ -118,87 +88,52 @@ function VisitDefaultsV2({ visitDefaults, templates, onChange }) {
   );
 }
 
-/* ── Template Picker Modal ────────────────────────────────── */
-
-function TemplatePickerModal({ templates, onPick, onClose }) {
-  return (
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }} role="dialog" aria-modal="true">
-      <div className="modal-box" style={{ maxWidth: 600 }}>
-        <div className="modal-head">
-          <h2>Add Visit Option from Template</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
-        </div>
-        <div className="modal-content">
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-            Select a visit option template from your clinic library. You can override individual settings after adding.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {templates.visitOptionTemplates.map(tmpl => {
-              const intakeTmpl = templates.intakeTemplates.find(t => t.id === tmpl.defaultIntakeTemplateId);
-              const notesTmpl  = templates.notesTemplates.find(t => t.id === tmpl.defaultNotesTemplateId);
-              return (
-                <button
-                  key={tmpl.id}
-                  onClick={() => onPick(tmpl.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 16px', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
-                    background: 'white', cursor: 'pointer', textAlign: 'left', transition: 'all 150ms',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'white'; }}
-                >
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{tmpl.name}</p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tmpl.duration}</span>
-                      <span style={{ color: 'var(--grey-400)' }}>·</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tmpl.mode}</span>
-                      <span style={{ color: 'var(--grey-400)' }}>·</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{tmpl.type}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Intake: {intakeTmpl?.name ?? '—'}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Notes: {notesTmpl?.name ?? '—'}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="modal-actions">
-          <button onClick={onClose} className="btn btn-ghost btn-sm">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ── Visit Options Table V2 ───────────────────────────────── */
 
-function VisitOptionsTableV2({ items, templates, allowedPatientTypes, onChange }) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [editingId, setEditingId]   = useState(null);
+function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes, onChange }) {
+  const [modal, setModal] = useState(null);
 
-  const handlePick = (templateId) => {
-    const newItem = {
-      id: `rvo_${Date.now()}`,
-      templateId,
-      visible: true,
-      patientTypes: allowedPatientTypes,
-      overrides: {},
+  const handleSave = (formData) => {
+    const DEFAULT_PRICING = {
+      'self-pay':      { method: 'specific', amount: '', fallback: '' },
+      'group-covered': {
+        verified:     { method: 'copay', amount: '', fallback: '' },
+        not_verified: { method: 'none',  amount: '', fallback: '' },
+        pending:      { method: 'none',  amount: '', fallback: '' },
+        error:        { method: 'none',  amount: '', fallback: '' },
+      },
+      'insurance': {
+        eligible:     { method: 'copay', amount: '', fallback: '' },
+        not_eligible: { method: 'none',  amount: '', fallback: '' },
+        pending:      { method: 'none',  amount: '', fallback: '' },
+        error:        { method: 'none',  amount: '', fallback: '' },
+      },
     };
-    onChange([...items, newItem]);
-    setShowPicker(false);
-    setEditingId(newItem.id);
+    const pricing = { ...(formData.pricing ?? {}) };
+    formData.patientTypes.forEach(ptId => {
+      if (!pricing[ptId]) pricing[ptId] = DEFAULT_PRICING[ptId] ?? { method: 'none', amount: '', fallback: '' };
+    });
+    const saved = { ...formData, pricing };
+    if (modal.mode === 'add') {
+      onChange([...items, { ...saved, id: `vo_${Date.now()}` }]);
+    } else {
+      onChange(items.map(it => it.id === modal.item.id ? { ...it, ...saved } : it));
+    }
+    setModal(null);
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm('Delete this visit option?')) onChange(items.filter(it => it.id !== id));
   };
 
   const toggleVisible = (id) =>
     onChange(items.map(it => it.id === id ? { ...it, visible: !it.visible } : it));
 
-  const handleDelete = (id) => {
-    if (window.confirm('Remove this visit option?')) onChange(items.filter(it => it.id !== id));
+  // Show which template is actually in use (resolved from null = room default)
+  const resolveIntakeName = (item) => {
+    const id = item.intakeTemplateId ?? visitDefaults.intakeTemplateId;
+    const tmpl = clinic.intakeTemplates.find(t => t.id === id);
+    return tmpl?.name ?? '—';
   };
 
   return (
@@ -206,9 +141,9 @@ function VisitOptionsTableV2({ items, templates, allowedPatientTypes, onChange }
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <p className="section-title">Visit Options</p>
-          <p className="section-desc">Visit options for this room, sourced from clinic templates.</p>
+          <p className="section-desc">Configure the appointment types patients can book in this room.</p>
         </div>
-        <button onClick={() => setShowPicker(true)} className="btn btn-secondary btn-sm">
+        <button onClick={() => setModal({ mode: 'add' })} className="btn btn-secondary btn-sm">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
           Add Visit Option
         </button>
@@ -221,135 +156,106 @@ function VisitOptionsTableV2({ items, templates, allowedPatientTypes, onChange }
           </svg>
           <div>
             <p className="empty-state-title">No visit options yet</p>
-            <p className="empty-state-desc">Add from your clinic template library.</p>
+            <p className="empty-state-desc">Add your first visit option to let patients book appointments.</p>
           </div>
-          <button onClick={() => setShowPicker(true)} className="btn btn-secondary btn-sm">Add Visit Option</button>
+          <button onClick={() => setModal({ mode: 'add' })} className="btn btn-secondary btn-sm">Add Visit Option</button>
         </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflowX: 'auto' }}>
-          <table className="table" style={{ minWidth: 860 }}>
+          <table className="table" style={{ minWidth: 820 }}>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Template</th>
-                <th>Duration · Mode</th>
-                <th>Overrides</th>
+                <th>Duration · Type</th>
+                <th title="Max concurrent patients">Slots</th>
+                <th>Mode</th>
+                <th>Intake Flow</th>
                 <th>Visible</th>
                 <th>Patient Types</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {items.map(item => {
-                const resolved = resolveVisitOption(item, templates);
-                const tmpl = templates.visitOptionTemplates.find(t => t.id === item.templateId);
-                const overrideCount = Object.keys(item.overrides ?? {}).length;
-                return (
-                  <tr key={item.id}>
-                    <td style={{ fontWeight: 500 }}>{resolved.name}</td>
-                    <td>
-                      {tmpl ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '2px 10px', background: 'var(--brand-50)', color: 'var(--brand)', borderRadius: 'var(--r-full)', border: '1px solid var(--brand-light)', fontWeight: 600 }}>
-                          <svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><polygon points="6,0 12,12 0,12" /></svg>
-                          {tmpl.name}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Custom</span>
-                      )}
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontSize: 13 }}>
-                      {resolved.duration}
-                      <span style={{ margin: '0 4px', color: 'var(--grey-400)' }}>·</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        {MODE_ICONS[resolved.mode]}
-                        {resolved.mode}
+              {items.map(item => (
+                <tr key={item.id}>
+                  <td style={{ fontWeight: 500 }}>{item.name}</td>
+                  <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    {item.duration}
+                    <span style={{ margin: '0 4px', color: 'var(--grey-400)' }}>·</span>
+                    {item.type}
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)' }}>{item.slots}</td>
+                  <td>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
+                      {MODE_ICONS[item.mode]}
+                      <span style={{ fontSize: 13 }}>{item.mode}</span>
+                    </span>
+                  </td>
+                  <td>
+                    {item.intakeTemplateId ? (
+                      <span style={{ fontSize: 12, padding: '2px 8px', background: 'var(--brand-50)', color: 'var(--brand)', borderRadius: 'var(--r-full)', border: '1px solid var(--brand-light)', fontWeight: 500 }}>
+                        {resolveIntakeName(item)}
                       </span>
-                    </td>
-                    <td>
-                      {overrideCount > 0 ? (
-                        <span style={{ fontSize: 12, padding: '2px 8px', background: 'var(--warning-light)', color: '#92400E', borderRadius: 'var(--r-full)', fontWeight: 600, border: '1px solid #FDE68A' }}>
-                          {overrideCount} override{overrideCount !== 1 ? 's' : ''}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Inherited</span>
-                      )}
-                    </td>
-                    <td>
-                      <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${resolved.name}`} />
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {item.patientTypes.map(pt => (
-                          <span key={pt} style={{ fontSize: 11, padding: '1px 8px', borderRadius: 'var(--r-full)', background: 'var(--grey-200)', color: 'var(--grey-700)', fontWeight: 600 }}>
-                            {PT_TYPE_LABELS[pt]}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          onClick={() => setEditingId(item.id)}
-                          className="btn-icon brand"
-                          title="Edit overrides"
-                          aria-label={`Edit ${resolved.name}`}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="btn-icon danger"
-                          title="Remove"
-                          aria-label={`Remove ${resolved.name}`}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                    ) : (
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                        Room default
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${item.name}`} />
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {item.patientTypes.map(ptId => {
+                        const badge = PT_BADGES[ptId];
+                        if (!badge) return null;
+                        return <span key={ptId} className={badge.cls} style={{ padding: '1px 8px', fontSize: 11 }}>{badge.label}</span>;
+                      })}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => setModal({ mode: 'edit', item })} className="btn-icon brand" title="Edit" aria-label={`Edit ${item.name}`}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {showPicker && (
-        <TemplatePickerModal templates={templates} onPick={handlePick} onClose={() => setShowPicker(false)} />
+      {modal && (
+        <RoomVisitOptionModal
+          existing={modal.mode === 'edit' ? modal.item : null}
+          allowedPatientTypes={allowedPatientTypes}
+          clinic={clinic}
+          visitDefaults={visitDefaults}
+          onSave={handleSave}
+          onClose={() => setModal(null)}
+        />
       )}
-
-      {editingId && (() => {
-        const item = items.find(it => it.id === editingId);
-        if (!item) return null;
-        return (
-          <RoomVisitOptionModal
-            item={item}
-            templates={templates}
-            allowedPatientTypes={allowedPatientTypes}
-            onSave={(updated) => {
-              onChange(items.map(it => it.id === editingId ? updated : it));
-              setEditingId(null);
-            }}
-            onClose={() => setEditingId(null)}
-          />
-        );
-      })()}
     </section>
   );
 }
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function WaitingRoomSettingsV2({ room, templates, onChange, onSave }) {
+export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }) {
   const { state, setState, isDirty, save } = useDirty(room);
-  const [showSaved, setShowSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const update = useCallback((field, value) => {
@@ -358,7 +264,6 @@ export default function WaitingRoomSettingsV2({ room, templates, onChange, onSav
 
   const handleSave = () => {
     save();
-    setShowSaved(true);
     onSave?.();
   };
 
@@ -440,19 +345,20 @@ export default function WaitingRoomSettingsV2({ room, templates, onChange, onSav
 
           <div className="divider" style={{ margin: 0 }} />
 
-          {/* Visit Defaults — V2: template references instead of inline editors */}
+          {/* Visit Defaults — template references */}
           <VisitDefaultsV2
             visitDefaults={state.visitDefaults}
-            templates={templates}
+            clinic={clinic}
             onChange={val => update('visitDefaults', val)}
           />
 
           <div className="divider" style={{ margin: 0 }} />
 
-          {/* Visit Options — V2: template-aware table */}
+          {/* Visit Options */}
           <VisitOptionsTableV2
             items={state.visitOptions}
-            templates={templates}
+            clinic={clinic}
+            visitDefaults={state.visitDefaults}
             allowedPatientTypes={state.patientTypes}
             onChange={val => update('visitOptions', val)}
           />

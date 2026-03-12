@@ -13,14 +13,14 @@ export default function RoomVisitDefaults({ intakeFields, notesTemplate, onIntak
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <p className="section-title">Visit Defaults</p>
-          <p className="section-desc">Default payment, intake form, and notes template for all visit options. Individual visit options can inherit or override these.</p>
+          <p className="section-desc">Default payment, intake flow, and notes template for all visit options. Individual visit options can inherit or override these.</p>
         </div>
       </div>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
         {/* Sub-tabs */}
         <div className="tabs" style={{ padding: '0 20px', background: 'var(--grey-100)', borderBottom: '1px solid var(--border)' }}>
-          {[{ id: 'payment', label: 'Payment' }, { id: 'intake', label: 'Intake Form' }, { id: 'notes', label: 'Visit Notes' }].map((tab) => (
+          {[{ id: 'payment', label: 'Payment' }, { id: 'intake', label: 'Intake Flow' }, { id: 'notes', label: 'Visit Notes' }].map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -45,7 +45,7 @@ export default function RoomVisitDefaults({ intakeFields, notesTemplate, onIntak
           {activeTab === 'intake' && (
             <div>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                Fields patients fill out before a visit. Visit options can inherit or override this.
+                The intake flow patients go through before a visit. Visit options can inherit or override this.
               </p>
               <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
                 {intakeFields.map((field, i, arr) => (
