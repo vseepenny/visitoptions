@@ -26,9 +26,8 @@ const MODE_ICONS = {
 };
 
 const PT_BADGES = {
-  'self-pay':      { cls: 'badge badge-info',    label: 'Self-Pay' },
-  'group-covered': { cls: 'badge badge-neutral',  label: 'Group' },
-  'insurance':     { cls: 'badge badge-success',  label: 'Insurance' },
+  'self-pay':  { cls: 'badge badge-info',    label: 'Self-Pay' },
+  'insurance': { cls: 'badge badge-success', label: 'Insurance' },
 };
 
 function Toggle({ checked, onChange, label }) {
@@ -144,8 +143,7 @@ export default function VisitOptionsTable({ items, allowedPatientTypes, paymentC
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Duration · Type</th>
-                <th title="Max concurrent patients">Slots</th>
+                <th>Duration</th>
                 <th>Mode</th>
                 <th>Visible</th>
                 <th>Patient Types</th>
@@ -156,13 +154,13 @@ export default function VisitOptionsTable({ items, allowedPatientTypes, paymentC
               {items.map((item) => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 500 }}>{item.name}</td>
-                  <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {item.duration}
-                    <span style={{ margin: '0 4px', color: 'var(--grey-400)' }}>·</span>
-                    {item.type}
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)' }} title="Max concurrent patients">
-                    {item.slots}
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{item.duration}</span>
+                      {item.type === '1:1'
+                        ? <span className="badge badge-neutral">1:1</span>
+                        : <span className="badge badge-warning">Group</span>}
+                    </div>
                   </td>
                   <td>
                     <span

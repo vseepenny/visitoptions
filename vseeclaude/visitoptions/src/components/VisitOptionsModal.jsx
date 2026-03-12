@@ -192,6 +192,12 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
                 <div className="form-group">
+                  <label className="form-label">Visit Mode</label>
+                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className="input">
+                    {MODES.map((m) => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
                   <label className="form-label">Duration</label>
                   <select value={form.duration} onChange={(e) => set('duration', e.target.value)} className="input">
                     {DURATIONS.map((d) => <option key={d}>{d}</option>)}
@@ -208,12 +214,6 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
                     className="input"
                   >
                     {TYPES.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Visit Mode</label>
-                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className="input">
-                    {MODES.map((m) => <option key={m}>{m}</option>)}
                   </select>
                 </div>
                 <div className="form-group">

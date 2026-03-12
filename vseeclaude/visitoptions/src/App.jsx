@@ -30,8 +30,8 @@ function VersionBanner({ version, onSwitch }) {
       </div>
       <span style={{ color: '#6B7280', fontSize: 12 }}>
         {version === 'A'
-          ? 'Current: all config inline per room'
-          : 'New: clinic-level templates, rooms reference by ID'}
+          ? 'New: clinic-level templates, rooms reference by ID'
+          : 'Previous: all config inline per room'}
       </span>
     </div>
   );
@@ -43,7 +43,7 @@ export default function App() {
   return (
     <>
       <VersionBanner version={version} onSwitch={setVersion} />
-      {version === 'A' ? <WaitingRoomSettings /> : <VersionBLayout />}
+      {version === 'A' ? <VersionBLayout /> : <WaitingRoomSettings />}
     </>
   );
 }

@@ -30,9 +30,8 @@ const MODE_ICONS = {
 };
 
 const PT_BADGES = {
-  'self-pay':      { cls: 'badge badge-info',    label: 'Self-Pay'  },
-  'group-covered': { cls: 'badge badge-neutral',  label: 'Group'     },
-  'insurance':     { cls: 'badge badge-success',  label: 'Insurance' },
+  'self-pay':  { cls: 'badge badge-info',    label: 'Self-Pay'  },
+  'insurance': { cls: 'badge badge-success', label: 'Insurance' },
 };
 
 /* ── Visit Defaults (V2) ──────────────────────────────────── */
@@ -129,13 +128,6 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
   const toggleVisible = (id) =>
     onChange(items.map(it => it.id === id ? { ...it, visible: !it.visible } : it));
 
-  // Show which template is actually in use (resolved from null = room default)
-  const resolveIntakeName = (item) => {
-    const id = item.intakeTemplateId ?? visitDefaults.intakeTemplateId;
-    const tmpl = clinic.intakeTemplates.find(t => t.id === id);
-    return tmpl?.name ?? '—';
-  };
-
   return (
     <section>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -162,14 +154,12 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
         </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflowX: 'auto' }}>
-          <table className="table" style={{ minWidth: 820 }}>
+          <table className="table" style={{ minWidth: 700 }}>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Duration · Type</th>
-                <th title="Max concurrent patients">Slots</th>
+                <th>Duration</th>
                 <th>Mode</th>
-                <th>Intake Flow</th>
                 <th>Visible</th>
                 <th>Patient Types</th>
                 <th>Actions</th>
@@ -179,28 +169,19 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
               {items.map(item => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 500 }}>{item.name}</td>
-                  <td style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    {item.duration}
-                    <span style={{ margin: '0 4px', color: 'var(--grey-400)' }}>·</span>
-                    {item.type}
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{item.duration}</span>
+                      {item.type === '1:1'
+                        ? <span className="badge badge-neutral">1:1</span>
+                        : <span className="badge badge-warning">Group</span>}
+                    </div>
                   </td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{item.slots}</td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
                       {MODE_ICONS[item.mode]}
                       <span style={{ fontSize: 13 }}>{item.mode}</span>
                     </span>
-                  </td>
-                  <td>
-                    {item.intakeTemplateId ? (
-                      <span style={{ fontSize: 12, padding: '2px 8px', background: 'var(--brand-50)', color: 'var(--brand)', borderRadius: 'var(--r-full)', border: '1px solid var(--brand-light)', fontWeight: 500 }}>
-                        {resolveIntakeName(item)}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                        Room default
-                      </span>
-                    )}
                   </td>
                   <td>
                     <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${item.name}`} />
