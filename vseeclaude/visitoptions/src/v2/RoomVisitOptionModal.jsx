@@ -62,7 +62,7 @@ const EMPTY = {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, visitDefaults, onSave, onClose }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, onSave, onClose }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     intakeTemplateId: existing.intakeTemplateId ?? null,
@@ -109,8 +109,8 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   };
 
   // Resolved template names for display
-  const resolvedIntakeId = form.intakeTemplateId ?? visitDefaults?.intakeTemplateId;
-  const resolvedNotesId  = form.notesTemplateId  ?? visitDefaults?.notesTemplateId;
+  const resolvedIntakeId = form.intakeTemplateId ?? clinic.defaultIntakeTemplateId;
+  const resolvedNotesId  = form.notesTemplateId  ?? clinic.defaultNotesTemplateId;
   const resolvedIntakeName = clinic.intakeTemplates.find(t => t.id === resolvedIntakeId)?.name ?? '—';
   const resolvedNotesName  = clinic.notesTemplates.find(t => t.id === resolvedNotesId)?.name ?? '—';
 
@@ -178,6 +178,12 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   </select>
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Visit Mode</label>
+                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className="input">
+                    {MODES.map((m) => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
                   <label className="form-label">Session Type</label>
                   <select
                     value={form.type}
@@ -188,12 +194,6 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     className="input"
                   >
                     {TYPES.map((t) => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Visit Mode</label>
-                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className="input">
-                    {MODES.map((m) => <option key={m}>{m}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -387,13 +387,13 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
           {/* ── Intake Flow tab ── */}
           {activeTab === 'intake' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Use room default toggle */}
+              {/* Use clinic default toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use room default</p>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default</p>
                   <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Currently: <strong>{visitDefaults?.intakeTemplateId
-                      ? (clinic.intakeTemplates.find(t => t.id === visitDefaults.intakeTemplateId)?.name ?? '—')
+                    Currently: <strong>{clinic.defaultIntakeTemplateId
+                      ? (clinic.intakeTemplates.find(t => t.id === clinic.defaultIntakeTemplateId)?.name ?? '—')
                       : 'None set'
                     }</strong>
                   </p>
@@ -401,9 +401,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 <button
                   role="switch"
                   aria-checked={form.intakeTemplateId === null}
-                  onClick={() => set('intakeTemplateId', form.intakeTemplateId === null ? (visitDefaults?.intakeTemplateId ?? '') : null)}
+                  onClick={() => set('intakeTemplateId', form.intakeTemplateId === null ? (clinic.defaultIntakeTemplateId ?? '') : null)}
                   className={`toggle${form.intakeTemplateId === null ? ' on' : ''}`}
-                  aria-label="Use room default intake flow"
+                  aria-label="Use clinic default intake flow"
                 >
                   <span className="toggle-track"><span className="toggle-thumb" /></span>
                 </button>
@@ -447,7 +447,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 if (!preview) return null;
                 return (
                   <div>
-                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedIntakeName}</strong> (room default):</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedIntakeName}</strong> (clinic default):</p>
                     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', opacity: 0.75 }}>
                       {preview.fields.map((f, i) => (
                         <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: i < preview.fields.length - 1 ? '1px solid var(--border)' : 'none', background: f.enabled ? 'var(--surface)' : 'var(--grey-50)' }}>
@@ -465,13 +465,13 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
           {/* ── Visit Notes tab ── */}
           {activeTab === 'notes' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Use room default toggle */}
+              {/* Use clinic default toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use room default</p>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default</p>
                   <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Currently: <strong>{visitDefaults?.notesTemplateId
-                      ? (clinic.notesTemplates.find(t => t.id === visitDefaults.notesTemplateId)?.name ?? '—')
+                    Currently: <strong>{clinic.defaultNotesTemplateId
+                      ? (clinic.notesTemplates.find(t => t.id === clinic.defaultNotesTemplateId)?.name ?? '—')
                       : 'None set'
                     }</strong>
                   </p>
@@ -479,9 +479,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 <button
                   role="switch"
                   aria-checked={form.notesTemplateId === null}
-                  onClick={() => set('notesTemplateId', form.notesTemplateId === null ? (visitDefaults?.notesTemplateId ?? '') : null)}
+                  onClick={() => set('notesTemplateId', form.notesTemplateId === null ? (clinic.defaultNotesTemplateId ?? '') : null)}
                   className={`toggle${form.notesTemplateId === null ? ' on' : ''}`}
-                  aria-label="Use room default notes template"
+                  aria-label="Use clinic default notes template"
                 >
                   <span className="toggle-track"><span className="toggle-thumb" /></span>
                 </button>
@@ -518,7 +518,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 if (!preview) return null;
                 return (
                   <div>
-                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedNotesName}</strong> (room default):</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedNotesName}</strong> (clinic default):</p>
                     <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 160, fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none', opacity: 0.75 }} />
                   </div>
                 );

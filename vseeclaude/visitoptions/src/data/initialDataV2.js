@@ -8,6 +8,9 @@ export const initialClinic = {
 
   paymentConfig: defaultPaymentConfig,
 
+  defaultIntakeTemplateId: 'it_1',
+  defaultNotesTemplateId:  'nt_1',
+
   intakeTemplates: [
     {
       id: 'it_1',
@@ -57,12 +60,6 @@ export const initialRoomV2 = {
   },
   visibility: 'public',
   patientTypes: ['self-pay', 'group-covered', 'insurance'],
-
-  // Room-level defaults: which clinic templates to use by default
-  visitDefaults: {
-    intakeTemplateId: 'it_1',
-    notesTemplateId:  'nt_1',
-  },
 
   // Direct visit option definitions — no templateId or overrides
   visitOptions: [

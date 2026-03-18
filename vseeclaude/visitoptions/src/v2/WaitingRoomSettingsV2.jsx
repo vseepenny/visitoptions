@@ -3,6 +3,8 @@ import Breadcrumb from '../components/Breadcrumb';
 import OperatingHours from '../components/OperatingHours';
 import PatientTypes from '../components/PatientTypes';
 import RoomVisitOptionModal from './RoomVisitOptionModal';
+import ConfirmModal from '../components/ConfirmModal';
+import PatientPreview from './PatientPreview';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -34,63 +36,11 @@ const PT_BADGES = {
   'insurance': { cls: 'badge badge-success', label: 'Insurance' },
 };
 
-/* ── Visit Defaults (V2) ──────────────────────────────────── */
-
-function VisitDefaultsV2({ visitDefaults, clinic, onChange }) {
-  const { intakeTemplateId, notesTemplateId } = visitDefaults;
-
-  return (
-    <section>
-      <p className="section-title">Visit Defaults</p>
-      <p className="section-desc" style={{ marginBottom: 16 }}>
-        Default intake flow and notes template applied to all visit options in this room. Individual visit options can select a different template.
-      </p>
-
-      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
-
-        {/* Intake Form */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border)', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Intake Flow</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Default intake flow for all visits in this room</p>
-          </div>
-          <select
-            value={intakeTemplateId ?? ''}
-            onChange={e => onChange({ ...visitDefaults, intakeTemplateId: e.target.value || null })}
-            className="input"
-            style={{ height: 36, fontSize: 13, width: 240 }}
-          >
-            <option value="">— None —</option>
-            {clinic.intakeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-
-        {/* Notes Template */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Notes Template</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Default visit notes template pre-populated at the start of each visit</p>
-          </div>
-          <select
-            value={notesTemplateId ?? ''}
-            onChange={e => onChange({ ...visitDefaults, notesTemplateId: e.target.value || null })}
-            className="input"
-            style={{ height: 36, fontSize: 13, width: 240 }}
-          >
-            <option value="">— None —</option>
-            {clinic.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-
-      </div>
-    </section>
-  );
-}
-
 /* ── Visit Options Table V2 ───────────────────────────────── */
 
-function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes, onChange }) {
+function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
   const [modal, setModal] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
 
   const handleSave = (formData) => {
     const DEFAULT_PRICING = {
@@ -121,9 +71,7 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
     setModal(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this visit option?')) onChange(items.filter(it => it.id !== id));
-  };
+  const handleDelete = (id) => setConfirmId(id);
 
   const toggleVisible = (id) =>
     onChange(items.map(it => it.id === id ? { ...it, visible: !it.visible } : it));
@@ -224,9 +172,18 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
           existing={modal.mode === 'edit' ? modal.item : null}
           allowedPatientTypes={allowedPatientTypes}
           clinic={clinic}
-          visitDefaults={visitDefaults}
           onSave={handleSave}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {confirmId && (
+        <ConfirmModal
+          title="Delete Visit Option"
+          message="Are you sure you want to delete this visit option? This action cannot be undone."
+          confirmLabel="Delete"
+          onConfirm={() => { onChange(items.filter(it => it.id !== confirmId)); setConfirmId(null); }}
+          onCancel={() => setConfirmId(null)}
         />
       )}
     </section>
@@ -238,6 +195,7 @@ function VisitOptionsTableV2({ items, clinic, visitDefaults, allowedPatientTypes
 export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }) {
   const { state, setState, isDirty, save } = useDirty(room);
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const update = useCallback((field, value) => {
     setState(s => ({ ...s, [field]: value }));
@@ -255,20 +213,33 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }
   };
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '32px 24px 80px' }}>
+    <div style={{ maxWidth: showPreview ? '100%' : 880, margin: '0 auto', padding: '32px 24px 80px', display: showPreview ? 'grid' : 'block', gridTemplateColumns: showPreview ? 'minmax(0, 1fr) 400px' : undefined, gap: showPreview ? 24 : undefined, alignItems: 'flex-start' }}>
+      <div>
       <div style={{ marginBottom: 20 }}>
         <Breadcrumb items={['Dashboard', 'My Clinic', 'Waiting Rooms', state.roomName]} />
       </div>
 
       <div className="panel">
         {/* Header */}
-        <div style={{ padding: '28px 32px 24px', borderBottom: '1px solid var(--border)' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px', marginBottom: 6 }}>
-            Waiting Room Settings
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-            Configure settings for <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{state.roomName}</strong>
-          </p>
+        <div style={{ padding: '28px 32px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px', marginBottom: 6 }}>
+              Waiting Room Settings
+            </h1>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+              Configure settings for <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{state.roomName}</strong>
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPreview(p => !p)}
+            className={`btn btn-sm ${showPreview ? 'btn-secondary' : 'btn-ghost'}`}
+            style={{ flexShrink: 0 }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" />
+            </svg>
+            {showPreview ? 'Hide Preview' : 'Patient Preview'}
+          </button>
         </div>
 
         <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -326,20 +297,10 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }
 
           <div className="divider" style={{ margin: 0 }} />
 
-          {/* Visit Defaults — template references */}
-          <VisitDefaultsV2
-            visitDefaults={state.visitDefaults}
-            clinic={clinic}
-            onChange={val => update('visitDefaults', val)}
-          />
-
-          <div className="divider" style={{ margin: 0 }} />
-
           {/* Visit Options */}
           <VisitOptionsTableV2
             items={state.visitOptions}
             clinic={clinic}
-            visitDefaults={state.visitDefaults}
             allowedPatientTypes={state.patientTypes}
             onChange={val => update('visitOptions', val)}
           />
@@ -367,6 +328,11 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--grey-900)', color: 'white', fontSize: 13, fontWeight: 600, padding: '8px 20px', borderRadius: 'var(--r-full)', boxShadow: 'var(--shadow-lg)', zIndex: 50, animation: 'slideUp 200ms ease both' }}>
           Room code copied!
         </div>
+      )}
+      </div>
+
+      {showPreview && (
+        <PatientPreview room={state} clinic={clinic} />
       )}
     </div>
   );

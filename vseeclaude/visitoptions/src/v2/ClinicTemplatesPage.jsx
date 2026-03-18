@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PaymentSettings from '../components/PaymentSettings';
+import ConfirmModal from '../components/ConfirmModal';
 import { NOTES_PRESETS } from '../data/initialData';
 
 /* ── Intake Template Editor ───────────────────────────────── */
@@ -72,7 +73,7 @@ function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
 
 /* ── Generic Template List ────────────────────────────────── */
 
-function TemplateList({ items, editingId, onEdit, onDelete, renderMeta, renderEditor }) {
+function TemplateList({ items, editingId, defaultId, onEdit, onDelete, onSetDefault, renderMeta, renderEditor }) {
   return (
     <div>
       {items.length === 0 ? (
@@ -82,27 +83,42 @@ function TemplateList({ items, editingId, onEdit, onDelete, renderMeta, renderEd
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {items.map(item => (
-            <div key={item.id}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: `1px solid ${editingId === item.id ? 'var(--brand)' : 'var(--border)'}`, borderRadius: editingId === item.id ? 'var(--r-lg) var(--r-lg) 0 0' : 'var(--r-lg)', background: editingId === item.id ? 'var(--brand-50)' : 'white', transition: 'all 150ms' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</p>
-                  {renderMeta?.(item)}
+          {items.map(item => {
+            const isDefault = item.id === defaultId;
+            return (
+              <div key={item.id}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: `1px solid ${editingId === item.id ? 'var(--brand)' : 'var(--border)'}`, borderRadius: editingId === item.id ? 'var(--r-lg) var(--r-lg) 0 0' : 'var(--r-lg)', background: editingId === item.id ? 'var(--brand-50)' : 'white', transition: 'all 150ms' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</p>
+                    {isDefault && (
+                      <span className="badge badge-success" style={{ fontSize: 11 }}>Default</span>
+                    )}
+                    {renderMeta?.(item)}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {!isDefault && (
+                      <button
+                        onClick={() => onSetDefault(item.id)}
+                        className="btn btn-ghost btn-sm"
+                        title="Set as default"
+                      >
+                        Set as default
+                      </button>
+                    )}
+                    <button onClick={() => onEdit(item.id)} className="btn btn-ghost btn-sm">
+                      {editingId === item.id ? 'Close' : 'Edit'}
+                    </button>
+                    <button onClick={() => onDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => onEdit(item.id)} className="btn btn-ghost btn-sm">
-                    {editingId === item.id ? 'Close' : 'Edit'}
-                  </button>
-                  <button onClick={() => onDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
-                  </button>
-                </div>
+                {editingId === item.id && renderEditor(item)}
               </div>
-              {editingId === item.id && renderEditor(item)}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -114,17 +130,20 @@ function TemplateList({ items, editingId, onEdit, onDelete, renderMeta, renderEd
 export default function ClinicTemplatesPage({ clinic, onChange }) {
   const [activeTab, setActiveTab] = useState('payment');
   const [editingId, setEditingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { key, id }
 
   const toggleEdit = (id) => setEditingId(prev => prev === id ? null : id);
 
   const updateList = (key, updatedItem) =>
     onChange({ ...clinic, [key]: clinic[key].map(t => t.id === updatedItem.id ? updatedItem : t) });
 
-  const deleteItem = (key, id) => {
-    if (window.confirm('Delete this template? Rooms referencing it will lose the link.')) {
-      onChange({ ...clinic, [key]: clinic[key].filter(t => t.id !== id) });
-      if (editingId === id) setEditingId(null);
-    }
+  const deleteItem = (key, id) => setConfirmDelete({ key, id });
+
+  const confirmDeleteAction = () => {
+    const { key, id } = confirmDelete;
+    onChange({ ...clinic, [key]: clinic[key].filter(t => t.id !== id) });
+    if (editingId === id) setEditingId(null);
+    setConfirmDelete(null);
   };
 
   const newItem = (key, defaults) => {
@@ -196,7 +215,9 @@ export default function ClinicTemplatesPage({ clinic, onChange }) {
               <TemplateList
                 items={clinic.intakeTemplates}
                 editingId={editingId}
+                defaultId={clinic.defaultIntakeTemplateId}
                 onEdit={toggleEdit}
+                onSetDefault={id => onChange({ ...clinic, defaultIntakeTemplateId: id })}
                 onDelete={id => deleteItem('intakeTemplates', id)}
                 renderMeta={item => (
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.fields.filter(f => f.enabled).length} fields enabled</span>
@@ -228,7 +249,9 @@ export default function ClinicTemplatesPage({ clinic, onChange }) {
               <TemplateList
                 items={clinic.notesTemplates}
                 editingId={editingId}
+                defaultId={clinic.defaultNotesTemplateId}
                 onEdit={toggleEdit}
+                onSetDefault={id => onChange({ ...clinic, defaultNotesTemplateId: id })}
                 onDelete={id => deleteItem('notesTemplates', id)}
                 renderMeta={item => (
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.content ? item.content.split('\n')[0].slice(0, 40) : 'Blank'}</span>
@@ -246,6 +269,16 @@ export default function ClinicTemplatesPage({ clinic, onChange }) {
 
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete Template"
+          message="Are you sure you want to delete this template? Rooms referencing it will lose the link."
+          confirmLabel="Delete"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 }

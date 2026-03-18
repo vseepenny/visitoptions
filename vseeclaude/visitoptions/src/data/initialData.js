@@ -129,7 +129,6 @@ export const defaultVisitOptions = [
 export const defaultPaymentConfig = {
   'self-pay': {
     acceptPayments: true,
-    processor: 'stripe',          // 'stripe' | 'manual'
     stripeConnected: false,
     timing: 'before',             // 'before' | 'after' | 'choice'
     defaultPrice: '50',

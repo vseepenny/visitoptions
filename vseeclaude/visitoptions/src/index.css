@@ -194,6 +194,8 @@ textarea.input { height: auto; min-height: 80px; padding: var(--sp-3); resize: v
 .btn-secondary:hover { background: var(--brand-50); }
 .btn-ghost { background: white; color: var(--text-primary); border-color: var(--border-strong); }
 .btn-ghost:hover { background: var(--grey-100); border-color: var(--border-strong); }
+.btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+.btn-danger:hover { background: #b91c1c; box-shadow: var(--shadow-sm); }
 .btn-danger-outline { background: transparent; color: var(--danger); border-color: var(--danger); }
 .btn-danger-outline:hover { background: var(--danger-light); }
 .btn-sm { font-size: 13px; padding: 6px 14px; }
@@ -293,6 +295,7 @@ textarea.input { height: auto; min-height: 80px; padding: var(--sp-3); resize: v
 .toast-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
 .toast-msg { font-size: 13px; color: var(--text-secondary); }
 @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== UNSAVED BADGE ===== */
 .unsaved-badge {

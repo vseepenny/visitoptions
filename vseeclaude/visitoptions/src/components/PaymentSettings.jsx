@@ -46,17 +46,42 @@ function PaymentRow({ label, description, right }) {
   );
 }
 
-function StripeStatus({ connected }) {
-  return connected ? (
-    <span className="badge badge-success" style={{ gap: 6 }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
-      Stripe Connected
-    </span>
-  ) : (
-    <span className="badge badge-neutral" style={{ gap: 6 }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--grey-500)', display: 'inline-block' }} />
-      Not configured
-    </span>
+// Mock Stripe account details shown when connected
+const MOCK_STRIPE_ACCOUNT = {
+  name: 'VSee Medical Group',
+  email: 'billing@vseeclinic.com',
+  accountId: 'acct_1Pz7Kx2eZvKYlo2C',
+};
+
+function StripeConnectedCard({ onDisconnect }) {
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', background: 'var(--surface)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, background: '#635BFF', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.296 2.525-3.22 2.525-5.482 0-4.14-2.467-5.861-6.591-7.555z"/></svg>
+          </div>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{MOCK_STRIPE_ACCOUNT.name}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{MOCK_STRIPE_ACCOUNT.email}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'monospace' }}>{MOCK_STRIPE_ACCOUNT.accountId}</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span className="badge badge-success" style={{ gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
+            Connected
+          </span>
+          <button
+            className="btn btn-ghost btn-xs"
+            onClick={onDisconnect}
+            style={{ color: 'var(--danger)' }}
+          >
+            Disconnect
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -82,33 +107,15 @@ function SelfPayPanel({ config, onChange }) {
       {config.acceptPayments && (
         <div className="form-group">
           <label className="form-label">Payment Processor</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SegmentControl
-              value={config.processor}
-              options={[
-                { value: 'stripe', label: 'Stripe' },
-                { value: 'manual', label: 'Manual' },
-              ]}
-              onChange={(v) => set('processor', v)}
-            />
-            {config.processor === 'stripe' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <StripeStatus connected={config.stripeConnected} />
-                {!config.stripeConnected && (
-                  <button
-                    className="btn btn-secondary btn-xs"
-                    onClick={() => set('stripeConnected', true)}
-                  >
-                    Connect Stripe
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          {config.processor === 'manual' && (
-            <p className="form-hint">
-              Payments are collected outside VSee (cash, check, etc.). No online billing.
-            </p>
+          {config.stripeConnected ? (
+            <StripeConnectedCard onDisconnect={() => set('stripeConnected', false)} />
+          ) : (
+            <button
+              className="btn btn-secondary btn-xs"
+              onClick={() => set('stripeConnected', true)}
+            >
+              Connect Stripe
+            </button>
           )}
         </div>
       )}
