@@ -166,6 +166,214 @@ function IntakeStep({ templateName, fields, onContinue, onBack }) {
   );
 }
 
+/* ── Payment display helper ──────────────────────────────── */
+
+function PaymentAmount({ method, amount, fallback }) {
+  if (!method || method === 'none') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>No payment required at booking</span>
+      </div>
+    );
+  }
+  if (method === 'specific' && amount) {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Amount due at booking</span>
+          <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>${amount}</span>
+        </div>
+      </div>
+    );
+  }
+  if (method === 'copay') {
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: fallback ? 6 : 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Copay</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Determined at visit</span>
+        </div>
+        {fallback && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Fallback if copay unavailable: ${fallback}</p>
+        )}
+      </div>
+    );
+  }
+  return <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Not configured</span>;
+}
+
+/* ── Step: Self-Pay Payment Info ─────────────────────────── */
+
+function SelfPayInfoStep({ visit, clinic, onContinue, onBack }) {
+  const pricing = visit.pricing?.['self-pay'];
+  const payConfig = clinic.paymentConfig?.['self-pay'];
+  const collectsPayment = payConfig?.acceptPayments && pricing?.method && pricing.method !== 'none';
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+        Back
+      </button>
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Payment</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Here's what you'll pay for this visit.</p>
+
+      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>{visit.name}</p>
+        <PaymentAmount method={payConfig?.acceptPayments ? (pricing?.method ?? 'none') : 'none'} amount={pricing?.amount} fallback={pricing?.fallback} />
+        {collectsPayment && !payConfig?.stripeConnected && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10, fontStyle: 'italic' }}>Online payment not yet enabled — clinic will collect at visit.</p>
+        )}
+      </div>
+
+      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
+/* ── Step: Card Payment ──────────────────────────────────── */
+
+function CardPaymentStep({ amount, onContinue, onBack }) {
+  const [subStep, setSubStep] = useState('form'); // 'form' | 'processing' | 'success'
+  const [card, setCard] = useState({ number: '', expiry: '', cvv: '', name: '' });
+  const timerRef = useRef(null);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const formatCardNumber = (val) =>
+    val.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+
+  const formatExpiry = (val) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+  };
+
+  const allFilled = card.number.replace(/\s/g, '').length === 16 &&
+    card.expiry.length === 5 && card.cvv.length >= 3 && card.name.trim();
+
+  const handlePay = () => {
+    setSubStep('processing');
+    timerRef.current = setTimeout(() => setSubStep('success'), 2000);
+  };
+
+  const inputStyle = { fontSize: 14, letterSpacing: '0.04em' };
+
+  if (subStep === 'processing') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 16 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid var(--brand)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Processing payment…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Please don't close this page</p>
+      </div>
+    );
+  }
+
+  if (subStep === 'success') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 32, gap: 12 }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ECFDF5', border: '2px solid var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+        </div>
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Payment confirmed</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>${amount} charged to card ending in {card.number.slice(-4)}</p>
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={onContinue}>
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+        Back
+      </button>
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Card Payment</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Enter your card details to pay <strong>${amount}</strong>.</p>
+
+      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Card number */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Card Number</label>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="1234 5678 9012 3456"
+              value={card.number}
+              onChange={e => setCard(c => ({ ...c, number: formatCardNumber(e.target.value) }))}
+              className="input"
+              style={{ ...inputStyle, paddingRight: 40 }}
+            />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--grey-400)" strokeWidth="1.5" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Expiry + CVV */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Expiry</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="MM/YY"
+              value={card.expiry}
+              onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))}
+              className="input"
+              style={inputStyle}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>CVV</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="123"
+              value={card.cvv}
+              maxLength={4}
+              onChange={e => setCard(c => ({ ...c, cvv: e.target.value.replace(/\D/g, '') }))}
+              className="input"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        {/* Cardholder name */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Cardholder Name</label>
+          <input
+            type="text"
+            placeholder="Name on card"
+            value={card.name}
+            onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
+            className="input"
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      <button
+        className="btn btn-primary btn-sm"
+        style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.5 }}
+        disabled={!allFilled}
+        onClick={handlePay}
+      >
+        Pay ${amount}
+      </button>
+      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+        Secured by Stripe
+      </p>
+    </div>
+  );
+}
+
 /* ── Step: Insurance Check ───────────────────────────────── */
 
 const ELIGIBILITY_STATUSES = [
@@ -180,7 +388,7 @@ const INSURANCE_PROVIDERS = [
   'Medicare', 'Medicaid', 'UnitedHealthcare', 'Other',
 ];
 
-function InsuranceCheckStep({ eligibilityAccess, onContinue, onBack }) {
+function InsuranceCheckStep({ eligibilityAccess, visitInsurancePricing, onContinue, onBack }) {
   const [subStep, setSubStep] = useState('form'); // 'form' | 'checking' | 'result'
   const [simulatedStatus, setSimulatedStatus] = useState('eligible');
   const [form, setForm] = useState({ provider: '', memberId: '', groupNumber: '', dob: '' });
@@ -233,7 +441,7 @@ function InsuranceCheckStep({ eligibilityAccess, onContinue, onBack }) {
         </div>
 
         {/* Result card */}
-        <div style={{ background: statusMeta.bg, border: `1px solid ${statusMeta.color}40`, borderRadius: 12, padding: '16px', marginBottom: 16 }}>
+        <div style={{ background: statusMeta.bg, border: `1px solid ${statusMeta.color}40`, borderRadius: 12, padding: '16px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: statusMeta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
               {statusMeta.icon}
@@ -245,6 +453,18 @@ function InsuranceCheckStep({ eligibilityAccess, onContinue, onBack }) {
           </p>
           <p style={{ fontSize: 13, color: accessInfo.color, fontWeight: 500 }}>{accessInfo.label}</p>
         </div>
+
+        {/* Payment info for this eligibility status */}
+        {access !== 'block' && visitInsurancePricing?.[simulatedStatus] && (
+          <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Payment</p>
+            <PaymentAmount
+              method={visitInsurancePricing[simulatedStatus].method}
+              amount={visitInsurancePricing[simulatedStatus].amount}
+              fallback={visitInsurancePricing[simulatedStatus].fallback}
+            />
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {access !== 'block' && (
@@ -421,19 +641,41 @@ export default function PatientPreview({ room, clinic }) {
     if (pt === 'insurance') {
       setStep('insuranceCheck');
     } else {
-      setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
+      setStep('selfPayInfo');
     }
   };
 
+  const selfPayPricing = selectedVisit?.pricing?.['self-pay'];
+  const selfPayConfig = clinic.paymentConfig?.['self-pay'];
+  const needsCardPayment = selectedPt === 'self-pay' &&
+    selfPayConfig?.acceptPayments &&
+    selfPayPricing?.method === 'specific' &&
+    selfPayPricing?.amount;
+
+  const afterSelfPayInfo = needsCardPayment ? 'cardPayment' : (enabledFields.length > 0 ? 'intake' : 'confirm');
+  const afterCardPayment = enabledFields.length > 0 ? 'intake' : 'confirm';
+
   const handleInsuranceContinue = () => setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
+  const handleSelfPayInfoContinue = () => setStep(afterSelfPayInfo);
 
   const handleBackFromPt = () => { setSelectedVisitId(null); setStep('visit'); };
   const handleBackFromInsurance = () => { setSelectedPt(null); setStep('patientType'); };
-  const handleBackFromIntake = () => setStep(selectedPt === 'insurance' ? 'insuranceCheck' : 'patientType');
-  const handleBackFromConfirm = () => setStep(enabledFields.length > 0 ? 'intake' : (selectedPt === 'insurance' ? 'insuranceCheck' : 'patientType'));
+  const handleBackFromSelfPayInfo = () => { setSelectedPt(null); setStep('patientType'); };
+  const handleBackFromCardPayment = () => setStep('selfPayInfo');
+  const handleBackFromIntake = () => {
+    if (selectedPt === 'insurance') setStep('insuranceCheck');
+    else if (needsCardPayment) setStep('cardPayment');
+    else setStep('selfPayInfo');
+  };
+  const handleBackFromConfirm = () => setStep(enabledFields.length > 0 ? 'intake' : afterSelfPayInfo);
 
   const hasInsurance = selectedPt === 'insurance';
-  const allSteps = ['visit', 'patientType', ...(hasInsurance ? ['insuranceCheck'] : []), ...(enabledFields.length > 0 ? ['intake'] : []), 'confirm'];
+  const allSteps = [
+    'visit', 'patientType',
+    ...(hasInsurance ? ['insuranceCheck'] : ['selfPayInfo', ...(needsCardPayment ? ['cardPayment'] : [])]),
+    ...(enabledFields.length > 0 ? ['intake'] : []),
+    'confirm',
+  ];
 
   return (
     <div style={{ position: 'sticky', top: 80 }}>
@@ -484,9 +726,25 @@ export default function PatientPreview({ room, clinic }) {
               onBack={handleBackFromPt}
             />
           )}
-          {step === 'insuranceCheck' && (
+          {step === 'selfPayInfo' && selectedVisit && (
+            <SelfPayInfoStep
+              visit={selectedVisit}
+              clinic={clinic}
+              onContinue={handleSelfPayInfoContinue}
+              onBack={handleBackFromSelfPayInfo}
+            />
+          )}
+          {step === 'cardPayment' && selectedVisit && (
+            <CardPaymentStep
+              amount={selfPayPricing?.amount}
+              onContinue={() => setStep(afterCardPayment)}
+              onBack={handleBackFromCardPayment}
+            />
+          )}
+          {step === 'insuranceCheck' && selectedVisit && (
             <InsuranceCheckStep
               eligibilityAccess={clinic.paymentConfig?.['insurance']?.eligibilityAccess}
+              visitInsurancePricing={selectedVisit.pricing?.['insurance']}
               onContinue={handleInsuranceContinue}
               onBack={handleBackFromInsurance}
             />
