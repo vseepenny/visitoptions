@@ -36,11 +36,81 @@ const PT_BADGES = {
   'insurance': { cls: 'badge badge-success', label: 'Insurance' },
 };
 
+/* ── Payment completeness check ──────────────────────────── */
+
+function isPaymentIncomplete(item, clinic) {
+  const payConfig = clinic.paymentConfig;
+
+  for (const ptId of item.patientTypes) {
+    if (ptId === 'self-pay') {
+      if (!payConfig?.['self-pay']?.acceptPayments) continue;
+      const p = item.pricing?.['self-pay'];
+      if (!p || p.method === 'none') continue;
+      if (p.method === 'specific' && !p.amount) return true;
+    }
+
+    if (ptId === 'insurance') {
+      const accessConfig = payConfig?.['insurance']?.eligibilityAccess;
+      for (const statusId of ['eligible', 'not_eligible', 'pending', 'error']) {
+        if ((accessConfig?.[statusId]?.access ?? 'allow') === 'block') continue;
+        const sc = item.pricing?.['insurance']?.[statusId];
+        if (!sc || sc.method === 'none') continue;
+        if (sc.method === 'specific' && !sc.amount) return true;
+      }
+    }
+
+    if (ptId === 'group-covered') {
+      const accessConfig = payConfig?.['group-covered']?.verificationAccess;
+      for (const statusId of ['verified', 'not_verified', 'pending', 'error']) {
+        if ((accessConfig?.[statusId]?.access ?? 'allow') === 'block') continue;
+        const sc = item.pricing?.['group-covered']?.[statusId];
+        if (!sc || sc.method === 'none') continue;
+        if (sc.method === 'specific' && !sc.amount) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /* ── Visit Options Table V2 ───────────────────────────────── */
 
 function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const handleDragStart = (e, id) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Transparent drag image so the row doesn't ghost weirdly
+    const el = e.currentTarget;
+    e.dataTransfer.setDragImage(el, el.offsetWidth / 2, el.offsetHeight / 2);
+  };
+
+  const handleDragOver = (e, id) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== dragId) setDragOverId(id);
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) return;
+    const from = items.findIndex(it => it.id === dragId);
+    const to   = items.findIndex(it => it.id === targetId);
+    const next = [...items];
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    onChange(next);
+    setDragId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragId(null);
+    setDragOverId(null);
+  };
 
   const handleSave = (formData) => {
     const DEFAULT_PRICING = {
@@ -105,6 +175,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
           <table className="table" style={{ minWidth: 700 }}>
             <thead>
               <tr>
+                <th style={{ width: 32 }} />
                 <th>Name</th>
                 <th>Duration</th>
                 <th>Mode</th>
@@ -114,54 +185,97 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
               </tr>
             </thead>
             <tbody>
-              {items.map(item => (
-                <tr key={item.id}>
-                  <td style={{ fontWeight: 500 }}>{item.name}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>{item.duration}</span>
-                      {item.type === '1:1'
-                        ? <span className="badge badge-neutral">1:1</span>
-                        : <span className="badge badge-warning">Group</span>}
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
-                      {MODE_ICONS[item.mode]}
-                      <span style={{ fontSize: 13 }}>{item.mode}</span>
-                    </span>
-                  </td>
-                  <td>
-                    <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${item.name}`} />
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {item.patientTypes.map(ptId => {
-                        const badge = PT_BADGES[ptId];
-                        if (!badge) return null;
-                        return <span key={ptId} className={badge.cls} style={{ padding: '1px 8px', fontSize: 11 }}>{badge.label}</span>;
-                      })}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setModal({ mode: 'edit', item })} className="btn-icon brand" title="Edit" aria-label={`Edit ${item.name}`}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {items.map(item => {
+                const isDragging = dragId === item.id;
+                const isOver = dragOverId === item.id;
+                const incomplete = isPaymentIncomplete(item, clinic);
+                return (
+                  <tr
+                    key={item.id}
+                    draggable
+                    onDragStart={e => handleDragStart(e, item.id)}
+                    onDragOver={e => handleDragOver(e, item.id)}
+                    onDrop={e => handleDrop(e, item.id)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      opacity: isDragging ? 0.35 : 1,
+                      outline: isOver ? '2px solid var(--brand)' : 'none',
+                      outlineOffset: -2,
+                      transition: 'opacity 150ms',
+                    }}
+                  >
+                    <td style={{ width: 32, padding: '0 4px 0 8px', cursor: 'grab' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--grey-400)" strokeWidth="2" style={{ display: 'block' }}>
+                        <circle cx="9" cy="5"  r="1" fill="var(--grey-400)" stroke="none" />
+                        <circle cx="9" cy="12" r="1" fill="var(--grey-400)" stroke="none" />
+                        <circle cx="9" cy="19" r="1" fill="var(--grey-400)" stroke="none" />
+                        <circle cx="15" cy="5"  r="1" fill="var(--grey-400)" stroke="none" />
+                        <circle cx="15" cy="12" r="1" fill="var(--grey-400)" stroke="none" />
+                        <circle cx="15" cy="19" r="1" fill="var(--grey-400)" stroke="none" />
+                      </svg>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>
+                      <div>{item.name}</div>
+                      {incomplete && (
+                        <button
+                          onClick={() => setModal({ mode: 'edit', item, initialTab: 'payment' })}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          title="Payment amount missing — click to complete setup"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                          <span style={{ fontSize: 11, color: '#D97706', fontWeight: 600 }}>Set up payment</span>
+                        </button>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{item.duration}</span>
+                        {item.type === '1:1'
+                          ? <span className="badge badge-neutral">1:1</span>
+                          : <span className="badge badge-warning">Group</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
+                        {MODE_ICONS[item.mode]}
+                        <span style={{ fontSize: 13 }}>{item.mode}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${item.name}`} />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {item.patientTypes.map(ptId => {
+                          const badge = PT_BADGES[ptId];
+                          if (!badge) return null;
+                          return <span key={ptId} className={badge.cls} style={{ padding: '1px 8px', fontSize: 11 }}>{badge.label}</span>;
+                        })}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => setModal({ mode: 'edit', item })} className="btn-icon brand" title="Edit" aria-label={`Edit ${item.name}`}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -172,6 +286,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
           existing={modal.mode === 'edit' ? modal.item : null}
           allowedPatientTypes={allowedPatientTypes}
           clinic={clinic}
+          initialTab={modal.initialTab}
           onSave={handleSave}
           onClose={() => setModal(null)}
         />
@@ -192,7 +307,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }) {
+export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack }) {
   const { state, setState, isDirty, save } = useDirty(room);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -203,6 +318,7 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }
 
   const handleSave = () => {
     save();
+    onChange?.(state);
     onSave?.();
   };
 
@@ -216,7 +332,12 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave }
     <div style={{ maxWidth: showPreview ? '100%' : 880, margin: '0 auto', padding: '32px 24px 80px', display: showPreview ? 'grid' : 'block', gridTemplateColumns: showPreview ? 'minmax(0, 1fr) 400px' : undefined, gap: showPreview ? 24 : undefined, alignItems: 'flex-start' }}>
       <div>
       <div style={{ marginBottom: 20 }}>
-        <Breadcrumb items={['Dashboard', 'My Clinic', 'Waiting Rooms', state.roomName]} />
+        <Breadcrumb items={[
+          'Dashboard',
+          'My Clinic',
+          { label: 'Waiting Rooms', onClick: onBack },
+          state.roomName,
+        ]} />
       </div>
 
       <div className="panel">

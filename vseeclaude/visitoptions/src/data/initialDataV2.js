@@ -45,71 +45,127 @@ export const initialClinic = {
   ],
 };
 
-// ── Room V2 ────────────────────────────────────────────────
-// Visit options are defined directly per room (no template references).
-// intakeTemplateId / notesTemplateId null = inherit from room visitDefaults.
+// ── Rooms ──────────────────────────────────────────────────
 
-export const initialRoomV2 = {
-  roomName: "Dr. Provider's Waiting Room 1",
-  roomCode: 'GHTNC',
-  hours: {
-    timezone: 'UTC -08:00 Pacific Time (US & Canada)',
-    mode: 'always',
-    schedule: defaultSchedule,
-    closureMessage: 'Service currently not available. Please check back later.',
+export const initialRooms = [
+  {
+    id: 'room_1',
+    roomName: "General Waiting Room",
+    roomCode: 'GHTNC',
+    hours: {
+      timezone: 'UTC -08:00 Pacific Time (US & Canada)',
+      mode: 'always',
+      schedule: defaultSchedule,
+      closureMessage: 'Service currently not available. Please check back later.',
+    },
+    visibility: 'public',
+    patientTypes: ['self-pay', 'group-covered', 'insurance'],
+    visitOptions: [
+      {
+        id: 'vo_1',
+        name: 'New Patient Consult',
+        duration: '30 min',
+        type: '1:1',
+        slots: 1,
+        mode: 'Video',
+        visible: true,
+        patientTypes: ['self-pay', 'insurance'],
+        pricing: {
+          'self-pay':  { method: 'specific', amount: '150', fallback: '' },
+          'insurance': {
+            eligible:     { method: 'copay',    amount: '',    fallback: '30' },
+            not_eligible: { method: 'specific', amount: '150', fallback: ''  },
+            pending:      { method: 'none',     amount: '',    fallback: ''  },
+            error:        { method: 'none',     amount: '',    fallback: ''  },
+          },
+        },
+        intakeTemplateId: null,
+        notesTemplateId:  null,
+      },
+      {
+        id: 'vo_2',
+        name: 'Urgent Care Visit',
+        duration: '15 min',
+        type: '1:1',
+        slots: 1,
+        mode: 'Video',
+        visible: true,
+        patientTypes: ['self-pay', 'group-covered', 'insurance'],
+        pricing: {
+          'self-pay':      { method: 'specific', amount: '75', fallback: '' },
+          'group-covered': {
+            verified:     { method: 'copay',    amount: '',   fallback: '20' },
+            not_verified: { method: 'specific', amount: '75', fallback: ''  },
+            pending:      { method: 'none',     amount: '',   fallback: ''  },
+            error:        { method: 'none',     amount: '',   fallback: ''  },
+          },
+          'insurance': {
+            eligible:     { method: 'copay',    amount: '',   fallback: '30' },
+            not_eligible: { method: 'specific', amount: '75', fallback: ''  },
+            pending:      { method: 'none',     amount: '',   fallback: ''  },
+            error:        { method: 'none',     amount: '',   fallback: ''  },
+          },
+        },
+        intakeTemplateId: null,
+        notesTemplateId:  'nt_2',
+      },
+    ],
   },
-  visibility: 'public',
-  patientTypes: ['self-pay', 'group-covered', 'insurance'],
-
-  // Direct visit option definitions — no templateId or overrides
-  visitOptions: [
-    {
-      id: 'vo_1',
-      name: 'New Patient Consult',
-      duration: '30 min',
-      type: '1:1',
-      slots: 1,
-      mode: 'Video',
-      visible: true,
-      patientTypes: ['self-pay', 'insurance'],
-      pricing: {
-        'self-pay':  { method: 'specific', amount: '150', fallback: '' },
-        'insurance': {
-          eligible:     { method: 'copay',    amount: '',    fallback: '30' },
-          not_eligible: { method: 'specific', amount: '150', fallback: ''  },
-          pending:      { method: 'none',     amount: '',    fallback: ''  },
-          error:        { method: 'none',     amount: '',    fallback: ''  },
-        },
-      },
-      intakeTemplateId: null,  // null = use room visitDefaults
-      notesTemplateId:  null,
+  {
+    id: 'room_2',
+    roomName: 'Mental Health Room',
+    roomCode: 'MHLTH',
+    hours: {
+      timezone: 'UTC -08:00 Pacific Time (US & Canada)',
+      mode: 'scheduled',
+      schedule: defaultSchedule,
+      closureMessage: 'Our mental health team is currently unavailable. Please try again during business hours.',
     },
-    {
-      id: 'vo_2',
-      name: 'Urgent Care Visit',
-      duration: '15 min',
-      type: '1:1',
-      slots: 1,
-      mode: 'Video',
-      visible: true,
-      patientTypes: ['self-pay', 'group-covered', 'insurance'],
-      pricing: {
-        'self-pay':      { method: 'specific', amount: '75', fallback: '' },
-        'group-covered': {
-          verified:     { method: 'copay',    amount: '',   fallback: '20' },
-          not_verified: { method: 'specific', amount: '75', fallback: ''  },
-          pending:      { method: 'none',     amount: '',   fallback: ''  },
-          error:        { method: 'none',     amount: '',   fallback: ''  },
+    visibility: 'unlisted',
+    patientTypes: ['self-pay', 'insurance'],
+    visitOptions: [
+      {
+        id: 'vo_3',
+        name: 'Initial Assessment',
+        duration: '60 min',
+        type: '1:1',
+        slots: 1,
+        mode: 'Video',
+        visible: true,
+        patientTypes: ['self-pay', 'insurance'],
+        pricing: {
+          'self-pay':  { method: 'specific', amount: '', fallback: '' },
+          'insurance': {
+            eligible:     { method: 'copay',    amount: '',   fallback: '' },
+            not_eligible: { method: 'specific', amount: '',   fallback: '' },
+            pending:      { method: 'none',     amount: '',   fallback: '' },
+            error:        { method: 'none',     amount: '',   fallback: '' },
+          },
         },
-        'insurance': {
-          eligible:     { method: 'copay',    amount: '',   fallback: '30' },
-          not_eligible: { method: 'specific', amount: '75', fallback: ''  },
-          pending:      { method: 'none',     amount: '',   fallback: ''  },
-          error:        { method: 'none',     amount: '',   fallback: ''  },
-        },
+        intakeTemplateId: 'it_2',
+        notesTemplateId:  null,
       },
-      intakeTemplateId: null,
-      notesTemplateId:  'nt_2',  // overrides room default — uses Progress Note
-    },
-  ],
-};
+      {
+        id: 'vo_4',
+        name: 'Follow-up Session',
+        duration: '45 min',
+        type: '1:1',
+        slots: 1,
+        mode: 'Video',
+        visible: true,
+        patientTypes: ['self-pay', 'insurance'],
+        pricing: {
+          'self-pay':  { method: 'none', amount: '', fallback: '' },
+          'insurance': {
+            eligible:     { method: 'copay', amount: '', fallback: '' },
+            not_eligible: { method: 'none',  amount: '', fallback: '' },
+            pending:      { method: 'none',  amount: '', fallback: '' },
+            error:        { method: 'none',  amount: '', fallback: '' },
+          },
+        },
+        intakeTemplateId: null,
+        notesTemplateId:  'nt_1',
+      },
+    ],
+  },
+];

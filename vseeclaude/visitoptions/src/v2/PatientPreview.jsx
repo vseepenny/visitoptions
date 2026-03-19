@@ -528,6 +528,144 @@ function InsuranceCheckStep({ eligibilityAccess, visitInsurancePricing, onContin
   );
 }
 
+/* ── Step: Group-Covered Check ───────────────────────────── */
+
+const GROUP_VERIFICATION_STATUSES = [
+  { id: 'verified',     label: 'Verified',       color: 'var(--success)',  bg: '#ECFDF5', icon: '✓' },
+  { id: 'not_verified', label: 'Not Verified',    color: 'var(--danger)',   bg: '#FEF2F2', icon: '✕' },
+  { id: 'pending',      label: 'Pending',         color: '#D97706',         bg: '#FFFBEB', icon: '…' },
+  { id: 'error',        label: 'Error / Unknown', color: 'var(--grey-500)', bg: '#F9FAFB', icon: '?' },
+];
+
+function GroupCoveredCheckStep({ verificationAccess, visitGroupPricing, onContinue, onBack }) {
+  const [subStep, setSubStep] = useState('form');
+  const [simulatedStatus, setSimulatedStatus] = useState('verified');
+  const [form, setForm] = useState({ employer: '', groupId: '', dob: '' });
+  const timerRef = useRef(null);
+
+  const allFilled = form.employer && form.groupId && form.dob;
+
+  const handleCheck = () => {
+    setSubStep('checking');
+    timerRef.current = setTimeout(() => setSubStep('result'), 2200);
+  };
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const statusMeta = GROUP_VERIFICATION_STATUSES.find(s => s.id === simulatedStatus);
+  const access = verificationAccess?.[simulatedStatus]?.access ?? 'allow';
+
+  const accessInfo = {
+    allow:  { label: 'You may proceed with booking.',           color: 'var(--success)' },
+    review: { label: 'Booking requires staff review.',          color: '#D97706'        },
+    block:  { label: 'You are not eligible to book right now.', color: 'var(--danger)'  },
+  }[access];
+
+  if (subStep === 'checking') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 16 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid var(--brand)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Verifying group coverage…</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Confirming coverage with {form.employer}</p>
+      </div>
+    );
+  }
+
+  if (subStep === 'result') {
+    return (
+      <div>
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Coverage Result</p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', background: '#FFF9C4', border: '1px solid #FDE047', borderRadius: 8 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" /></svg>
+          <span style={{ fontSize: 11, color: '#92400E', flex: 1 }}>Prototype: simulate outcome</span>
+          <select
+            value={simulatedStatus}
+            onChange={e => setSimulatedStatus(e.target.value)}
+            style={{ fontSize: 11, border: '1px solid #FDE047', borderRadius: 4, padding: '2px 4px', background: 'white', color: '#92400E', cursor: 'pointer' }}
+          >
+            {GROUP_VERIFICATION_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+        </div>
+
+        <div style={{ background: statusMeta.bg, border: `1px solid ${statusMeta.color}40`, borderRadius: 12, padding: '16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: statusMeta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+              {statusMeta.icon}
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: statusMeta.color }}>{statusMeta.label}</p>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            {form.employer} · Group ID: {form.groupId}
+          </p>
+          <p style={{ fontSize: 13, color: accessInfo.color, fontWeight: 500 }}>{accessInfo.label}</p>
+        </div>
+
+        {access !== 'block' && visitGroupPricing?.[simulatedStatus] && (
+          <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Payment</p>
+            <PaymentAmount
+              method={visitGroupPricing[simulatedStatus].method}
+              amount={visitGroupPricing[simulatedStatus].amount}
+              fallback={visitGroupPricing[simulatedStatus].fallback}
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {access !== 'block' && (
+            <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>
+              Continue
+            </button>
+          )}
+          <button
+            onClick={() => setSubStep('form')}
+            className="btn btn-ghost btn-sm"
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            Use different group
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+        Back
+      </button>
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Group Coverage</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>We'll verify your employer group coverage before booking.</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Employer / Group Name <span className="req">*</span></label>
+          <input type="text" value={form.employer} onChange={e => setForm(f => ({ ...f, employer: e.target.value }))} placeholder="e.g. Acme Corp" className="input" style={{ fontSize: 13 }} />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Group ID <span className="req">*</span></label>
+          <input type="text" value={form.groupId} onChange={e => setForm(f => ({ ...f, groupId: e.target.value }))} placeholder="e.g. GRP987654" className="input" style={{ fontSize: 13 }} />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Date of Birth <span className="req">*</span></label>
+          <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className="input" style={{ fontSize: 13 }} />
+        </div>
+      </div>
+
+      <button
+        className="btn btn-primary btn-sm"
+        style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.5 }}
+        disabled={!allFilled}
+        onClick={handleCheck}
+      >
+        Verify Coverage
+      </button>
+    </div>
+  );
+}
+
 /* ── Step: Confirm ───────────────────────────────────────── */
 
 function ConfirmStep({ visit, ptId, clinic, onBack, onReset }) {
@@ -599,6 +737,44 @@ function ConfirmStep({ visit, ptId, clinic, onBack, onReset }) {
   );
 }
 
+/* ── Step: Booked ────────────────────────────────────────── */
+
+function BookedStep({ visit, ptId, onReset }) {
+  const ptMeta = PT_META[ptId];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 32, gap: 12 }}>
+      <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ECFDF5', border: '2px solid var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+      </div>
+      <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>You're booked!</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Your appointment has been confirmed.</p>
+
+      <div style={{ width: '100%', background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginTop: 4, textAlign: 'left' }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{visit.name}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.duration}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {MODE_ICONS[visit.mode]}
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.mode}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: ptMeta.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ptMeta.label}</span>
+          </div>
+        </div>
+      </div>
+
+      <button onClick={onReset} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+        Book another visit
+      </button>
+      <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>This is a preview — no real booking was made.</p>
+    </div>
+  );
+}
+
 /* ── Main Component ──────────────────────────────────────── */
 
 export default function PatientPreview({ room, clinic }) {
@@ -640,6 +816,8 @@ export default function PatientPreview({ room, clinic }) {
     setSelectedPt(pt);
     if (pt === 'insurance') {
       setStep('insuranceCheck');
+    } else if (pt === 'group-covered') {
+      setStep('groupCoveredCheck');
     } else {
       setStep('selfPayInfo');
     }
@@ -655,24 +833,35 @@ export default function PatientPreview({ room, clinic }) {
   const afterSelfPayInfo = needsCardPayment ? 'cardPayment' : (enabledFields.length > 0 ? 'intake' : 'confirm');
   const afterCardPayment = enabledFields.length > 0 ? 'intake' : 'confirm';
 
+  const afterPaymentStep = selectedPt === 'insurance' ? 'insuranceCheck'
+    : selectedPt === 'group-covered' ? 'groupCoveredCheck'
+    : needsCardPayment ? 'cardPayment'
+    : 'selfPayInfo';
+
   const handleInsuranceContinue = () => setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
+  const handleGroupCoveredContinue = () => setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
   const handleSelfPayInfoContinue = () => setStep(afterSelfPayInfo);
 
   const handleBackFromPt = () => { setSelectedVisitId(null); setStep('visit'); };
   const handleBackFromInsurance = () => { setSelectedPt(null); setStep('patientType'); };
+  const handleBackFromGroupCovered = () => { setSelectedPt(null); setStep('patientType'); };
   const handleBackFromSelfPayInfo = () => { setSelectedPt(null); setStep('patientType'); };
   const handleBackFromCardPayment = () => setStep('selfPayInfo');
   const handleBackFromIntake = () => {
     if (selectedPt === 'insurance') setStep('insuranceCheck');
+    else if (selectedPt === 'group-covered') setStep('groupCoveredCheck');
     else if (needsCardPayment) setStep('cardPayment');
     else setStep('selfPayInfo');
   };
-  const handleBackFromConfirm = () => setStep(enabledFields.length > 0 ? 'intake' : afterSelfPayInfo);
+  const handleBackFromConfirm = () => setStep(enabledFields.length > 0 ? 'intake' : afterPaymentStep);
 
   const hasInsurance = selectedPt === 'insurance';
+  const hasGroupCovered = selectedPt === 'group-covered';
   const allSteps = [
     'visit', 'patientType',
-    ...(hasInsurance ? ['insuranceCheck'] : ['selfPayInfo', ...(needsCardPayment ? ['cardPayment'] : [])]),
+    ...(hasInsurance ? ['insuranceCheck']
+      : hasGroupCovered ? ['groupCoveredCheck']
+      : ['selfPayInfo', ...(needsCardPayment ? ['cardPayment'] : [])]),
     ...(enabledFields.length > 0 ? ['intake'] : []),
     'confirm',
   ];
@@ -749,6 +938,14 @@ export default function PatientPreview({ room, clinic }) {
               onBack={handleBackFromInsurance}
             />
           )}
+          {step === 'groupCoveredCheck' && selectedVisit && (
+            <GroupCoveredCheckStep
+              verificationAccess={clinic.paymentConfig?.['group-covered']?.verificationAccess}
+              visitGroupPricing={selectedVisit.pricing?.['group-covered']}
+              onContinue={handleGroupCoveredContinue}
+              onBack={handleBackFromGroupCovered}
+            />
+          )}
           {step === 'intake' && selectedVisit && (
             <IntakeStep
               templateName={intakeTemplate?.name}
@@ -763,6 +960,13 @@ export default function PatientPreview({ room, clinic }) {
               ptId={selectedPt}
               clinic={clinic}
               onBack={handleBackFromConfirm}
+              onReset={() => setStep('booked')}
+            />
+          )}
+          {step === 'booked' && selectedVisit && selectedPt && (
+            <BookedStep
+              visit={selectedVisit}
+              ptId={selectedPt}
               onReset={reset}
             />
           )}

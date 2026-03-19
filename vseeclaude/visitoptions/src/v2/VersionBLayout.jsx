@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import ClinicTemplatesPage from './ClinicTemplatesPage';
+import WaitingRoomsListPage from './WaitingRoomsListPage';
 import WaitingRoomSettingsV2 from './WaitingRoomSettingsV2';
-import { initialClinic, initialRoomV2 } from '../data/initialDataV2';
+import { initialClinic, initialRooms } from '../data/initialDataV2';
 
 function Toast({ show, onDone }) {
   if (!show) return null;
@@ -20,12 +21,43 @@ function Toast({ show, onDone }) {
 }
 
 export default function VersionBLayout() {
-  const [page, setPage]     = useState('room');
-  const [clinic, setClinic] = useState(initialClinic);
-  const [room, setRoom]     = useState(initialRoomV2);
-  const [showSaved, setShowSaved] = useState(false);
+  const [clinic, setClinic]         = useState(initialClinic);
+  const [rooms, setRooms]           = useState(initialRooms);
+  const [selectedRoomId, setSelectedRoomId] = useState(
+    initialRooms.length === 1 ? initialRooms[0].id : null
+  );
+  const [page, setPage]             = useState(  // 'rooms' | 'room' | 'clinic'
+    initialRooms.length === 1 ? 'room' : 'rooms'
+  );
+  const [showSaved, setShowSaved]   = useState(false);
+
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null;
+
+  const handleSelectRoom = useCallback((id) => {
+    setSelectedRoomId(id);
+    setPage('room');
+  }, []);
+
+  const handleAddRoom = useCallback((room) => {
+    setRooms(rs => [...rs, room]);
+    setSelectedRoomId(room.id);
+    setPage('room');
+  }, []);
+
+  const handleDeleteRoom = useCallback((id) => {
+    setRooms(rs => rs.filter(r => r.id !== id));
+  }, []);
+
+  const handleRoomChange = useCallback((updated) => {
+    setRooms(rs => rs.map(r => r.id === updated.id ? updated : r));
+  }, []);
 
   const handleSave = useCallback(() => setShowSaved(true), []);
+
+  const handleBackToRooms = useCallback(() => {
+    setPage('rooms');
+    setSelectedRoomId(null);
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--surface-subtle)' }}>
@@ -40,11 +72,19 @@ export default function VersionBLayout() {
         </div>
         <div className="navbar-links">
           <button
-            onClick={() => setPage('room')}
-            className={`navbar-link${page === 'room' ? ' active' : ''}`}
+            onClick={() => {
+            if (rooms.length === 1) {
+              setSelectedRoomId(rooms[0].id);
+              setPage('room');
+            } else {
+              setPage('rooms');
+              setSelectedRoomId(null);
+            }
+          }}
+            className={`navbar-link${page === 'rooms' || page === 'room' ? ' active' : ''}`}
             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
           >
-            Waiting Room
+            Waiting Rooms
           </button>
           <button
             onClick={() => setPage('clinic')}
@@ -64,14 +104,27 @@ export default function VersionBLayout() {
         </div>
       </nav>
 
-      {page === 'clinic' ? (
+      {page === 'clinic' && (
         <ClinicTemplatesPage clinic={clinic} onChange={setClinic} />
-      ) : (
+      )}
+
+      {page === 'rooms' && (
+        <WaitingRoomsListPage
+          rooms={rooms}
+          onSelect={handleSelectRoom}
+          onAdd={handleAddRoom}
+          onDelete={handleDeleteRoom}
+        />
+      )}
+
+      {page === 'room' && selectedRoom && (
         <WaitingRoomSettingsV2
-          room={room}
+          key={selectedRoom.id}
+          room={selectedRoom}
           clinic={clinic}
-          onChange={setRoom}
+          onChange={updated => handleRoomChange({ ...updated, id: selectedRoom.id })}
           onSave={handleSave}
+          onBack={handleBackToRooms}
         />
       )}
 

@@ -62,14 +62,14 @@ const EMPTY = {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, onSave, onClose }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     intakeTemplateId: existing.intakeTemplateId ?? null,
     notesTemplateId:  existing.notesTemplateId  ?? null,
   } : { ...EMPTY });
   const [errors, setErrors]     = useState({});
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
 
   useEffect(() => {
