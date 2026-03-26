@@ -56,6 +56,7 @@ const EMPTY = {
   mode: 'Video',
   visible: true,
   patientTypes: [],
+  specialties: [],
   pricing: { ...DEFAULT_PT_PRICING },
   notesTemplateId: null,    // null = use room visitDefaults
   workflowOverride: null,   // null = use clinic default intake flow
@@ -222,6 +223,48 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   <span className="toggle-track"><span className="toggle-thumb" /></span>
                 </button>
               </div>
+
+              {/* Specialties */}
+              {clinic.specialties?.length > 0 && (
+                <div className="form-group">
+                  <label className="form-label">Specialties</label>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Which provider specialties can see this visit option?</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {clinic.specialties.map((sp) => {
+                      const checked = (form.specialties || []).includes(sp.id);
+                      return (
+                        <label
+                          key={sp.id}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '6px 12px', borderRadius: 'var(--r-md)',
+                            border: `1px solid ${checked ? 'var(--brand)' : 'var(--border)'}`,
+                            background: checked ? 'var(--brand-light, rgba(13,135,92,0.08))' : 'var(--surface)',
+                            cursor: 'pointer', fontSize: 13,
+                            fontWeight: checked ? 600 : 400,
+                            color: checked ? 'var(--brand)' : 'var(--text-secondary)',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const cur = form.specialties || [];
+                              set('specialties', checked ? cur.filter(s => s !== sp.id) : [...cur, sp.id]);
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          {sp.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {(form.specialties || []).length === 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>No specialties selected — visible to all providers.</p>
+                  )}
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Accepted Patient Types <span className="req">*</span></label>

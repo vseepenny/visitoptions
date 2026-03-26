@@ -8,6 +8,14 @@ export const initialClinic = {
 
   patientTypes: ['self-pay', 'group-covered', 'insurance'],
 
+  specialties: [
+    { id: 'sp_1', name: 'General Practice' },
+    { id: 'sp_2', name: 'Mental Health' },
+    { id: 'sp_3', name: 'Dermatology' },
+    { id: 'sp_4', name: 'Pediatrics' },
+    { id: 'sp_5', name: 'Cardiology' },
+  ],
+
   paymentConfig: defaultPaymentConfig,
 
   defaultNotesTemplateId: 'nt_1',
@@ -132,6 +140,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
+        specialties: ['sp_1'],
         pricing: {
           'self-pay':  { method: 'specific', amount: '150', fallback: '' },
           'insurance': {
@@ -153,6 +162,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'group-covered', 'insurance'],
+        specialties: ['sp_1'],
         pricing: {
           'self-pay':      { method: 'specific', amount: '75', fallback: '' },
           'group-covered': {
@@ -194,6 +204,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
+        specialties: ['sp_2'],
         pricing: {
           'self-pay':  { method: 'specific', amount: '', fallback: '' },
           'insurance': {
@@ -225,6 +236,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
+        specialties: ['sp_2'],
         pricing: {
           'self-pay':  { method: 'none', amount: '', fallback: '' },
           'insurance': {
