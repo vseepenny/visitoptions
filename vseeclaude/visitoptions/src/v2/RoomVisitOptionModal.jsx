@@ -62,6 +62,61 @@ const EMPTY = {
   workflowOverride: null,   // null = use clinic default intake flow
 };
 
+/* ── Specialty Picker ─────────────────────────────────────── */
+
+function SpecialtyPicker({ specialties, selected, onChange }) {
+  if (!specialties.length) return null;
+  const allIds = specialties.map(s => s.id);
+  const allChecked = allIds.length > 0 && allIds.every(id => selected.includes(id));
+
+  return (
+    <div className="form-group">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+        <label className="form-label" style={{ marginBottom: 0 }}>Specialties</label>
+        <button
+          type="button"
+          onClick={() => onChange(allChecked ? [] : [...allIds])}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 500 }}
+        >
+          {allChecked ? 'Deselect All' : 'Select All'}
+        </button>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Which provider specialties can see this visit option?</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {specialties.map((sp) => {
+          const checked = selected.includes(sp.id);
+          return (
+            <label
+              key={sp.id}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 'var(--r-md)',
+                border: `1px solid ${checked ? 'var(--brand)' : 'var(--border)'}`,
+                background: checked ? 'var(--brand-light, rgba(13,135,92,0.08))' : 'var(--surface)',
+                cursor: 'pointer', fontSize: 13,
+                fontWeight: checked ? 600 : 400,
+                color: checked ? 'var(--brand)' : 'var(--text-secondary)',
+                transition: 'all 0.15s',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onChange(checked ? selected.filter(s => s !== sp.id) : [...selected, sp.id])}
+                style={{ display: 'none' }}
+              />
+              {sp.name}
+            </label>
+          );
+        })}
+      </div>
+      {selected.length === 0 && (
+        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>No specialties selected — visible to all providers.</p>
+      )}
+    </div>
+  );
+}
+
 /* ── Component ───────────────────────────────────────────── */
 
 export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose }) {
@@ -225,59 +280,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
               </div>
 
               {/* Specialties */}
-              {clinic.specialties?.length > 0 && (() => {
-                const allIds = clinic.specialties.map(s => s.id);
-                const allChecked = allIds.every(id => (form.specialties || []).includes(id));
-                return (
-                <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Specialties</label>
-                    <button
-                      type="button"
-                      onClick={() => set('specialties', allChecked ? [] : [...allIds])}
-                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 500 }}
-                    >
-                      {allChecked ? 'Deselect All' : 'Select All'}
-                    </button>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Which provider specialties can see this visit option?</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {clinic.specialties.map((sp) => {
-                      const checked = (form.specialties || []).includes(sp.id);
-                      return (
-                        <label
-                          key={sp.id}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 'var(--r-md)',
-                            border: `1px solid ${checked ? 'var(--brand)' : 'var(--border)'}`,
-                            background: checked ? 'var(--brand-light, rgba(13,135,92,0.08))' : 'var(--surface)',
-                            cursor: 'pointer', fontSize: 13,
-                            fontWeight: checked ? 600 : 400,
-                            color: checked ? 'var(--brand)' : 'var(--text-secondary)',
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {
-                              const cur = form.specialties || [];
-                              set('specialties', checked ? cur.filter(s => s !== sp.id) : [...cur, sp.id]);
-                            }}
-                            style={{ display: 'none' }}
-                          />
-                          {sp.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  {(form.specialties || []).length === 0 && (
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>No specialties selected — visible to all providers.</p>
-                  )}
-                </div>
-                );
-              })()}
+              <SpecialtyPicker specialties={clinic.specialties || []} selected={form.specialties || []} onChange={(val) => set('specialties', val)} />
 
               <div className="form-group">
                 <label className="form-label">Accepted Patient Types <span className="req">*</span></label>
