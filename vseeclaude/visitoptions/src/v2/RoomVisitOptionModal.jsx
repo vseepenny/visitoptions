@@ -65,7 +65,6 @@ const EMPTY = {
 /* ── Specialty Picker ─────────────────────────────────────── */
 
 function SpecialtyPicker({ specialties, selected, onChange }) {
-  console.log('[SpecialtyPicker]', { specialties, selected });
   if (!specialties.length) return null;
   const allIds = specialties.map(s => s.id);
   const allChecked = allIds.length > 0 && allIds.every(id => selected.includes(id));
@@ -163,7 +162,13 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
 
   const handleSave = () => {
     if (validate()) onSave(form);
-    else setActiveTab('general');
+    else {
+      const e = {};
+      if (!form.name.trim()) e.name = true;
+      if (form.slots < 1 || form.slots > 99) e.slots = true;
+      if (form.patientTypes.length === 0) e.patientTypes = true;
+      setActiveTab(e.name || e.slots ? 'general' : 'patientTypes');
+    }
   };
 
   // Resolved template names for display
@@ -190,9 +195,10 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
         {/* Tab bar */}
         <div className="tabs" style={{ padding: '0 24px', borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
           {[
-            { id: 'general',  label: 'General' },
-            { id: 'workflow', label: 'Intake Flow' },
-            { id: 'notes',    label: 'Visit Notes' },
+            { id: 'general',      label: 'General' },
+            { id: 'patientTypes', label: 'Patient Types' },
+            { id: 'workflow',     label: 'Intake Flow' },
+            { id: 'notes',        label: 'Visit Notes' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -201,7 +207,10 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
-              {tab.id === 'general' && (errors.name || errors.slots || errors.patientTypes) && (
+              {tab.id === 'general' && (errors.name || errors.slots) && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', marginLeft: 6 }} />
+              )}
+              {tab.id === 'patientTypes' && errors.patientTypes && (
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger)', display: 'inline-block', marginLeft: 6 }} />
               )}
             </button>
@@ -280,9 +289,12 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 </button>
               </div>
 
-              {/* Specialties */}
-              <SpecialtyPicker specialties={clinic.specialties || []} selected={form.specialties || []} onChange={(val) => set('specialties', val)} />
+            </div>
+          )}
 
+          {/* ── Patient Types tab ── */}
+          {activeTab === 'patientTypes' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div className="form-group">
                 <label className="form-label">Accepted Patient Types <span className="req">*</span></label>
                 {availableTypes.length === 0 ? (
