@@ -139,28 +139,6 @@ function GroupCoveredPanel({ config, onChange }) {
 
   return (
     <div className="payment-panel-body">
-      <PaymentRow
-        label="Require Group ID"
-        description="Patient must provide their employer/group ID at check-in."
-        right={
-          <Toggle
-            checked={config.requireGroupId}
-            onChange={() => set('requireGroupId', !config.requireGroupId)}
-            label="Require group ID"
-          />
-        }
-      />
-      <PaymentRow
-        label="Require Referral"
-        description="Patient must have a referral from their primary care provider."
-        right={
-          <Toggle
-            checked={config.requireReferral}
-            onChange={() => set('requireReferral', !config.requireReferral)}
-            label="Require referral"
-          />
-        }
-      />
       <div className="form-group">
         <label className="form-label">Verification-Based Access</label>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>

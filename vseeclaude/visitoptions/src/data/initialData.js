@@ -135,8 +135,6 @@ export const defaultPaymentConfig = {
     noShowFee: { enabled: false, amount: '25' },
   },
   'group-covered': {
-    requireGroupId: true,
-    requireReferral: false,
     verificationAccess: {
       verified:     { access: 'allow' },
       not_verified: { access: 'block' },
