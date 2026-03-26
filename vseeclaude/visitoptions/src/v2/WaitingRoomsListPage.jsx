@@ -19,7 +19,6 @@ function newRoom() {
       closureMessage: 'Service currently not available. Please check back later.',
     },
     visibility: 'unlisted',
-    patientTypes: ['self-pay'],
     visitOptions: [],
   };
 }
@@ -66,7 +65,6 @@ export default function WaitingRoomsListPage({ rooms, onSelect, onAdd, onDelete 
                 <th>Room</th>
                 <th>Code</th>
                 <th>Visibility</th>
-                <th>Patient Types</th>
                 <th>Visit Options</th>
                 <th>Actions</th>
               </tr>
@@ -87,9 +85,6 @@ export default function WaitingRoomsListPage({ rooms, onSelect, onAdd, onDelete 
                     </td>
                     <td>
                       <span className={vis.cls}>{vis.label}</span>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{room.patientTypes.length} type{room.patientTypes.length !== 1 ? 's' : ''}</span>
                     </td>
                     <td>
                       <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>

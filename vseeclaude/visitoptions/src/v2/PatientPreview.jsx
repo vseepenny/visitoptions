@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 /* ── Constants ───────────────────────────────────────────── */
 
@@ -15,9 +15,20 @@ const MODE_ICONS = {
   Chat:        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
 };
 
+/* ── Back button helper ──────────────────────────────────── */
+
+function BackButton({ label, onClick }) {
+  return (
+    <button onClick={onClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+      {label || 'Back'}
+    </button>
+  );
+}
+
 /* ── Step: Select Visit ──────────────────────────────────── */
 
-function VisitStep({ visits, onSelect }) {
+function VisitStep({ visits, onSelect, onBack }) {
   if (visits.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 16px' }}>
@@ -32,6 +43,7 @@ function VisitStep({ visits, onSelect }) {
 
   return (
     <div>
+      {onBack && <BackButton onClick={onBack} />}
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Choose a visit type</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Select the type of appointment you need.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -67,15 +79,100 @@ function VisitStep({ visits, onSelect }) {
   );
 }
 
-/* ── Step: Patient Type ──────────────────────────────────── */
+/* ── Step: Scheduling (mock calendar) ────────────────────── */
 
-function PatientTypeStep({ visitName, patientTypes, onSelect, onBack }) {
+function SchedulingStep({ visit, onContinue, onBack }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
+
+  const today = new Date();
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i + 1);
+    return d;
+  });
+
+  const times = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '1:00 PM', '1:30 PM', '2:00 PM', '3:00 PM', '3:30 PM'];
+
+  const dayName = (d) => d.toLocaleDateString('en-US', { weekday: 'short' });
+  const dateNum = (d) => d.getDate();
+  const monthDay = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
   return (
     <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        {visitName}
+      <BackButton onClick={onBack} />
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Pick a time</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+        {visit.name} · {visit.duration}
+      </p>
+
+      {/* Date picker */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+        {dates.map((d, i) => {
+          const sel = selectedDate === i;
+          return (
+            <button
+              key={i}
+              onClick={() => { setSelectedDate(i); setSelectedTime(null); }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                padding: '8px 10px', borderRadius: 10, border: `1.5px solid ${sel ? 'var(--brand)' : 'var(--border)'}`,
+                background: sel ? 'var(--brand-50)' : 'white', cursor: 'pointer', minWidth: 44,
+                transition: 'all 100ms',
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 600, color: sel ? 'var(--brand)' : 'var(--text-tertiary)', textTransform: 'uppercase' }}>{dayName(d)}</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: sel ? 'var(--brand)' : 'var(--text-primary)' }}>{dateNum(d)}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Time slots */}
+      {selectedDate !== null && (
+        <>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Available times for {monthDay(dates[selectedDate])}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 20 }}>
+            {times.map(t => {
+              const sel = selectedTime === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => setSelectedTime(t)}
+                  style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1.5px solid ${sel ? 'var(--brand)' : 'var(--border)'}`,
+                    background: sel ? 'var(--brand)' : 'white',
+                    color: sel ? 'white' : 'var(--text-primary)',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 100ms',
+                  }}
+                >{t}</button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={onContinue}
+        disabled={selectedTime === null}
+        className="btn btn-primary btn-sm"
+        style={{ width: '100%', justifyContent: 'center', opacity: selectedTime ? 1 : 0.4 }}
+      >
+        Continue
       </button>
+    </div>
+  );
+}
+
+/* ── Step: Patient Type (for conditional branching) ──────── */
+
+function PatientTypeStep({ patientTypes, onSelect, onBack }) {
+  return (
+    <div>
+      <BackButton onClick={onBack} />
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>How will you pay?</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Select your payment method for this visit.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -110,55 +207,114 @@ function PatientTypeStep({ visitName, patientTypes, onSelect, onBack }) {
   );
 }
 
-/* ── Step: Intake Form ───────────────────────────────────── */
+/* ── Step: Form (driven by form library) ─────────────────── */
 
-function IntakeStep({ templateName, fields, onContinue, onBack }) {
+function FormStep({ step, clinic, onContinue, onBack }) {
   const [values, setValues] = useState({});
-  const allRequiredFilled = fields.filter(f => f.required).every(f => values[f.id]?.trim());
+
+  // Resolve form from the library
+  const form = step.formId ? clinic?.formLibrary?.find(f => f.id === step.formId) : null;
+  const fields = form?.fields?.filter(f => f.enabled) || [];
+
+  // Fallback: no form linked — show generic fields
+  const displayFields = fields.length > 0 ? fields : [
+    { id: 'name', label: 'Full Name', required: true },
+    { id: 'reason', label: 'Reason for Visit', required: true },
+  ];
+
+  // Validation: all required fields must be filled/checked
+  const isComplete = displayFields.filter(f => f.required).every(f => {
+    if (f.type === 'checkbox') return values[f.id] === true;
+    if (f.type === 'scale') return values[f.id] != null;
+    return (values[f.id] || '').toString().trim();
+  });
+
+  const canContinue = isComplete;
 
   return (
     <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Before your visit</p>
-      {templateName && (
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16 }}>Using template: <strong>{templateName}</strong></p>
-      )}
+      <BackButton onClick={onBack} />
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{step.label || form?.name || 'Form'}</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Please complete the following.</p>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-        {fields.map(field => (
+        {displayFields.map(field => (
           <div key={field.id} className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>
-              {field.label}
-              {field.required && <span className="req" style={{ marginLeft: 4 }}>*</span>}
-            </label>
-            {field.id === 'medical_history' || field.id === 'chief_complaint' ? (
-              <textarea
-                value={values[field.id] || ''}
-                onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
-                placeholder={`Enter ${field.label.toLowerCase()}…`}
-                className="input"
-                style={{ minHeight: 72, resize: 'none', fontSize: 13 }}
-              />
+            {field.type === 'checkbox' ? (
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px',
+                background: values[field.id] ? 'var(--brand-50)' : 'var(--grey-100)',
+                border: `1px solid ${values[field.id] ? 'var(--brand)' : 'var(--border)'}`,
+                borderRadius: 10, cursor: 'pointer', transition: 'all 120ms',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={!!values[field.id]}
+                  onChange={() => setValues(v => ({ ...v, [field.id]: !v[field.id] }))}
+                  style={{ marginTop: 2, accentColor: 'var(--brand)' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {field.label}
+                  {field.required && <span className="req" style={{ marginLeft: 4 }}>*</span>}
+                </span>
+              </label>
+            ) : field.type === 'scale' ? (
+              <>
+                <label className="form-label" style={{ fontSize: 13 }}>
+                  {field.label}
+                  {field.required && <span className="req" style={{ marginLeft: 4 }}>*</span>}
+                </label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[0,1,2,3].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setValues(v => ({ ...v, [field.id]: n }))}
+                      style={{
+                        flex: 1, padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                        border: `1.5px solid ${values[field.id] === n ? 'var(--brand)' : 'var(--border)'}`,
+                        background: values[field.id] === n ? 'var(--brand)' : 'white',
+                        color: values[field.id] === n ? 'white' : 'var(--text-primary)',
+                        cursor: 'pointer', transition: 'all 100ms',
+                      }}
+                    >{['Not at all', 'Several days', 'More than half', 'Nearly every'][n]}</button>
+                  ))}
+                </div>
+              </>
             ) : (
-              <input
-                type="text"
-                value={values[field.id] || ''}
-                onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
-                placeholder={`Enter ${field.label.toLowerCase()}…`}
-                className="input"
-                style={{ fontSize: 13 }}
-              />
+              <>
+                <label className="form-label" style={{ fontSize: 13 }}>
+                  {field.label}
+                  {field.required && <span className="req" style={{ marginLeft: 4 }}>*</span>}
+                </label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    value={values[field.id] || ''}
+                    onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
+                    placeholder={`Enter ${field.label.toLowerCase()}…`}
+                    className="input"
+                    style={{ minHeight: 72, resize: 'none', fontSize: 13 }}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={values[field.id] || ''}
+                    onChange={e => setValues(v => ({ ...v, [field.id]: e.target.value }))}
+                    placeholder={`Enter ${field.label.toLowerCase()}…`}
+                    className="input"
+                    style={{ fontSize: 13 }}
+                  />
+                )}
+              </>
             )}
           </div>
         ))}
       </div>
+
       <button
         onClick={onContinue}
-        disabled={!allRequiredFilled}
+        disabled={!canContinue}
         className="btn btn-primary btn-sm"
-        style={{ width: '100%', justifyContent: 'center', opacity: allRequiredFilled ? 1 : 0.5 }}
+        style={{ width: '100%', justifyContent: 'center', opacity: canContinue ? 1 : 0.4 }}
       >
         Continue
       </button>
@@ -166,107 +322,44 @@ function IntakeStep({ templateName, fields, onContinue, onBack }) {
   );
 }
 
-/* ── Payment display helper ──────────────────────────────── */
+/* ── Step: Payment ───────────────────────────────────────── */
 
-function PaymentAmount({ method, amount, fallback }) {
-  if (!method || method === 'none') {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>No payment required at booking</span>
-      </div>
-    );
-  }
-  if (method === 'specific' && amount) {
-    return (
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Amount due at booking</span>
-          <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>${amount}</span>
-        </div>
-      </div>
-    );
-  }
-  if (method === 'copay') {
-    return (
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: fallback ? 6 : 0 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Copay</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Determined at visit</span>
-        </div>
-        {fallback && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Fallback if copay unavailable: ${fallback}</p>
-        )}
-      </div>
-    );
-  }
-  return <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Not configured</span>;
-}
-
-/* ── Step: Self-Pay Payment Info ─────────────────────────── */
-
-function SelfPayInfoStep({ visit, clinic, onContinue, onBack }) {
-  const pricing = visit.pricing?.['self-pay'];
-  const payConfig = clinic.paymentConfig?.['self-pay'];
-  const collectsPayment = payConfig?.acceptPayments && pricing?.method && pricing.method !== 'none';
-
-  return (
-    <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Payment</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Here's what you'll pay for this visit.</p>
-
-      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>{visit.name}</p>
-        <PaymentAmount method={payConfig?.acceptPayments ? (pricing?.method ?? 'none') : 'none'} amount={pricing?.amount} fallback={pricing?.fallback} />
-        {collectsPayment && !payConfig?.stripeConnected && (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 10, fontStyle: 'italic' }}>Online payment not yet enabled — clinic will collect at visit.</p>
-        )}
-      </div>
-
-      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>
-        Continue
-      </button>
-    </div>
-  );
-}
-
-/* ── Step: Card Payment ──────────────────────────────────── */
-
-function CardPaymentStep({ amount, onContinue, onBack }) {
-  const [subStep, setSubStep] = useState('form'); // 'form' | 'processing' | 'success'
+function PaymentStep({ visit, clinic, selectedPt, onContinue, onBack }) {
+  const [subStep, setSubStep] = useState('info'); // info | card | processing | success
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '', name: '' });
   const timerRef = useRef(null);
-
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  const formatCardNumber = (val) =>
-    val.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+  const formatCardNumber = (val) => val.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+  const formatExpiry = (val) => { const d = val.replace(/\D/g, '').slice(0, 4); return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d; };
 
-  const formatExpiry = (val) => {
-    const digits = val.replace(/\D/g, '').slice(0, 4);
-    return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
-  };
+  // Determine amount
+  let method = 'none', amount = '', fallback = '';
+  if (selectedPt === 'self-pay') {
+    const p = visit?.pricing?.['self-pay'];
+    const cfg = clinic.paymentConfig?.['self-pay'];
+    if (cfg?.acceptPayments && p) {
+      method = p.method || 'none';
+      amount = p.amount || '';
+      fallback = p.fallback || '';
+    }
+  } else if (selectedPt === 'insurance') {
+    // Use eligible as default preview
+    const p = visit?.pricing?.['insurance']?.eligible;
+    if (p) { method = p.method || 'none'; amount = p.amount || ''; fallback = p.fallback || ''; }
+  } else if (selectedPt === 'group-covered') {
+    const p = visit?.pricing?.['group-covered']?.verified;
+    if (p) { method = p.method || 'none'; amount = p.amount || ''; fallback = p.fallback || ''; }
+  }
 
-  const allFilled = card.number.replace(/\s/g, '').length === 16 &&
-    card.expiry.length === 5 && card.cvv.length >= 3 && card.name.trim();
-
-  const handlePay = () => {
-    setSubStep('processing');
-    timerRef.current = setTimeout(() => setSubStep('success'), 2000);
-  };
-
-  const inputStyle = { fontSize: 14, letterSpacing: '0.04em' };
+  const needsCard = method === 'specific' && amount && clinic.paymentConfig?.['self-pay']?.stripeConnected;
+  const displayAmount = method === 'specific' ? amount : method === 'copay' ? (fallback || 'TBD') : null;
 
   if (subStep === 'processing') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 16 }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid var(--brand)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
         <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Processing payment…</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Please don't close this page</p>
       </div>
     );
   }
@@ -279,411 +372,101 @@ function CardPaymentStep({ amount, onContinue, onBack }) {
         </div>
         <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Payment confirmed</p>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>${amount} charged to card ending in {card.number.slice(-4)}</p>
-        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={onContinue}>
-          Continue
-        </button>
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 12 }} onClick={onContinue}>Continue</button>
       </div>
     );
   }
 
-  return (
-    <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Card Payment</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Enter your card details to pay <strong>${amount}</strong>.</p>
+  if (subStep === 'card' && needsCard) {
+    const allFilled = card.number.replace(/\s/g, '').length === 16 && card.expiry.length === 5 && card.cvv.length >= 3 && card.name.trim();
+    const handlePay = () => {
+      setSubStep('processing');
+      timerRef.current = setTimeout(() => setSubStep('success'), 2000);
+    };
 
-      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '20px', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Card number */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Card Number</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="1234 5678 9012 3456"
-              value={card.number}
-              onChange={e => setCard(c => ({ ...c, number: formatCardNumber(e.target.value) }))}
-              className="input"
-              style={{ ...inputStyle, paddingRight: 40 }}
-            />
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--grey-400)" strokeWidth="1.5" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
-              <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Expiry + CVV */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>Expiry</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="MM/YY"
-              value={card.expiry}
-              onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))}
-              className="input"
-              style={inputStyle}
-            />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>CVV</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="123"
-              value={card.cvv}
-              maxLength={4}
-              onChange={e => setCard(c => ({ ...c, cvv: e.target.value.replace(/\D/g, '') }))}
-              className="input"
-              style={inputStyle}
-            />
-          </div>
-        </div>
-
-        {/* Cardholder name */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Cardholder Name</label>
-          <input
-            type="text"
-            placeholder="Name on card"
-            value={card.name}
-            onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
-            className="input"
-            style={inputStyle}
-          />
-        </div>
-      </div>
-
-      <button
-        className="btn btn-primary btn-sm"
-        style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.5 }}
-        disabled={!allFilled}
-        onClick={handlePay}
-      >
-        Pay ${amount}
-      </button>
-      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-        Secured by Stripe
-      </p>
-    </div>
-  );
-}
-
-/* ── Step: Insurance Check ───────────────────────────────── */
-
-const ELIGIBILITY_STATUSES = [
-  { id: 'eligible',     label: 'Eligible',       color: 'var(--success)', bg: '#ECFDF5', icon: '✓' },
-  { id: 'not_eligible', label: 'Not Eligible',    color: 'var(--danger)',  bg: '#FEF2F2', icon: '✕' },
-  { id: 'pending',      label: 'Pending',         color: '#D97706',        bg: '#FFFBEB', icon: '…' },
-  { id: 'error',        label: 'Error / Unknown', color: 'var(--grey-500)', bg: '#F9FAFB', icon: '?' },
-];
-
-const INSURANCE_PROVIDERS = [
-  'Aetna', 'Blue Cross Blue Shield', 'Cigna', 'Humana', 'Kaiser Permanente',
-  'Medicare', 'Medicaid', 'UnitedHealthcare', 'Other',
-];
-
-function InsuranceCheckStep({ eligibilityAccess, visitInsurancePricing, onContinue, onBack }) {
-  const [subStep, setSubStep] = useState('form'); // 'form' | 'checking' | 'result'
-  const [simulatedStatus, setSimulatedStatus] = useState('eligible');
-  const [form, setForm] = useState({ provider: '', memberId: '', groupNumber: '', dob: '' });
-  const timerRef = useRef(null);
-
-  const allFilled = form.provider && form.memberId && form.dob;
-
-  const handleCheck = () => {
-    setSubStep('checking');
-    timerRef.current = setTimeout(() => setSubStep('result'), 2200);
-  };
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
-
-  const statusMeta = ELIGIBILITY_STATUSES.find(s => s.id === simulatedStatus);
-  const access = eligibilityAccess?.[simulatedStatus]?.access ?? 'allow';
-
-  const accessInfo = {
-    allow:  { label: 'You may proceed with booking.',           color: 'var(--success)' },
-    review: { label: 'Booking requires staff review.',          color: '#D97706'        },
-    block:  { label: 'You are not eligible to book right now.', color: 'var(--danger)'  },
-  }[access];
-
-  if (subStep === 'checking') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 16 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid var(--brand)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Checking eligibility…</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Verifying your insurance with {form.provider}</p>
-      </div>
-    );
-  }
-
-  if (subStep === 'result') {
     return (
       <div>
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Eligibility Result</p>
-
-        {/* Simulate control — prototype only */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', background: '#FFF9C4', border: '1px solid #FDE047', borderRadius: 8 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" /></svg>
-          <span style={{ fontSize: 11, color: '#92400E', flex: 1 }}>Prototype: simulate outcome</span>
-          <select
-            value={simulatedStatus}
-            onChange={e => setSimulatedStatus(e.target.value)}
-            style={{ fontSize: 11, border: '1px solid #FDE047', borderRadius: 4, padding: '2px 4px', background: 'white', color: '#92400E', cursor: 'pointer' }}
-          >
-            {ELIGIBILITY_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </div>
-
-        {/* Result card */}
-        <div style={{ background: statusMeta.bg, border: `1px solid ${statusMeta.color}40`, borderRadius: 12, padding: '16px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: statusMeta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-              {statusMeta.icon}
+        <BackButton label="Back" onClick={() => setSubStep('info')} />
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Card Payment</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Enter your card details to pay <strong>${amount}</strong>.</p>
+        <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Card Number</label>
+            <input type="text" inputMode="numeric" placeholder="1234 5678 9012 3456" value={card.number} onChange={e => setCard(c => ({ ...c, number: formatCardNumber(e.target.value) }))} className="input" style={{ fontSize: 14, letterSpacing: '0.04em' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 13 }}>Expiry</label>
+              <input type="text" inputMode="numeric" placeholder="MM/YY" value={card.expiry} onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))} className="input" style={{ fontSize: 14 }} />
             </div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: statusMeta.color }}>{statusMeta.label}</p>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 13 }}>CVV</label>
+              <input type="text" inputMode="numeric" placeholder="123" value={card.cvv} maxLength={4} onChange={e => setCard(c => ({ ...c, cvv: e.target.value.replace(/\D/g, '') }))} className="input" style={{ fontSize: 14 }} />
+            </div>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-            {form.provider} · Member ID: {form.memberId}
-          </p>
-          <p style={{ fontSize: 13, color: accessInfo.color, fontWeight: 500 }}>{accessInfo.label}</p>
-        </div>
-
-        {/* Payment info for this eligibility status */}
-        {access !== 'block' && visitInsurancePricing?.[simulatedStatus] && (
-          <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Payment</p>
-            <PaymentAmount
-              method={visitInsurancePricing[simulatedStatus].method}
-              amount={visitInsurancePricing[simulatedStatus].amount}
-              fallback={visitInsurancePricing[simulatedStatus].fallback}
-            />
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Cardholder Name</label>
+            <input type="text" placeholder="Name on card" value={card.name} onChange={e => setCard(c => ({ ...c, name: e.target.value }))} className="input" style={{ fontSize: 14 }} />
           </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {access !== 'block' && (
-            <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>
-              Continue
-            </button>
-          )}
-          <button
-            onClick={() => setSubStep('form')}
-            className="btn btn-ghost btn-sm"
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            Use different insurance
-          </button>
         </div>
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.4 }} disabled={!allFilled} onClick={handlePay}>Pay ${amount}</button>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+          Secured by Stripe
+        </p>
       </div>
     );
   }
 
-  // form
+  // Info view
   return (
     <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Insurance Information</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>We'll verify your coverage before booking.</p>
+      <BackButton onClick={onBack} />
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Payment</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Here's what you'll pay for this visit.</p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Insurance Provider <span className="req">*</span></label>
-          <select value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))} className="input" style={{ fontSize: 13 }}>
-            <option value="">Select provider…</option>
-            {INSURANCE_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Member ID <span className="req">*</span></label>
-          <input type="text" value={form.memberId} onChange={e => setForm(f => ({ ...f, memberId: e.target.value }))} placeholder="e.g. ABC123456789" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Group Number</label>
-          <input type="text" value={form.groupNumber} onChange={e => setForm(f => ({ ...f, groupNumber: e.target.value }))} placeholder="e.g. GRP987654" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Date of Birth <span className="req">*</span></label>
-          <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className="input" style={{ fontSize: 13 }} />
-        </div>
+      <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>{visit?.name}</p>
+        {method === 'none' || !method ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+            <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>No payment required at booking</span>
+          </div>
+        ) : method === 'specific' && amount ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Amount due at booking</span>
+            <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>${amount}</span>
+          </div>
+        ) : method === 'copay' ? (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Copay</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Determined at visit</span>
+            </div>
+            {fallback && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>Estimated: ${fallback}</p>}
+          </div>
+        ) : (
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Not configured</span>
+        )}
       </div>
 
-      <button
-        className="btn btn-primary btn-sm"
-        style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.5 }}
-        disabled={!allFilled}
-        onClick={handleCheck}
-      >
-        Check Eligibility
+      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => needsCard ? setSubStep('card') : onContinue()}>
+        {needsCard ? `Pay $${amount}` : 'Continue'}
       </button>
     </div>
   );
 }
 
-/* ── Step: Group-Covered Check ───────────────────────────── */
+/* ── Step: Confirm & Booked ──────────────────────────────── */
 
-const GROUP_VERIFICATION_STATUSES = [
-  { id: 'verified',     label: 'Verified',       color: 'var(--success)',  bg: '#ECFDF5', icon: '✓' },
-  { id: 'not_verified', label: 'Not Verified',    color: 'var(--danger)',   bg: '#FEF2F2', icon: '✕' },
-  { id: 'pending',      label: 'Pending',         color: '#D97706',         bg: '#FFFBEB', icon: '…' },
-  { id: 'error',        label: 'Error / Unknown', color: 'var(--grey-500)', bg: '#F9FAFB', icon: '?' },
-];
-
-function GroupCoveredCheckStep({ verificationAccess, visitGroupPricing, onContinue, onBack }) {
-  const [subStep, setSubStep] = useState('form');
-  const [simulatedStatus, setSimulatedStatus] = useState('verified');
-  const [form, setForm] = useState({ employer: '', groupId: '', dob: '' });
-  const timerRef = useRef(null);
-
-  const allFilled = form.employer && form.groupId && form.dob;
-
-  const handleCheck = () => {
-    setSubStep('checking');
-    timerRef.current = setTimeout(() => setSubStep('result'), 2200);
-  };
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
-
-  const statusMeta = GROUP_VERIFICATION_STATUSES.find(s => s.id === simulatedStatus);
-  const access = verificationAccess?.[simulatedStatus]?.access ?? 'allow';
-
-  const accessInfo = {
-    allow:  { label: 'You may proceed with booking.',           color: 'var(--success)' },
-    review: { label: 'Booking requires staff review.',          color: '#D97706'        },
-    block:  { label: 'You are not eligible to book right now.', color: 'var(--danger)'  },
-  }[access];
-
-  if (subStep === 'checking') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 16 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid var(--brand)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Verifying group coverage…</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Confirming coverage with {form.employer}</p>
-      </div>
-    );
-  }
-
-  if (subStep === 'result') {
-    return (
-      <div>
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Coverage Result</p>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '8px 12px', background: '#FFF9C4', border: '1px solid #FDE047', borderRadius: 8 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><path d="M12 8v4m0 4h.01" /></svg>
-          <span style={{ fontSize: 11, color: '#92400E', flex: 1 }}>Prototype: simulate outcome</span>
-          <select
-            value={simulatedStatus}
-            onChange={e => setSimulatedStatus(e.target.value)}
-            style={{ fontSize: 11, border: '1px solid #FDE047', borderRadius: 4, padding: '2px 4px', background: 'white', color: '#92400E', cursor: 'pointer' }}
-          >
-            {GROUP_VERIFICATION_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </div>
-
-        <div style={{ background: statusMeta.bg, border: `1px solid ${statusMeta.color}40`, borderRadius: 12, padding: '16px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: statusMeta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-              {statusMeta.icon}
-            </div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: statusMeta.color }}>{statusMeta.label}</p>
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
-            {form.employer} · Group ID: {form.groupId}
-          </p>
-          <p style={{ fontSize: 13, color: accessInfo.color, fontWeight: 500 }}>{accessInfo.label}</p>
-        </div>
-
-        {access !== 'block' && visitGroupPricing?.[simulatedStatus] && (
-          <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Payment</p>
-            <PaymentAmount
-              method={visitGroupPricing[simulatedStatus].method}
-              amount={visitGroupPricing[simulatedStatus].amount}
-              fallback={visitGroupPricing[simulatedStatus].fallback}
-            />
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {access !== 'block' && (
-            <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>
-              Continue
-            </button>
-          )}
-          <button
-            onClick={() => setSubStep('form')}
-            className="btn btn-ghost btn-sm"
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            Use different group
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Group Coverage</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>We'll verify your employer group coverage before booking.</p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Employer / Group Name <span className="req">*</span></label>
-          <input type="text" value={form.employer} onChange={e => setForm(f => ({ ...f, employer: e.target.value }))} placeholder="e.g. Acme Corp" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Group ID <span className="req">*</span></label>
-          <input type="text" value={form.groupId} onChange={e => setForm(f => ({ ...f, groupId: e.target.value }))} placeholder="e.g. GRP987654" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Date of Birth <span className="req">*</span></label>
-          <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className="input" style={{ fontSize: 13 }} />
-        </div>
-      </div>
-
-      <button
-        className="btn btn-primary btn-sm"
-        style={{ width: '100%', justifyContent: 'center', opacity: allFilled ? 1 : 0.5 }}
-        disabled={!allFilled}
-        onClick={handleCheck}
-      >
-        Verify Coverage
-      </button>
-    </div>
-  );
-}
-
-/* ── Step: Confirm ───────────────────────────────────────── */
-
-function ConfirmStep({ visit, ptId, clinic, onBack, onReset }) {
+function ConfirmStep({ visit, ptId, onConfirm, onBack }) {
   const ptMeta = PT_META[ptId];
-  const selfPayConfig = clinic.paymentConfig?.['self-pay'];
-  const pricing = visit?.pricing?.['self-pay'];
-  const showPayment = ptId === 'self-pay' && selfPayConfig?.acceptPayments;
-
   return (
     <div>
-      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, marginBottom: 20 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
-        Back
-      </button>
+      <BackButton onClick={onBack} />
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Review & Confirm</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Please review your booking details.</p>
 
-      {/* Summary card */}
       <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{visit.name}</p>
@@ -697,47 +480,19 @@ function ConfirmStep({ visit, ptId, clinic, onBack, onReset }) {
             </span>
           </div>
         </div>
-        <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: ptMeta.color, flexShrink: 0 }} />
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{ptMeta.label}</span>
-        </div>
+        {ptMeta && (
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: ptMeta.color, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{ptMeta.label}</span>
+          </div>
+        )}
       </div>
 
-      {/* Payment */}
-      {showPayment && (
-        <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Payment</p>
-          {!selfPayConfig.stripeConnected ? (
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Payment not yet configured by clinic.</p>
-          ) : pricing?.method === 'specific' && pricing?.amount ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Amount due</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>${pricing.amount}</span>
-            </div>
-          ) : (
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No payment required at booking.</p>
-          )}
-        </div>
-      )}
-
-      {/* CTA */}
-      <button
-        className="btn btn-primary btn-sm"
-        style={{ width: '100%', justifyContent: 'center' }}
-        onClick={onReset}
-      >
-        {showPayment && selfPayConfig?.stripeConnected && pricing?.method === 'specific' && pricing?.amount
-          ? `Pay $${pricing.amount} & Confirm`
-          : 'Confirm Booking'}
-      </button>
-      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10 }}>
-        This is a preview — no real booking will be made.
-      </p>
+      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onConfirm}>Confirm Booking</button>
+      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 10 }}>This is a preview — no real booking will be made.</p>
     </div>
   );
 }
-
-/* ── Step: Booked ────────────────────────────────────────── */
 
 function BookedStep({ visit, ptId, onReset }) {
   const ptMeta = PT_META[ptId];
@@ -749,7 +504,7 @@ function BookedStep({ visit, ptId, onReset }) {
       <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>You're booked!</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Your appointment has been confirmed.</p>
 
-      <div style={{ width: '100%', background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', marginTop: 4, textAlign: 'left' }}>
+      <div style={{ width: '100%', background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginTop: 4, textAlign: 'left' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>{visit.name}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -760,40 +515,86 @@ function BookedStep({ visit, ptId, onReset }) {
             {MODE_ICONS[visit.mode]}
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.mode}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: ptMeta.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ptMeta.label}</span>
-          </div>
+          {ptMeta && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: ptMeta.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ptMeta.label}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <button onClick={onReset} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
-        Book another visit
-      </button>
+      <button onClick={onReset} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>Book another visit</button>
       <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>This is a preview — no real booking was made.</p>
     </div>
   );
 }
 
+/* ── Workflow flattener ───────────────────────────────────── */
+// Takes a workflow's steps and a selectedPt (patient type), and
+// returns a flat array of { key, type, step } entries the preview walks through.
+
+function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts) {
+  const flat = [];
+  if (!steps) return flat;
+
+  for (const step of steps) {
+    if (step.type === 'visit_selection') {
+      // Pause here if no visit selected yet
+      flat.push({ key: step.id, type: 'visit_selection', step });
+      if (!selectedVisitId) break; // Can't flatten further until they choose
+    } else if (step.type === 'conditional') {
+      if (step.conditionType === 'patient_type' && !selectedPt) {
+        flat.push({ key: step.id, type: 'choose_patient_type', step, availableTypes: clinicPts });
+        break;
+      }
+      if (step.conditionType === 'patient_type' && selectedPt) {
+        const branch = step.branches?.find(b =>
+          b.condition === selectedPt || b.label?.toLowerCase().replace(/[^a-z]/g, '').includes(selectedPt.replace('-', ''))
+        );
+        if (branch?.steps?.length) {
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts));
+        }
+      } else {
+        const branch = step.branches?.[0];
+        if (branch?.steps?.length) {
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts));
+        }
+      }
+    } else {
+      flat.push({ key: step.id, type: step.type, step });
+    }
+  }
+
+  return flat;
+}
+
 /* ── Main Component ──────────────────────────────────────── */
 
 export default function PatientPreview({ room, clinic }) {
-  const [step, setStep] = useState('visit');
   const [selectedVisitId, setSelectedVisitId] = useState(null);
   const [selectedPt, setSelectedPt] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [booked, setBooked] = useState(false);
 
   const visibleVisits = room.visitOptions.filter(v => v.visible);
   const selectedVisit = visibleVisits.find(v => v.id === selectedVisitId);
+  const clinicPts = clinic.patientTypes || [];
 
-  const availablePts = selectedVisit
-    ? room.patientTypes.filter(pt => selectedVisit.patientTypes.includes(pt))
-    : room.patientTypes;
+  // Flatten the clinic workflow — visit_selection becomes a chooser step
+  const flatSteps = useMemo(() => {
+    const workflow = clinic.defaultWorkflow;
+    if (!workflow?.steps) return [];
+    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts);
+  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts]);
 
-  const intakeTemplateId = selectedVisit?.intakeTemplateId ?? clinic.defaultIntakeTemplateId;
-  const intakeTemplate = clinic.intakeTemplates.find(t => t.id === intakeTemplateId);
-  const enabledFields = intakeTemplate?.fields.filter(f => f.enabled) ?? [];
+  const totalSteps = flatSteps.length;
+  const currentStep = flatSteps[currentIndex] || null;
+  const currentView = booked ? 'booked'
+    : currentIndex >= totalSteps ? 'confirm'
+    : currentStep?.type || 'confirm';
 
-  // Reset if the selected visit is no longer visible
+  // Reset if visit becomes invisible
   useEffect(() => {
     if (selectedVisitId && !visibleVisits.find(v => v.id === selectedVisitId)) {
       reset();
@@ -801,80 +602,73 @@ export default function PatientPreview({ room, clinic }) {
   }, [room.visitOptions]);
 
   const reset = () => {
-    setStep('visit');
     setSelectedVisitId(null);
     setSelectedPt(null);
+    setCurrentIndex(0);
+    setBooked(false);
   };
 
   const handleSelectVisit = (id) => {
     setSelectedVisitId(id);
-    setSelectedPt(null);
-    setStep('patientType');
+    // Advance past the visit_selection step
+    setCurrentIndex(i => i + 1);
+  };
+
+  const handleNext = () => {
+    if (currentIndex >= totalSteps) {
+      // At confirm → book
+      setBooked(true);
+    } else {
+      setCurrentIndex(i => i + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      const prevStep = flatSteps[currentIndex - 1];
+      if (prevStep?.type === 'choose_patient_type') setSelectedPt(null);
+      if (prevStep?.type === 'visit_selection') {
+        setSelectedVisitId(null);
+        setSelectedPt(null);
+      }
+      setCurrentIndex(i => i - 1);
+    }
   };
 
   const handleSelectPt = (pt) => {
     setSelectedPt(pt);
-    if (pt === 'insurance') {
-      setStep('insuranceCheck');
-    } else if (pt === 'group-covered') {
-      setStep('groupCoveredCheck');
-    } else {
-      setStep('selfPayInfo');
-    }
+    setCurrentIndex(i => i + 1);
   };
 
-  const selfPayPricing = selectedVisit?.pricing?.['self-pay'];
-  const selfPayConfig = clinic.paymentConfig?.['self-pay'];
-  const needsCardPayment = selectedPt === 'self-pay' &&
-    selfPayConfig?.acceptPayments &&
-    selfPayPricing?.method === 'specific' &&
-    selfPayPricing?.amount;
+  // Progress bar
+  const progressSteps = [...flatSteps.map(f => f.key), 'confirm'];
+  const progressIndex = booked ? progressSteps.length
+    : currentIndex >= totalSteps ? progressSteps.length - 1
+    : currentIndex;
 
-  const afterSelfPayInfo = needsCardPayment ? 'cardPayment' : (enabledFields.length > 0 ? 'intake' : 'confirm');
-  const afterCardPayment = enabledFields.length > 0 ? 'intake' : 'confirm';
-
-  const afterPaymentStep = selectedPt === 'insurance' ? 'insuranceCheck'
-    : selectedPt === 'group-covered' ? 'groupCoveredCheck'
-    : needsCardPayment ? 'cardPayment'
-    : 'selfPayInfo';
-
-  const handleInsuranceContinue = () => setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
-  const handleGroupCoveredContinue = () => setStep(enabledFields.length > 0 ? 'intake' : 'confirm');
-  const handleSelfPayInfoContinue = () => setStep(afterSelfPayInfo);
-
-  const handleBackFromPt = () => { setSelectedVisitId(null); setStep('visit'); };
-  const handleBackFromInsurance = () => { setSelectedPt(null); setStep('patientType'); };
-  const handleBackFromGroupCovered = () => { setSelectedPt(null); setStep('patientType'); };
-  const handleBackFromSelfPayInfo = () => { setSelectedPt(null); setStep('patientType'); };
-  const handleBackFromCardPayment = () => setStep('selfPayInfo');
-  const handleBackFromIntake = () => {
-    if (selectedPt === 'insurance') setStep('insuranceCheck');
-    else if (selectedPt === 'group-covered') setStep('groupCoveredCheck');
-    else if (needsCardPayment) setStep('cardPayment');
-    else setStep('selfPayInfo');
+  const STEP_LABELS = {
+    scheduling: 'Scheduling',
+    form: 'Form',
+    payment: 'Payment',
+    visit_selection: 'Visit Selection',
+    choose_patient_type: 'Patient Type',
+    confirm: 'Confirm',
   };
-  const handleBackFromConfirm = () => setStep(enabledFields.length > 0 ? 'intake' : afterPaymentStep);
 
-  const hasInsurance = selectedPt === 'insurance';
-  const hasGroupCovered = selectedPt === 'group-covered';
-  const allSteps = [
-    'visit', 'patientType',
-    ...(hasInsurance ? ['insuranceCheck']
-      : hasGroupCovered ? ['groupCoveredCheck']
-      : ['selfPayInfo', ...(needsCardPayment ? ['cardPayment'] : [])]),
-    ...(enabledFields.length > 0 ? ['intake'] : []),
-    'confirm',
-  ];
+  const stepCounter = currentIndex < totalSteps && !booked
+    ? `Step ${currentIndex + 1} of ${totalSteps}`
+    : '';
+  const stepLabel = currentStep?.step?.label || STEP_LABELS[currentStep?.type] || '';
 
   return (
     <div style={{ position: 'sticky', top: 80 }}>
-      {/* Header label */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Patient Preview</span>
         </div>
-        {step !== 'visit' && (
+        {(currentIndex > 0 || booked) && (
           <button onClick={reset} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4" /></svg>
             Reset
@@ -893,82 +687,77 @@ export default function PatientPreview({ room, clinic }) {
           <div style={{ width: 28, height: 28, background: 'var(--brand)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>V</div>
         </div>
 
-        {/* Step progress bar */}
-        {step !== 'visit' && (
+        {/* Progress bar */}
+        {!booked && (
           <div style={{ background: 'white', padding: '8px 16px 10px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 4 }}>
-            {allSteps.map(s => (
-              <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: allSteps.indexOf(step) >= allSteps.indexOf(s) ? 'var(--brand)' : 'var(--grey-200)', transition: 'background 200ms' }} />
+            {progressSteps.map((s, i) => (
+              <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: progressIndex >= i ? 'var(--brand)' : 'var(--grey-200)', transition: 'background 200ms' }} />
             ))}
+          </div>
+        )}
+
+        {/* Step label */}
+        {stepCounter && !booked && currentView !== 'confirm' && (
+          <div style={{ background: 'white', padding: '6px 16px', borderBottom: '1px solid var(--grey-200)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {stepCounter}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--grey-300)' }}>·</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {stepLabel}
+            </span>
           </div>
         )}
 
         {/* Content */}
         <div style={{ padding: 20, minHeight: 360, maxHeight: 560, overflowY: 'auto', background: '#f8f9fb' }}>
-          {step === 'visit' && (
-            <VisitStep visits={visibleVisits} onSelect={handleSelectVisit} />
+
+          {currentView === 'visit_selection' && (
+            <VisitStep visits={visibleVisits} onSelect={handleSelectVisit} onBack={currentIndex > 0 ? handleBack : undefined} />
           )}
-          {step === 'patientType' && selectedVisit && (
+
+          {currentView === 'scheduling' && (
+            <SchedulingStep visit={selectedVisit || { name: 'Appointment', duration: '' }} onContinue={handleNext} onBack={handleBack} />
+          )}
+
+          {currentView === 'choose_patient_type' && (
             <PatientTypeStep
-              visitName={selectedVisit.name}
-              patientTypes={availablePts}
+              patientTypes={currentStep?.availableTypes || clinicPts}
               onSelect={handleSelectPt}
-              onBack={handleBackFromPt}
+              onBack={handleBack}
             />
           )}
-          {step === 'selfPayInfo' && selectedVisit && (
-            <SelfPayInfoStep
-              visit={selectedVisit}
+
+          {currentView === 'form' && (
+            <FormStep
+              step={currentStep?.step}
               clinic={clinic}
-              onContinue={handleSelfPayInfoContinue}
-              onBack={handleBackFromSelfPayInfo}
+              onContinue={handleNext}
+              onBack={handleBack}
             />
           )}
-          {step === 'cardPayment' && selectedVisit && (
-            <CardPaymentStep
-              amount={selfPayPricing?.amount}
-              onContinue={() => setStep(afterCardPayment)}
-              onBack={handleBackFromCardPayment}
+
+          {currentView === 'payment' && (
+            <PaymentStep
+              visit={selectedVisit || {}}
+              clinic={clinic}
+              selectedPt={selectedPt}
+              onContinue={handleNext}
+              onBack={handleBack}
             />
           )}
-          {step === 'insuranceCheck' && selectedVisit && (
-            <InsuranceCheckStep
-              eligibilityAccess={clinic.paymentConfig?.['insurance']?.eligibilityAccess}
-              visitInsurancePricing={selectedVisit.pricing?.['insurance']}
-              onContinue={handleInsuranceContinue}
-              onBack={handleBackFromInsurance}
-            />
-          )}
-          {step === 'groupCoveredCheck' && selectedVisit && (
-            <GroupCoveredCheckStep
-              verificationAccess={clinic.paymentConfig?.['group-covered']?.verificationAccess}
-              visitGroupPricing={selectedVisit.pricing?.['group-covered']}
-              onContinue={handleGroupCoveredContinue}
-              onBack={handleBackFromGroupCovered}
-            />
-          )}
-          {step === 'intake' && selectedVisit && (
-            <IntakeStep
-              templateName={intakeTemplate?.name}
-              fields={enabledFields}
-              onContinue={() => setStep('confirm')}
-              onBack={handleBackFromIntake}
-            />
-          )}
-          {step === 'confirm' && selectedVisit && selectedPt && (
+
+          {currentView === 'confirm' && selectedVisit && (
             <ConfirmStep
               visit={selectedVisit}
               ptId={selectedPt}
-              clinic={clinic}
-              onBack={handleBackFromConfirm}
-              onReset={() => setStep('booked')}
+              onConfirm={handleNext}
+              onBack={handleBack}
             />
           )}
-          {step === 'booked' && selectedVisit && selectedPt && (
-            <BookedStep
-              visit={selectedVisit}
-              ptId={selectedPt}
-              onReset={reset}
-            />
+
+          {currentView === 'booked' && selectedVisit && (
+            <BookedStep visit={selectedVisit} ptId={selectedPt} onReset={reset} />
           )}
         </div>
       </div>

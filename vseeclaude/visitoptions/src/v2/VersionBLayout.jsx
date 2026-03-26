@@ -105,7 +105,7 @@ export default function VersionBLayout() {
       </nav>
 
       {page === 'clinic' && (
-        <ClinicTemplatesPage clinic={clinic} onChange={setClinic} />
+        <ClinicTemplatesPage clinic={clinic} onChange={setClinic} onSave={handleSave} />
       )}
 
       {page === 'rooms' && (

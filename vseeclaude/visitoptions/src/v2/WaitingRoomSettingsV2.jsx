@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import Breadcrumb from '../components/Breadcrumb';
 import OperatingHours from '../components/OperatingHours';
-import PatientTypes from '../components/PatientTypes';
 import RoomVisitOptionModal from './RoomVisitOptionModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PatientPreview from './PatientPreview';
@@ -414,15 +413,11 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
 
           <div className="divider" style={{ margin: 0 }} />
 
-          <PatientTypes selected={state.patientTypes} onChange={val => update('patientTypes', val)} />
-
-          <div className="divider" style={{ margin: 0 }} />
-
           {/* Visit Options */}
           <VisitOptionsTableV2
             items={state.visitOptions}
             clinic={clinic}
-            allowedPatientTypes={state.patientTypes}
+            allowedPatientTypes={clinic.patientTypes || []}
             onChange={val => update('visitOptions', val)}
           />
 

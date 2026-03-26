@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DURATIONS, TYPES, MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
+import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -56,8 +57,8 @@ const EMPTY = {
   visible: true,
   patientTypes: [],
   pricing: { ...DEFAULT_PT_PRICING },
-  intakeTemplateId: null,   // null = use room visitDefaults
   notesTemplateId: null,    // null = use room visitDefaults
+  workflowOverride: null,   // null = use clinic default intake flow
 };
 
 /* ── Component ───────────────────────────────────────────── */
@@ -65,8 +66,8 @@ const EMPTY = {
 export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
-    intakeTemplateId: existing.intakeTemplateId ?? null,
     notesTemplateId:  existing.notesTemplateId  ?? null,
+    workflowOverride: existing.workflowOverride ?? null,
   } : { ...EMPTY });
   const [errors, setErrors]     = useState({});
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
@@ -109,9 +110,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   };
 
   // Resolved template names for display
-  const resolvedIntakeId = form.intakeTemplateId ?? clinic.defaultIntakeTemplateId;
   const resolvedNotesId  = form.notesTemplateId  ?? clinic.defaultNotesTemplateId;
-  const resolvedIntakeName = clinic.intakeTemplates.find(t => t.id === resolvedIntakeId)?.name ?? '—';
   const resolvedNotesName  = clinic.notesTemplates.find(t => t.id === resolvedNotesId)?.name ?? '—';
 
   const availableTypes = PATIENT_TYPES.filter((pt) => allowedPatientTypes.includes(pt.id));
@@ -124,7 +123,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
       aria-modal="true"
       aria-label={existing ? 'Edit Visit Option' : 'Add Visit Option'}
     >
-      <div className="modal-box" style={{ maxWidth: 800 }}>
+      <div className="modal-box" style={{ maxWidth: 900 }}>
         {/* Header */}
         <div className="modal-head">
           <h2>{existing ? 'Edit Visit Option' : 'Add Visit Option'}</h2>
@@ -134,10 +133,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
         {/* Tab bar */}
         <div className="tabs" style={{ padding: '0 24px', borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
           {[
-            { id: 'general', label: 'General' },
-            { id: 'payment', label: 'Payment' },
-            { id: 'intake',  label: 'Intake Flow' },
-            { id: 'notes',   label: 'Visit Notes' },
+            { id: 'general',  label: 'General' },
+            { id: 'workflow', label: 'Intake Flow' },
+            { id: 'notes',    label: 'Visit Notes' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -260,205 +258,165 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 )}
                 {errors.patientTypes && <p className="form-error">{errors.patientTypes}</p>}
               </div>
-            </div>
-          )}
 
-          {/* ── Payment tab ── */}
-          {activeTab === 'payment' && (
-            <div>
-              {form.patientTypes.length === 0 ? (
-                <div className="alert alert-warning">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                  <span style={{ fontSize: 13 }}>Select at least one patient type in the General tab first.</span>
-                </div>
-              ) : (
-                <div className="payment-panel">
-                  <div className="tabs" style={{ padding: '0 4px' }}>
-                    {PATIENT_TYPES.filter((pt) => form.patientTypes.includes(pt.id)).map((pt) => {
-                      const activePtId = pricingTab ?? form.patientTypes[0];
-                      return (
-                        <button key={pt.id} type="button" className={`tab-item${activePtId === pt.id ? ' active' : ''}`} onClick={() => setPricingTab(pt.id)}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: TAB_COLOR[pt.id] }}>{pt.icon}</span>
-                            {pt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="payment-panel-body">
-                    {(() => {
-                      const activePtId = pricingTab ?? form.patientTypes[0];
-                      if (!activePtId || !form.patientTypes.includes(activePtId)) return null;
-
-                      if (activePtId === 'self-pay') {
-                        const ptPricing = form.pricing?.['self-pay'] ?? { method: 'none', amount: '', fallback: '' };
-                        const setMethod = (method) => set('pricing', { ...form.pricing, 'self-pay': { ...ptPricing, method } });
-                        const setAmount = (amount) => set('pricing', { ...form.pricing, 'self-pay': { ...ptPricing, amount } });
+              {/* ── Per-patient-type pricing ── */}
+              {form.patientTypes.length > 0 && (
+                <div>
+                  <label className="form-label" style={{ marginBottom: 8 }}>Payment Collection</label>
+                  <div className="payment-panel">
+                    <div className="tabs" style={{ padding: '0 4px' }}>
+                      {PATIENT_TYPES.filter((pt) => form.patientTypes.includes(pt.id)).map((pt) => {
+                        const activePtId = pricingTab ?? form.patientTypes[0];
                         return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {SELF_PAY_METHODS.map((m) => {
-                              const selected = ptPricing.method === m.value;
-                              return (
-                                <div key={m.value} className={`pay-method-card${selected ? ' selected' : ''}`} onClick={() => setMethod(m.value)}>
-                                  <div style={{ paddingTop: 2, flexShrink: 0 }}>
-                                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${selected ? 'var(--brand)' : 'var(--border-strong)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)' }} />}
+                          <button key={pt.id} type="button" className={`tab-item${activePtId === pt.id ? ' active' : ''}`} onClick={() => setPricingTab(pt.id)}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ color: TAB_COLOR[pt.id] }}>{pt.icon}</span>
+                              {pt.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="payment-panel-body">
+                      {(() => {
+                        const activePtId = pricingTab ?? form.patientTypes[0];
+                        if (!activePtId || !form.patientTypes.includes(activePtId)) return null;
+
+                        if (activePtId === 'self-pay') {
+                          const ptPricing = form.pricing?.['self-pay'] ?? { method: 'none', amount: '', fallback: '' };
+                          const setMethod = (method) => set('pricing', { ...form.pricing, 'self-pay': { ...ptPricing, method } });
+                          const setAmount = (amount) => set('pricing', { ...form.pricing, 'self-pay': { ...ptPricing, amount } });
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {SELF_PAY_METHODS.map((m) => {
+                                const selected = ptPricing.method === m.value;
+                                return (
+                                  <div key={m.value} className={`pay-method-card${selected ? ' selected' : ''}`} onClick={() => setMethod(m.value)}>
+                                    <div style={{ paddingTop: 2, flexShrink: 0 }}>
+                                      <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${selected ? 'var(--brand)' : 'var(--border-strong)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)' }} />}
+                                      </div>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                      <p className="pay-method-card-title">{m.label}</p>
+                                      <p className="pay-method-card-desc">{m.desc}</p>
+                                      {selected && m.value === 'specific' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+                                          <label style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Amount: $</label>
+                                          <input type="number" min={0} step={0.01} value={ptPricing.amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input" style={{ width: 110, height: 34 }} autoFocus />
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                  <div style={{ flex: 1 }}>
-                                    <p className="pay-method-card-title">{m.label}</p>
-                                    <p className="pay-method-card-desc">{m.desc}</p>
-                                    {selected && m.value === 'specific' && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
-                                        <label style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Amount: $</label>
-                                        <input type="number" min={0} step={0.01} value={ptPricing.amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input" style={{ width: 110, height: 34 }} autoFocus />
-                                      </div>
-                                    )}
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+
+                        const statuses = activePtId === 'group-covered' ? GROUP_STATUSES : ELIGIBILITY_STATUSES;
+                        const copayStatusId = COPAY_STATUS_ID[activePtId];
+                        const ptPricing = form.pricing?.[activePtId] ?? DEFAULT_PT_PRICING[activePtId];
+                        const paymentConfig = clinic.paymentConfig;
+                        const accessConfig = activePtId === 'group-covered'
+                          ? paymentConfig?.['group-covered']?.verificationAccess
+                          : paymentConfig?.['insurance']?.eligibilityAccess;
+
+                        const setStatusPricing = (statusId, patch) => {
+                          const current = ptPricing?.[statusId] ?? DEFAULT_STATUS_PRICING;
+                          set('pricing', { ...form.pricing, [activePtId]: { ...ptPricing, [statusId]: { ...current, ...patch } } });
+                        };
+
+                        return (
+                          <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+                            {statuses.map((status, i) => {
+                              const sc = ptPricing?.[status.id] ?? DEFAULT_STATUS_PRICING;
+                              const blocked = (accessConfig?.[status.id]?.access ?? 'allow') === 'block';
+                              return (
+                                <div key={status.id} style={{ display: 'grid', gridTemplateColumns: '1fr 150px 1fr', padding: '10px 14px', gap: 12, alignItems: 'center', borderBottom: i < statuses.length - 1 ? '1px solid var(--border)' : 'none', background: blocked ? 'var(--grey-50)' : 'var(--surface)', opacity: blocked ? 0.6 : 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: status.dot, flexShrink: 0, display: 'inline-block' }} />
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: blocked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{status.label}</span>
                                   </div>
+                                  {blocked ? (
+                                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Blocked in clinic settings</span>
+                                  ) : (
+                                    <select value={sc.method} onChange={(e) => setStatusPricing(status.id, { method: e.target.value })} className="input" style={SELECT_STYLE}>
+                                      <option value="none">No collection</option>
+                                      {status.id === copayStatusId && <option value="copay">Collect copay</option>}
+                                      <option value="specific">Specific amount</option>
+                                    </select>
+                                  )}
+                                  {!blocked && sc.method === 'copay' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Fallback $</span>
+                                      <input type="number" min={0} step={0.01} value={sc.fallback} onChange={(e) => setStatusPricing(status.id, { fallback: e.target.value })} placeholder="0.00" className="input" style={{ height: 34, minWidth: 0 }} />
+                                    </div>
+                                  )}
+                                  {!blocked && sc.method === 'specific' && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>$</span>
+                                      <input type="number" min={0} step={0.01} value={sc.amount} onChange={(e) => setStatusPricing(status.id, { amount: e.target.value })} placeholder="0.00" className="input" style={{ height: 34, minWidth: 0 }} />
+                                    </div>
+                                  )}
+                                  {(blocked || sc.method === 'none') && <span />}
                                 </div>
                               );
                             })}
                           </div>
                         );
-                      }
-
-                      const statuses = activePtId === 'group-covered' ? GROUP_STATUSES : ELIGIBILITY_STATUSES;
-                      const copayStatusId = COPAY_STATUS_ID[activePtId];
-                      const ptPricing = form.pricing?.[activePtId] ?? DEFAULT_PT_PRICING[activePtId];
-                      const paymentConfig = clinic.paymentConfig;
-                      const accessConfig = activePtId === 'group-covered'
-                        ? paymentConfig?.['group-covered']?.verificationAccess
-                        : paymentConfig?.['insurance']?.eligibilityAccess;
-
-                      const setStatusPricing = (statusId, patch) => {
-                        const current = ptPricing?.[statusId] ?? DEFAULT_STATUS_PRICING;
-                        set('pricing', { ...form.pricing, [activePtId]: { ...ptPricing, [statusId]: { ...current, ...patch } } });
-                      };
-
-                      return (
-                        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-                          {statuses.map((status, i) => {
-                            const sc = ptPricing?.[status.id] ?? DEFAULT_STATUS_PRICING;
-                            const blocked = (accessConfig?.[status.id]?.access ?? 'allow') === 'block';
-                            return (
-                              <div key={status.id} style={{ display: 'grid', gridTemplateColumns: '1fr 150px 1fr', padding: '10px 14px', gap: 12, alignItems: 'center', borderBottom: i < statuses.length - 1 ? '1px solid var(--border)' : 'none', background: blocked ? 'var(--grey-50)' : 'var(--surface)', opacity: blocked ? 0.6 : 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: status.dot, flexShrink: 0, display: 'inline-block' }} />
-                                  <span style={{ fontSize: 13, fontWeight: 500, color: blocked ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{status.label}</span>
-                                </div>
-                                {blocked ? (
-                                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Blocked in clinic settings</span>
-                                ) : (
-                                  <select value={sc.method} onChange={(e) => setStatusPricing(status.id, { method: e.target.value })} className="input" style={SELECT_STYLE}>
-                                    <option value="none">No collection</option>
-                                    {status.id === copayStatusId && <option value="copay">Collect copay</option>}
-                                    <option value="specific">Specific amount</option>
-                                  </select>
-                                )}
-                                {!blocked && sc.method === 'copay' && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Fallback $</span>
-                                    <input type="number" min={0} step={0.01} value={sc.fallback} onChange={(e) => setStatusPricing(status.id, { fallback: e.target.value })} placeholder="0.00" className="input" style={{ height: 34, minWidth: 0 }} />
-                                  </div>
-                                )}
-                                {!blocked && sc.method === 'specific' && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>$</span>
-                                    <input type="number" min={0} step={0.01} value={sc.amount} onChange={(e) => setStatusPricing(status.id, { amount: e.target.value })} placeholder="0.00" className="input" style={{ height: 34, minWidth: 0 }} />
-                                  </div>
-                                )}
-                                {(blocked || sc.method === 'none') && <span />}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Intake Flow tab ── */}
-          {activeTab === 'intake' && (
+          {/* ── Workflow tab ── */}
+          {activeTab === 'workflow' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Use clinic default toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default</p>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default intake flow</p>
                   <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Currently: <strong>{clinic.defaultIntakeTemplateId
-                      ? (clinic.intakeTemplates.find(t => t.id === clinic.defaultIntakeTemplateId)?.name ?? '—')
-                      : 'None set'
-                    }</strong>
+                    Currently: <strong>{clinic.defaultWorkflow?.name || 'Not configured'}</strong>
                   </p>
                 </div>
                 <button
                   role="switch"
-                  aria-checked={form.intakeTemplateId === null}
-                  onClick={() => set('intakeTemplateId', form.intakeTemplateId === null ? (clinic.defaultIntakeTemplateId ?? '') : null)}
-                  className={`toggle${form.intakeTemplateId === null ? ' on' : ''}`}
+                  aria-checked={form.workflowOverride === null}
+                  onClick={() => set('workflowOverride', form.workflowOverride === null ? {
+                    id: `wf_${Date.now()}`,
+                    name: `${form.name || 'Visit'} Intake Flow`,
+                    steps: clinic.defaultWorkflow?.steps ? JSON.parse(JSON.stringify(clinic.defaultWorkflow.steps)) : [],
+                  } : null)}
+                  className={`toggle${form.workflowOverride === null ? ' on' : ''}`}
                   aria-label="Use clinic default intake flow"
                 >
                   <span className="toggle-track"><span className="toggle-thumb" /></span>
                 </button>
               </div>
 
-              {form.intakeTemplateId !== null && (
-                <div className="form-group">
-                  <label className="form-label">Select Intake Flow</label>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    Choose a specific intake flow for this visit option.
-                  </p>
-                  <select
-                    value={form.intakeTemplateId ?? ''}
-                    onChange={e => set('intakeTemplateId', e.target.value || null)}
-                    className="input"
-                    style={{ maxWidth: 320, marginBottom: 12 }}
-                  >
-                    <option value="">— None —</option>
-                    {clinic.intakeTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-
-                  {form.intakeTemplateId && (() => {
-                    const preview = clinic.intakeTemplates.find(t => t.id === form.intakeTemplateId);
-                    if (!preview) return null;
-                    return (
-                      <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-                        {preview.fields.map((f, i) => (
-                          <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: i < preview.fields.length - 1 ? '1px solid var(--border)' : 'none', background: f.enabled ? 'var(--surface)' : 'var(--grey-50)' }}>
-                            <span style={{ fontSize: 13, color: f.enabled ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{f.label}</span>
-                            {f.enabled && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{f.required ? 'Required' : 'Optional'}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
+              {/* Preview of clinic default */}
+              {form.workflowOverride === null && clinic.defaultWorkflow && (
+                <div>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Clinic default intake flow:</p>
+                  <div style={{ padding: 12, background: 'var(--grey-100)', borderRadius: 'var(--r-md)', opacity: 0.75 }}>
+                    <WorkflowPreview workflow={clinic.defaultWorkflow} />
+                  </div>
                 </div>
               )}
 
-              {form.intakeTemplateId === null && resolvedIntakeId && (() => {
-                const preview = clinic.intakeTemplates.find(t => t.id === resolvedIntakeId);
-                if (!preview) return null;
-                return (
-                  <div>
-                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedIntakeName}</strong> (clinic default):</p>
-                    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden', opacity: 0.75 }}>
-                      {preview.fields.map((f, i) => (
-                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderBottom: i < preview.fields.length - 1 ? '1px solid var(--border)' : 'none', background: f.enabled ? 'var(--surface)' : 'var(--grey-50)' }}>
-                          <span style={{ fontSize: 13, color: f.enabled ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{f.label}</span>
-                          {f.enabled && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{f.required ? 'Required' : 'Optional'}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Custom workflow editor */}
+              {form.workflowOverride !== null && (
+                <WorkflowCustomizer
+                  workflow={form.workflowOverride}
+                  onChange={wf => set('workflowOverride', wf)}
+                  clinic={clinic}
+                />
+              )}
             </div>
           )}
 
