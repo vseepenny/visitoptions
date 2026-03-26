@@ -69,7 +69,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
     ...EMPTY, ...existing,
     notesTemplateId:  existing.notesTemplateId  ?? null,
     workflowOverride: existing.workflowOverride ?? null,
-  } : { ...EMPTY });
+  } : { ...EMPTY, specialties: (clinic.specialties || []).map(s => s.id) });
   const [errors, setErrors]     = useState({});
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
@@ -225,9 +225,21 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
               </div>
 
               {/* Specialties */}
-              {clinic.specialties?.length > 0 && (
+              {clinic.specialties?.length > 0 && (() => {
+                const allIds = clinic.specialties.map(s => s.id);
+                const allChecked = allIds.every(id => (form.specialties || []).includes(id));
+                return (
                 <div className="form-group">
-                  <label className="form-label">Specialties</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Specialties</label>
+                    <button
+                      type="button"
+                      onClick={() => set('specialties', allChecked ? [] : [...allIds])}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      {allChecked ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
                   <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Which provider specialties can see this visit option?</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {clinic.specialties.map((sp) => {
@@ -264,7 +276,8 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>No specialties selected — visible to all providers.</p>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               <div className="form-group">
                 <label className="form-label">Accepted Patient Types <span className="req">*</span></label>

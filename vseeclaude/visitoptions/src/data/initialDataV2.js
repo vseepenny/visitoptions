@@ -140,7 +140,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
-        specialties: ['sp_1'],
+        specialties: ['sp_1', 'sp_2', 'sp_3', 'sp_4', 'sp_5'],
         pricing: {
           'self-pay':  { method: 'specific', amount: '150', fallback: '' },
           'insurance': {
@@ -162,7 +162,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'group-covered', 'insurance'],
-        specialties: ['sp_1'],
+        specialties: ['sp_1', 'sp_2', 'sp_3', 'sp_4', 'sp_5'],
         pricing: {
           'self-pay':      { method: 'specific', amount: '75', fallback: '' },
           'group-covered': {
@@ -204,7 +204,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
-        specialties: ['sp_2'],
+        specialties: ['sp_1', 'sp_2', 'sp_3', 'sp_4', 'sp_5'],
         pricing: {
           'self-pay':  { method: 'specific', amount: '', fallback: '' },
           'insurance': {
@@ -236,7 +236,7 @@ export const initialRooms = [
         mode: 'Video',
         visible: true,
         patientTypes: ['self-pay', 'insurance'],
-        specialties: ['sp_2'],
+        specialties: ['sp_1', 'sp_2', 'sp_3', 'sp_4', 'sp_5'],
         pricing: {
           'self-pay':  { method: 'none', amount: '', fallback: '' },
           'insurance': {
