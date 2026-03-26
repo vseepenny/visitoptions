@@ -65,6 +65,7 @@ const EMPTY = {
 /* ── Specialty Picker ─────────────────────────────────────── */
 
 function SpecialtyPicker({ specialties, selected, onChange }) {
+  console.log('[SpecialtyPicker]', { specialties, selected });
   if (!specialties.length) return null;
   const allIds = specialties.map(s => s.id);
   const allChecked = allIds.length > 0 && allIds.every(id => selected.includes(id));
