@@ -289,6 +289,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 </button>
               </div>
 
+              {/* Specialties */}
+              <SpecialtyPicker specialties={clinic.specialties || []} selected={form.specialties || []} onChange={(val) => set('specialties', val)} />
+
             </div>
           )}
 
