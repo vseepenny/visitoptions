@@ -235,8 +235,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     <button
                       type="button"
                       onClick={() => set('specialties', allChecked ? [] : [...allIds])}
-                      className="btn btn-ghost btn-sm"
-                      style={{ fontSize: 12, padding: '2px 8px', height: 'auto' }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 500 }}
                     >
                       {allChecked ? 'Deselect All' : 'Select All'}
                     </button>
