@@ -81,11 +81,12 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
   const [dragOverId, setDragOverId] = useState(null);
 
   const handleDragStart = (e, id) => {
-    setDragId(id);
+    e.dataTransfer.setData('text/plain', id);
     e.dataTransfer.effectAllowed = 'move';
-    // Transparent drag image so the row doesn't ghost weirdly
     const el = e.currentTarget;
     e.dataTransfer.setDragImage(el, el.offsetWidth / 2, el.offsetHeight / 2);
+    // Defer state update so browser captures drag image before re-render
+    requestAnimationFrame(() => setDragId(id));
   };
 
   const handleDragOver = (e, id) => {
