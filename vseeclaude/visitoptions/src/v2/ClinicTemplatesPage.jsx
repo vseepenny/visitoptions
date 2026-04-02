@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PaymentSettings from '../components/PaymentSettings';
 import PatientTypes from '../components/PatientTypes';
 import ConfirmModal from '../components/ConfirmModal';
 import { NOTES_PRESETS } from '../data/initialData';
 import WorkflowCustomizer from './WorkflowCustomizer';
+import { useAnnotationPage } from './Annotations';
 
 /* ── Dirty tracking hook ─────────────────────────────────── */
 
@@ -513,6 +514,11 @@ export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
   const [activeTab, setActiveTab] = useState('patientTypes');
   const [editingId, setEditingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const { setPage: setAnnotationPage } = useAnnotationPage();
+
+  useEffect(() => {
+    setAnnotationPage(`clinic:${activeTab}`);
+  }, [activeTab, setAnnotationPage]);
 
   const update = (patch) => setState(s => ({ ...s, ...patch }));
 

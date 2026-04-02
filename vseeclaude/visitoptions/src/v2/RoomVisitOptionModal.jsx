@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
+import { useAnnotationPage } from './Annotations';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -129,6 +130,12 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
 
+  const { setOverlayPage } = useAnnotationPage();
+  const modalPage = `modal:${existing ? existing.id : 'new'}:${activeTab}`;
+  useEffect(() => {
+    setOverlayPage(modalPage);
+    return () => setOverlayPage(null);
+  }, [modalPage, setOverlayPage]);
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

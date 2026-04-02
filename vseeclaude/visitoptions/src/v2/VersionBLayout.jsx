@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ClinicTemplatesPage from './ClinicTemplatesPage';
 import WaitingRoomsListPage from './WaitingRoomsListPage';
 import WaitingRoomSettingsV2 from './WaitingRoomSettingsV2';
+import { useAnnotationPage } from './Annotations';
 import { initialClinic, initialRooms } from '../data/initialDataV2';
 
 function Toast({ show, onDone }) {
@@ -32,6 +33,14 @@ export default function VersionBLayout() {
   const [showSaved, setShowSaved]   = useState(false);
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null;
+  const { setPage: setAnnotationPage } = useAnnotationPage();
+
+  useEffect(() => {
+    const label = page === 'clinic' ? 'clinic'
+      : page === 'rooms' ? 'rooms'
+      : selectedRoom ? `room:${selectedRoom.id}` : 'rooms';
+    setAnnotationPage(label);
+  }, [page, selectedRoom, setAnnotationPage]);
 
   const handleSelectRoom = useCallback((id) => {
     setSelectedRoomId(id);
