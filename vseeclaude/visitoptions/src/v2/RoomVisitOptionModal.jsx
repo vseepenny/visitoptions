@@ -3,6 +3,7 @@ import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
+import { NotesTemplateEditor, FormLibraryEditor } from './TemplateEditors';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -60,6 +61,7 @@ const EMPTY = {
   specialties: [],
   pricing: { ...DEFAULT_PT_PRICING },
   notesTemplateId: null,    // null = use room visitDefaults
+  intakeFormId: null,       // null = no form selected
   workflowOverride: null,   // null = use clinic default intake flow
 };
 
@@ -129,6 +131,8 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   const [errors, setErrors]     = useState({});
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
+  const [editingNotesTemplate, setEditingNotesTemplate] = useState(null);
+  const [editingForm, setEditingForm] = useState(null);
 
   const { setOverlayPage } = useAnnotationPage();
   const modalPage = `modal:${existing ? existing.id : 'new'}:${activeTab}`;
@@ -573,65 +577,165 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
 
           {/* ── Visit Notes tab ── */}
           {activeTab === 'notes' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Use clinic default toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)' }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    Currently: <strong>{clinic.defaultNotesTemplateId
-                      ? (clinic.notesTemplates.find(t => t.id === clinic.defaultNotesTemplateId)?.name ?? '—')
-                      : 'None set'
-                    }</strong>
-                  </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* ── Notes Template section ── */}
+              <div>
+                <label className="form-label" style={{ marginBottom: 8 }}>Notes Template</label>
+
+                {/* Use clinic default toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--grey-100)', borderRadius: 'var(--r-md)', marginBottom: 12 }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600 }}>Use clinic default</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                      Currently: <strong>{clinic.defaultNotesTemplateId
+                        ? (clinic.notesTemplates.find(t => t.id === clinic.defaultNotesTemplateId)?.name ?? '—')
+                        : 'None set'
+                      }</strong>
+                    </p>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={form.notesTemplateId === null}
+                    onClick={() => set('notesTemplateId', form.notesTemplateId === null ? (clinic.defaultNotesTemplateId ?? '') : null)}
+                    className={`toggle${form.notesTemplateId === null ? ' on' : ''}`}
+                    aria-label="Use clinic default notes template"
+                  >
+                    <span className="toggle-track"><span className="toggle-thumb" /></span>
+                  </button>
                 </div>
-                <button
-                  role="switch"
-                  aria-checked={form.notesTemplateId === null}
-                  onClick={() => set('notesTemplateId', form.notesTemplateId === null ? (clinic.defaultNotesTemplateId ?? '') : null)}
-                  className={`toggle${form.notesTemplateId === null ? ' on' : ''}`}
-                  aria-label="Use clinic default notes template"
-                >
-                  <span className="toggle-track"><span className="toggle-thumb" /></span>
-                </button>
+
+                {form.notesTemplateId !== null && !editingNotesTemplate && (
+                  <div className="form-group">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <select
+                        value={form.notesTemplateId ?? ''}
+                        onChange={e => set('notesTemplateId', e.target.value || null)}
+                        className="input"
+                        style={{ maxWidth: 320 }}
+                      >
+                        <option value="">— None —</option>
+                        {clinic.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                      {form.notesTemplateId && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            const tmpl = clinic.notesTemplates.find(t => t.id === form.notesTemplateId);
+                            if (tmpl) setEditingNotesTemplate({ ...tmpl });
+                          }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          &nbsp;Edit
+                        </button>
+                      )}
+                    </div>
+
+                    {form.notesTemplateId && (() => {
+                      const preview = clinic.notesTemplates.find(t => t.id === form.notesTemplateId);
+                      if (!preview) return null;
+                      return (
+                        <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 120, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none' }} />
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Inline notes template editor */}
+                {editingNotesTemplate && (
+                  <NotesTemplateEditor
+                    tmpl={editingNotesTemplate}
+                    onSave={(saved) => {
+                      setEditingNotesTemplate(null);
+                      set('notesTemplateId', saved.id);
+                    }}
+                    onCancel={() => setEditingNotesTemplate(null)}
+                  />
+                )}
+
+                {form.notesTemplateId === null && !editingNotesTemplate && resolvedNotesId && (() => {
+                  const preview = clinic.notesTemplates.find(t => t.id === resolvedNotesId);
+                  if (!preview) return null;
+                  return (
+                    <div>
+                      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedNotesName}</strong> (clinic default):</p>
+                      <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 120, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none', opacity: 0.75 }} />
+                    </div>
+                  );
+                })()}
               </div>
 
-              {form.notesTemplateId !== null && (
-                <div className="form-group">
-                  <label className="form-label">Select Notes Template</label>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    Choose a specific clinic template for this visit option.
-                  </p>
-                  <select
-                    value={form.notesTemplateId ?? ''}
-                    onChange={e => set('notesTemplateId', e.target.value || null)}
-                    className="input"
-                    style={{ maxWidth: 320, marginBottom: 12 }}
-                  >
-                    <option value="">— None —</option>
-                    {clinic.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
+              {/* ── Intake Form section ── */}
+              <div>
+                <label className="form-label" style={{ marginBottom: 8 }}>Intake Form</label>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                  Select an intake form patients fill out before the visit, or edit to customize fields.
+                </p>
 
-                  {form.notesTemplateId && (() => {
-                    const preview = clinic.notesTemplates.find(t => t.id === form.notesTemplateId);
-                    if (!preview) return null;
-                    return (
-                      <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 160, fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none' }} />
-                    );
-                  })()}
-                </div>
-              )}
-
-              {form.notesTemplateId === null && resolvedNotesId && (() => {
-                const preview = clinic.notesTemplates.find(t => t.id === resolvedNotesId);
-                if (!preview) return null;
-                return (
-                  <div>
-                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedNotesName}</strong> (clinic default):</p>
-                    <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 160, fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none', opacity: 0.75 }} />
+                {!editingForm && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(clinic.formLibrary || []).map(f => {
+                      const selected = form.intakeFormId === f.id;
+                      return (
+                        <div
+                          key={f.id}
+                          onClick={() => set('intakeFormId', selected ? null : f.id)}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer',
+                            border: `1.5px solid ${selected ? 'var(--brand)' : 'var(--border)'}`,
+                            background: selected ? 'var(--brand-50)' : 'white',
+                            transition: 'all 150ms',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 16, height: 16, borderRadius: '50%',
+                              border: `2px solid ${selected ? 'var(--brand)' : 'var(--border-strong)'}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)' }} />}
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 13, fontWeight: selected ? 600 : 500, color: selected ? 'var(--brand)' : 'var(--text-primary)' }}>{f.name}</p>
+                              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{f.fields?.length || 0} fields</p>
+                            </div>
+                          </div>
+                          {selected && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={(e) => { e.stopPropagation(); setEditingForm({ ...f, fields: f.fields?.map(fl => ({ ...fl })) || [] }); }}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              &nbsp;Edit
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {(clinic.formLibrary || []).length === 0 && (
+                      <div style={{ padding: '16px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 'var(--r-md)', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                        No intake forms configured. Create forms in Clinic Settings → Templates.
+                      </div>
+                    )}
                   </div>
-                );
-              })()}
+                )}
+
+                {/* Inline form editor */}
+                {editingForm && (
+                  <FormLibraryEditor
+                    form={editingForm}
+                    onSave={(saved) => {
+                      setEditingForm(null);
+                      set('intakeFormId', saved.id);
+                    }}
+                    onCancel={() => setEditingForm(null)}
+                  />
+                )}
+              </div>
+
             </div>
           )}
 
