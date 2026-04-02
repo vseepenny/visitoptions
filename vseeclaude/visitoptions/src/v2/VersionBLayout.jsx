@@ -33,7 +33,7 @@ export default function VersionBLayout() {
   const [showSaved, setShowSaved]   = useState(false);
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null;
-  const { setPage: setAnnotationPage } = useAnnotationPage();
+  const { setPage: setAnnotationPage, setNavigate } = useAnnotationPage();
 
   useEffect(() => {
     const label = page === 'clinic' ? 'clinic'
@@ -41,6 +41,22 @@ export default function VersionBLayout() {
       : selectedRoom ? `room:${selectedRoom.id}` : 'rooms';
     setAnnotationPage(label);
   }, [page, selectedRoom, setAnnotationPage]);
+
+  // Register navigation handler for annotation panel
+  useEffect(() => {
+    setNavigate('layout', (targetPage) => {
+      if (targetPage === 'rooms') {
+        setPage('rooms');
+        setSelectedRoomId(null);
+      } else if (targetPage.startsWith('room:')) {
+        const roomId = targetPage.split(':')[1];
+        setSelectedRoomId(roomId);
+        setPage('room');
+      } else if (targetPage.startsWith('clinic')) {
+        setPage('clinic');
+      }
+    });
+  }, [setNavigate]);
 
   const handleSelectRoom = useCallback((id) => {
     setSelectedRoomId(id);

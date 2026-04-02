@@ -9,8 +9,27 @@ const saveLocal = (pins) => localStorage.setItem(STORAGE_KEY, JSON.stringify(pin
 
 /* ── Page context — lets child components report the active page ── */
 
-const AnnotationPageContext = createContext({ page: 'default', setPage: () => {}, setOverlayPage: () => {} });
+const AnnotationPageContext = createContext({ page: 'default', setPage: () => {}, setOverlayPage: () => {}, navigateTo: () => {} });
 export const useAnnotationPage = () => useContext(AnnotationPageContext);
+
+/* ── Human-readable page labels ────────────────────────── */
+
+const PAGE_LABELS = {
+  'rooms': 'Waiting Rooms',
+  'clinic:patientTypes': 'Clinic · Patient Types',
+  'clinic:workflow': 'Clinic · Workflow',
+  'clinic:forms': 'Clinic · Forms',
+  'clinic:notes': 'Clinic · Notes',
+};
+function pageLabel(page) {
+  if (PAGE_LABELS[page]) return PAGE_LABELS[page];
+  if (page.startsWith('room:')) return 'Room Settings';
+  if (page.startsWith('modal:')) {
+    const tab = page.split(':').pop();
+    return `Modal · ${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+  }
+  return page;
+}
 
 /* ── Colors for contributors ────────────────────────────── */
 
@@ -207,6 +226,43 @@ function ReplyThread({ pin, onAddReply, onDelete, defaultAuthor }) {
   );
 }
 
+/* ── Pin row in side panel ──────────────────────────────── */
+
+function PinRow({ pin, isCurrent, selected, onClick, lastAuthor, onAddReply, onDelete }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: '12px 20px', cursor: 'pointer',
+        background: selected ? '#F5F3FF' : 'transparent',
+        borderLeft: selected ? '3px solid #4F46E5' : '3px solid transparent',
+        opacity: isCurrent ? 1 : 0.75,
+        transition: 'all 150ms',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: '50%', background: nameColor(pin.author),
+          color: 'white', fontSize: 9, fontWeight: 700, display: 'inline-flex',
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>#{pin.index}</span>
+        {!isCurrent && (
+          <span style={{ fontSize: 10, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            tap to go
+          </span>
+        )}
+      </div>
+      <ReplyThread
+        pin={pin}
+        defaultAuthor={lastAuthor}
+        onAddReply={(author, text) => onAddReply(pin.id, author, text)}
+        onDelete={() => onDelete(pin.id)}
+      />
+    </div>
+  );
+}
+
 function formatTime(ts) {
   const d = new Date(ts);
   const now = new Date();
@@ -397,11 +453,18 @@ export default function Annotations({ children }) {
   };
 
   const visiblePins = pins.filter(p => p.page === currentPage);
+  const otherPins = pins.filter(p => p.page !== currentPage);
   const pageComments = visiblePins.reduce((n, p) => n + 1 + (p.replies?.length || 0), 0);
   const totalComments = pins.reduce((n, p) => n + 1 + (p.replies?.length || 0), 0);
 
+  const navigateHandlers = useRef({});
+  const setNavigate = useCallback((key, fn) => { navigateHandlers.current[key] = fn; }, []);
+  const navigateTo = useCallback((page) => {
+    Object.values(navigateHandlers.current).forEach(fn => fn(page));
+  }, []);
+
   return (
-    <AnnotationPageContext.Provider value={{ page: currentPage, setPage: setBasePage, setOverlayPage }}>
+    <AnnotationPageContext.Provider value={{ page: currentPage, setPage: setBasePage, setOverlayPage, setNavigate, navigateTo }}>
     <div ref={containerRef} style={{ position: 'relative', minHeight: '100vh' }}>
       {/* The app content */}
       <div
@@ -476,13 +539,13 @@ export default function Annotations({ children }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
-          {pageComments > 0 && (
+          {totalComments > 0 && (
             <span style={{
               position: 'absolute', top: -2, right: -2,
               width: 20, height: 20, borderRadius: '50%', background: '#EF4444',
               color: 'white', fontSize: 10, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>{pageComments}</span>
+            }}>{totalComments}</span>
           )}
         </button>
       </div>
@@ -534,42 +597,46 @@ export default function Annotations({ children }) {
 
         {/* Panel body */}
         <div style={{ flex: 1, overflow: 'auto', padding: '12px 0' }}>
-          {visiblePins.length === 0 ? (
+          {pins.length === 0 ? (
             <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9CA3AF' }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 12px', display: 'block', color: '#D1D5DB' }}>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
-              <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 4px' }}>No comments on this page</p>
+              <p style={{ fontSize: 13, fontWeight: 600, margin: '0 0 4px' }}>No comments yet</p>
               <p style={{ fontSize: 12 }}>Click the pin button, then click anywhere to leave a comment.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {visiblePins.map(pin => (
-                <div
-                  key={pin.id}
-                  onClick={() => setSelectedPin(pin.id === selectedPin ? null : pin.id)}
-                  style={{
-                    padding: '12px 20px', cursor: 'pointer',
-                    background: selectedPin === pin.id ? '#F5F3FF' : 'transparent',
-                    borderLeft: selectedPin === pin.id ? '3px solid #4F46E5' : '3px solid transparent',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <span style={{
-                      width: 20, height: 20, borderRadius: '50%', background: nameColor(pin.author),
-                      color: 'white', fontSize: 9, fontWeight: 700, display: 'inline-flex',
-                      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>#{pin.index}</span>
+              {/* Current page comments */}
+              {visiblePins.length > 0 && (
+                <>
+                  <div style={{ padding: '6px 20px', fontSize: 11, fontWeight: 600, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {pageLabel(currentPage)}
                   </div>
-                  <ReplyThread
-                    pin={pin}
-                    defaultAuthor={lastAuthor}
-                    onAddReply={(author, text) => addReply(pin.id, author, text)}
-                    onDelete={() => deletePin(pin.id)}
-                  />
-                </div>
-              ))}
+                  {visiblePins.map(pin => (
+                    <PinRow key={pin.id} pin={pin} isCurrent selected={selectedPin === pin.id}
+                      onClick={() => setSelectedPin(pin.id === selectedPin ? null : pin.id)}
+                      lastAuthor={lastAuthor} onAddReply={addReply} onDelete={deletePin} />
+                  ))}
+                </>
+              )}
+              {/* Other pages */}
+              {(() => {
+                const grouped = {};
+                otherPins.forEach(p => { (grouped[p.page] ??= []).push(p); });
+                return Object.entries(grouped).map(([page, pagePins]) => (
+                  <div key={page}>
+                    <div style={{ padding: '6px 20px', marginTop: visiblePins.length > 0 ? 8 : 0, fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: visiblePins.length > 0 ? '1px solid #F3F4F6' : 'none' }}>
+                      {pageLabel(page)}
+                    </div>
+                    {pagePins.map(pin => (
+                      <PinRow key={pin.id} pin={pin} isCurrent={false} selected={selectedPin === pin.id}
+                        onClick={() => { navigateTo(pin.page); setSelectedPin(pin.id); }}
+                        lastAuthor={lastAuthor} onAddReply={addReply} onDelete={deletePin} />
+                    ))}
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </div>

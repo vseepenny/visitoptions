@@ -514,11 +514,21 @@ export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
   const [activeTab, setActiveTab] = useState('patientTypes');
   const [editingId, setEditingId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const { setPage: setAnnotationPage } = useAnnotationPage();
+  const { setPage: setAnnotationPage, setNavigate } = useAnnotationPage();
 
   useEffect(() => {
     setAnnotationPage(`clinic:${activeTab}`);
   }, [activeTab, setAnnotationPage]);
+
+  // Handle navigation from annotation panel to clinic sub-tabs
+  useEffect(() => {
+    setNavigate('clinic', (targetPage) => {
+      if (targetPage.startsWith('clinic:')) {
+        const tab = targetPage.split(':')[1];
+        if (tab) setActiveTab(tab);
+      }
+    });
+  }, [setNavigate]);
 
   const update = (patch) => setState(s => ({ ...s, ...patch }));
 
