@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRD — Visit Options &amp; Waiting Room Settings</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --brand: #4F46E5;
+    --brand-light: #E0E7FF;
+    --text: #1F2937;
+    --text-secondary: #6B7280;
+    --border: #E5E7EB;
+    --surface: #F9FAFB;
+    --success: #059669;
+    --warning: #D97706;
+    --info: #2563EB;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    line-height: 1.7;
+    background: #fff;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+
+  /* Header */
+  .doc-header {
+    border-bottom: 3px solid var(--brand);
+    padding-bottom: 24px;
+    margin-bottom: 40px;
+  }
+  .doc-header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--brand);
+    margin-bottom: 4px;
+  }
+  .doc-header .subtitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  .meta-table td {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+  }
+  .meta-table td:first-child {
+    font-weight: 600;
+    background: var(--surface);
+    width: 160px;
+    color: var(--text-secondary);
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--brand);
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 24px 0 10px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+    color: var(--text-secondary);
+  }
+
+  p { margin-bottom: 12px; font-size: 14px; }
+
+  ul, ol {
+    margin: 8px 0 16px 24px;
+    font-size: 14px;
+  }
+  li { margin-bottom: 6px; }
+  li li { margin-bottom: 4px; }
+
+  /* Callout boxes */
+  .callout {
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin: 16px 0;
+    border-left: 4px solid;
+  }
+  .callout-info { background: #EFF6FF; border-color: var(--info); }
+  .callout-success { background: #ECFDF5; border-color: var(--success); }
+  .callout-warning { background: #FFFBEB; border-color: var(--warning); }
+  .callout strong { font-weight: 600; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 12px 0 20px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+  th {
+    background: var(--surface);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  /* Code */
+  code {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 12px;
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-right: 4px;
+  }
+  .tag-must { background: #FEE2E2; color: #991B1B; }
+  .tag-should { background: #FEF3C7; color: #92400E; }
+  .tag-nice { background: #E0E7FF; color: #3730A3; }
+
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc h3 { margin-top: 0; font-size: 14px; color: var(--text-secondary); }
+  .toc ol { margin-bottom: 0; }
+  .toc a { color: var(--brand); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="doc-header">
+  <h1>Product Requirements Document</h1>
+  <p class="subtitle">Visit Options &amp; Waiting Room Settings Module — VSee Clinic</p>
+
+  <table class="meta-table">
+    <tr><td>Product</td><td>VSee Clinic — Admin Console</td></tr>
+    <tr><td>Module</td><td>Visit Options &amp; Waiting Room Settings</td></tr>
+    <tr><td>Author</td><td>Penny (penny@vsee.com)</td></tr>
+    <tr><td>Date</td><td>April 2, 2026</td></tr>
+    <tr><td>Status</td><td>Draft</td></tr>
+    <tr><td>Version</td><td>2.1 (V2 architecture)</td></tr>
+    <tr><td>Stack</td><td>React 19 · Vite 7 · Tailwind CSS 4</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TABLE OF CONTENTS                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#overview">Overview &amp; Purpose</a></li>
+    <li><a href="#goals">Goals &amp; Success Metrics</a></li>
+    <li><a href="#users">Users &amp; Personas</a></li>
+    <li><a href="#scope">Scope &amp; Feature Map</a></li>
+    <li><a href="#feature-clinic">Feature: Clinic-Level Settings</a></li>
+    <li><a href="#feature-workflow">Feature: Intake Flow Customizer</a></li>
+    <li><a href="#feature-rooms">Feature: Waiting Rooms List</a></li>
+    <li><a href="#feature-room-settings">Feature: Waiting Room Settings</a></li>
+    <li><a href="#feature-visit-options">Feature: Visit Options</a></li>
+    <li><a href="#feature-preview">Feature: Patient Preview</a></li>
+    <li><a href="#data-model">Data Model</a></li>
+    <li><a href="#architecture">Component Architecture</a></li>
+    <li><a href="#ux">UX &amp; Interaction Patterns</a></li>
+    <li><a href="#edge-cases">Edge Cases &amp; Validation</a></li>
+    <li><a href="#future">Future Considerations</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 1. OVERVIEW                                                  -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="overview">1. Overview &amp; Purpose</h2>
+
+<p>The <strong>Visit Options &amp; Waiting Room Settings</strong> module is the administrative control surface in VSee Clinic that lets clinic administrators configure the full patient-facing visit experience. It governs how patients discover a waiting room, what visit types are available, what intake information is collected, how payments are handled, and what clinical note templates providers use.</p>
+
+<p>The V2 architecture introduces a <strong>two-tier hierarchy</strong>: clinic-level settings (payment configuration, reusable templates) that are shared across all waiting rooms, and room-level settings that reference or override clinic defaults. This eliminates duplication and ensures configuration changes propagate consistently.</p>
+
+<div class="callout callout-info">
+  <strong>Key Principle:</strong> Configure once at the clinic level, customize per room only when needed. Visit options inherit clinic defaults for intake and notes templates unless explicitly overridden.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 2. GOALS                                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="goals">2. Goals &amp; Success Metrics</h2>
+
+<h3>Product Goals</h3>
+<ul>
+  <li>Enable clinic admins to fully configure waiting rooms and visit types without engineering support.</li>
+  <li>Support complex payment scenarios across three patient types: self-pay, group-covered, and insurance.</li>
+  <li>Provide a live patient-facing preview so admins can verify the booking flow before publishing.</li>
+  <li>Reduce configuration errors through validation, smart defaults, and visual warnings for incomplete setup.</li>
+</ul>
+
+<h3>Success Metrics</h3>
+<table>
+  <tr><th>Metric</th><th>Target</th></tr>
+  <tr><td>Time to configure a new waiting room from scratch</td><td>&lt; 5 minutes</td></tr>
+  <tr><td>Admin support tickets related to room configuration</td><td>Reduce by 40%</td></tr>
+  <tr><td>Visit options with incomplete payment setup (warning state)</td><td>&lt; 10% at any time</td></tr>
+  <tr><td>Adoption of clinic-level templates (vs. per-room overrides)</td><td>&gt; 70% of visit options using defaults</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 3. USERS                                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="users">3. Users &amp; Personas</h2>
+
+<table>
+  <tr><th>Persona</th><th>Role</th><th>Needs</th></tr>
+  <tr>
+    <td><strong>Clinic Admin</strong></td>
+    <td>Non-technical staff managing clinic operations</td>
+    <td>Intuitive UI to set up rooms, visit types, hours, and payment. Needs clear feedback when configuration is incomplete.</td>
+  </tr>
+  <tr>
+    <td><strong>Provider (Doctor)</strong></td>
+    <td>Healthcare provider managing their own rooms</td>
+    <td>Quick setup of visit options with correct note templates. Wants to preview the patient experience.</td>
+  </tr>
+  <tr>
+    <td><strong>Patient</strong> (indirect)</td>
+    <td>End user booking visits</td>
+    <td>Clear presentation of available visit types, pricing, and intake forms. (Affected by admin configuration — see Patient Preview.)</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 4. SCOPE                                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="scope">4. Scope &amp; Feature Map</h2>
+
+<p>The module is composed of five interconnected feature areas:</p>
+
+<div class="diagram">┌─────────────────────────────────────────────────────────────────┐
+│                        VSee Clinic Admin                        │
+│                                                                 │
+│  ┌──────────────────────┐    ┌────────────────────────────────┐ │
+│  │   Clinic Settings    │    │       Waiting Rooms            │ │
+│  │                      │    │                                │ │
+│  │  • Payment Config    │    │  ┌──────────┐  ┌──────────┐   │ │
+│  │  • Intake Templates  │◄───│  │  Room 1  │  │  Room 2  │   │ │
+│  │  • Notes Templates   │    │  └────┬─────┘  └────┬─────┘   │ │
+│  └──────────────────────┘    │       │              │         │ │
+│                              │       ▼              ▼         │ │
+│                              │  ┌─────────────────────────┐   │ │
+│                              │  │  Room Settings          │   │ │
+│                              │  │  • Name / Code          │   │ │
+│                              │  │  • Operating Hours      │   │ │
+│                              │  │  • Visibility           │   │ │
+│                              │  │  • Patient Types        │   │ │
+│                              │  │  • Visit Options ───────│───│─┐
+│                              │  └─────────────────────────┘   │ │
+│                              └────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                                                                  │
+          ┌───────────────────────────────────────────────────────┘
+          ▼
+  ┌─────────────────────────────┐    ┌──────────────────────┐
+  │  Visit Option Modal         │    │  Patient Preview     │
+  │  • General (name, mode...)  │    │  (live simulation)   │
+  │  • Payment (per pt type)    │    │  • Visit selection   │
+  │  • Intake Flow (template)   │    │  • Patient type      │
+  │  • Visit Notes (template)   │    │  • Intake form       │
+  └─────────────────────────────┘    │  • Payment step      │
+                                     │  • Confirmation      │
+                                     └──────────────────────┘</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 5. CLINIC-LEVEL SETTINGS                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-clinic">5. Feature: Clinic-Level Settings</h2>
+
+<p>Centralized configuration that applies across all waiting rooms. Accessible via the "Clinic Settings" nav item.</p>
+
+<h3>5.1 Payment Configuration</h3>
+<p>Defines how payments are collected for each patient type. These settings govern the payment options available when configuring individual visit options.</p>
+
+<table>
+  <tr><th>Patient Type</th><th>Configuration</th></tr>
+  <tr>
+    <td><strong>Self-Pay</strong></td>
+    <td>
+      Accept payments toggle, Stripe connection status, payment timing (before/after/choice), default price, no-show fee (toggle + amount).
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Group-Covered</strong></td>
+    <td>
+      Require group ID toggle, require referral toggle, verification status access rules (verified / not verified / pending / error → allow / block / review).
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Insurance</strong></td>
+    <td>
+      Eligibility status access rules (eligible / not eligible / pending / error → allow / block / review).
+    </td>
+  </tr>
+</table>
+
+<h3>5.2 Form Library</h3>
+<p>Reusable form templates that define what patient information is collected. Referenced by workflow form steps.</p>
+<ul>
+  <li>Each form has a name and an ordered list of fields.</li>
+  <li>Fields support 8 types: <strong>Text Input</strong>, <strong>Text Area</strong>, <strong>Checkbox</strong>, <strong>Scale (0–3)</strong>, <strong>Dropdown</strong>, <strong>Date Picker</strong>, <strong>File Upload</strong>, <strong>Section Header</strong>.</li>
+  <li>Fields can be marked as enabled/disabled and required/optional.</li>
+  <li>CRUD operations: create, edit, delete.</li>
+</ul>
+
+<h4>Form Editor — Drag-and-Drop Builder</h4>
+<p>The form editor uses a two-column layout:</p>
+<ul>
+  <li><strong>Left: Field palette</strong> — draggable field type cards (with icons). Drag a type onto the form to add it at any position.</li>
+  <li><strong>Right: Fields list</strong> — existing fields with drag handles for reordering. Each field row shows an icon, label input, type selector, required/enabled toggles, and a delete button.</li>
+  <li>Drop zones appear between fields during drag operations with "Drop here" indicators.</li>
+  <li>Empty state prompts users to drag from the palette.</li>
+</ul>
+
+<h3>5.3 Notes Templates</h3>
+<p>Reusable clinical note templates that pre-populate the provider's visit notes.</p>
+
+<h4>Notes Editor — Section-Based Builder</h4>
+<p>The notes template editor uses a drag-and-drop section builder:</p>
+<ul>
+  <li><strong>Section types:</strong> Section Heading, Text Area, Checkbox, Divider — each draggable from a left palette.</li>
+  <li>Existing sections can be reordered via drag handles.</li>
+  <li>Inline editing: headings render as bold text inputs, text areas render as textareas, checkboxes as label inputs, dividers as horizontal rules.</li>
+  <li><strong>Presets:</strong> SOAP Note, Progress Note, and Blank quick-load structured sections.</li>
+  <li>On save, sections are serialized to both a structured <code>sections[]</code> array and a plain-text <code>content</code> string for backward compatibility.</li>
+  <li>Same default/override inheritance model as form templates.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 6. INTAKE FLOW CUSTOMIZER                                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-workflow">6. Feature: Intake Flow Customizer</h2>
+
+<p>A visual flow-chart-style builder that defines the patient journey through the clinic's intake process. Configured at the clinic level as the default workflow, with per-visit-option overrides available.</p>
+
+<h3>6.1 Workflow Modules</h3>
+<p>20 step types organized into 4 categories, matching the VSee API:</p>
+
+<table>
+  <tr><th>Category</th><th>Step Types</th></tr>
+  <tr>
+    <td><strong>Account</strong></td>
+    <td>Signup, Signup Verification, Login</td>
+  </tr>
+  <tr>
+    <td><strong>Forms</strong></td>
+    <td>Custom Form, Intake Form, Guest Intake, Insurance, Guarantor, Pharmacy, Emergency Contact, Create Dependant, Cancel Intake Survey</td>
+  </tr>
+  <tr>
+    <td><strong>Steps</strong></td>
+    <td>Consultation (Visit Selection), Dependant List, Calendar Picker, Payment Options, Test Device, EMR, Setup Session, Confirmation, Walk-in Confirmation</td>
+  </tr>
+  <tr>
+    <td><strong>Logic</strong></td>
+    <td>Conditional Branch (by patient type or insurance status)</td>
+  </tr>
+</table>
+
+<h3>6.2 Visual Flow Builder</h3>
+<ul>
+  <li><strong>Flow canvas:</strong> Vertical flow with "Patient Enters" start node, step cards connected by lines, and "Session Starts" end node.</li>
+  <li><strong>Add Step:</strong> Full-width "Add step" button between each step. Opens a categorized picker dropdown.</li>
+  <li><strong>Drag-and-drop reordering:</strong> Each step card has a drag handle. Drop zones appear between steps during drag with visual feedback.</li>
+  <li><strong>Conditional branches:</strong> Branch on patient type or insurance status. Each branch is a column with its own step list. Steps can be dragged between branches.</li>
+  <li><strong>Auto-pairing:</strong> Some steps auto-pair (e.g., Signup → Signup Verification, Dependant List → Create Dependant).</li>
+  <li><strong>Singleton enforcement:</strong> Certain steps (e.g., Consultation) can only appear once.</li>
+</ul>
+
+<h3>6.3 Workflow Architecture</h3>
+<ul>
+  <li>The <strong>Visit Selection</strong> step marks the boundary: steps before it run for all patients; steps after it follow the selected visit option.</li>
+  <li>Individual visit options can override the post-selection workflow via <code>workflowOverride</code>.</li>
+  <li><code>workflowOverride: null</code> = use clinic default workflow.</li>
+</ul>
+
+<div class="callout callout-info">
+  <strong>Conditional Branches:</strong> Branch columns expand to 820px max-width with 180px minimum per branch to prevent content clipping. Horizontal scroll is available as a fallback for many branches.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 7. WAITING ROOMS LIST                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-rooms">7. Feature: Waiting Rooms List</h2>
+
+
+<p>Displays all waiting rooms in a table view with summary information. Serves as the entry point for room management.</p>
+
+<h3>Capabilities</h3>
+<ul>
+  <li><strong>View:</strong> Table showing room name, code, visibility badge, patient type count, and enabled visit option count.</li>
+  <li><strong>Add Room:</strong> Creates a new room with sensible defaults (unlisted, self-pay only, Pacific timezone, always open, random 5-char code).</li>
+  <li><strong>Delete Room:</strong> Confirmation modal required. Cannot delete the last remaining room.</li>
+  <li><strong>Navigate:</strong> Click any row or "Configure" button to open room settings.</li>
+  <li><strong>Single-room shortcut:</strong> When only one room exists, the app skips the list view and goes directly to room settings.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 7. WAITING ROOM SETTINGS                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-room-settings">8. Feature: Waiting Room Settings</h2>
+
+<p>The primary configuration page for an individual waiting room. Organized as a single-page form with distinct sections.</p>
+
+<h3>8.1 Room Identity</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Behavior</th></tr>
+  <tr><td>Room Name</td><td>Text input</td><td>Editable. Displayed in breadcrumb and patient-facing UI.</td></tr>
+  <tr><td>Room Code</td><td>Read-only + copy</td><td>Auto-generated 5-character alphanumeric code. Clipboard copy with toast confirmation.</td></tr>
+</table>
+
+<h3>8.2 Operating Hours</h3>
+<ul>
+  <li><strong>Timezone:</strong> Dropdown with 14 common timezone options.</li>
+  <li><strong>Mode:</strong> "Always Open" or "Scheduled Hours."</li>
+  <li><strong>Schedule:</strong> Per-day configuration (Sunday–Saturday). Each day can be marked open/closed with configurable time slots (30-min increments, 12:00 AM–11:30 PM). Multiple slots per day supported.</li>
+  <li><strong>Closure Message:</strong> Custom text shown to patients when the room is closed.</li>
+</ul>
+
+<h3>8.3 Visibility</h3>
+<ul>
+  <li><strong>Public:</strong> Discoverable via search in the VSee Clinic mobile app.</li>
+  <li><strong>Unlisted:</strong> Accessible only via direct link or room code.</li>
+</ul>
+
+<h3>8.4 Patient Types</h3>
+<p>Multi-select of which patient categories this room accepts:</p>
+<ul>
+  <li><strong>Self-Pay</strong> — Patients paying out of pocket.</li>
+  <li><strong>Group-Covered</strong> — Patients covered by an employer or organization group.</li>
+  <li><strong>Insurance</strong> — Patients using health insurance.</li>
+</ul>
+<div class="callout callout-warning">
+  <strong>Dependency:</strong> The patient types enabled at the room level constrain which types can be selected on individual visit options. Disabling a type at the room level removes it as an option for all visit options in that room.
+</div>
+
+<h3>8.5 Dirty State &amp; Save</h3>
+<ul>
+  <li>Changes are tracked via JSON serialization comparison.</li>
+  <li>"Unsaved changes" indicator appears when the form is dirty.</li>
+  <li>"Update Settings" button is disabled when no changes exist.</li>
+  <li>Success toast on save.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 8. VISIT OPTIONS                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-visit-options">9. Feature: Visit Options</h2>
+
+<p>The core of the module. Visit options define the appointment types patients can book within a waiting room.</p>
+
+<h3>9.1 Visit Options Table</h3>
+<ul>
+  <li>Columns: order (up/down buttons), name, duration + session type badge, mode (with icons), visible toggle, patient type badges, action buttons (edit, delete).</li>
+  <li><strong>Up/down button reordering</strong> — simple arrow buttons to move visit options up or down in the list. Suitable for the typical case of &lt; 5 visit options per room.</li>
+  <li><strong>Inline visibility toggle</strong> — switch visit options on/off without opening the modal.</li>
+  <li><strong>Payment warning indicator</strong> — amber triangle with "Set up payment" link when pricing is incomplete. Clicking opens the modal directly on the Payment tab.</li>
+  <li>Empty state with call-to-action when no visit options exist.</li>
+</ul>
+
+<h3>9.2 Visit Option Modal (Add / Edit)</h3>
+
+<p>A multi-tab modal for full visit option configuration. Four tabs:</p>
+
+<h4>General Tab</h4>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Validation</th></tr>
+  <tr><td>Visit Name</td><td>Text input</td><td>Required. Error shown on empty.</td></tr>
+  <tr><td>Duration</td><td>Select</td><td>15 / 30 / 45 / 60 / 90 / 120 min</td></tr>
+  <tr><td>Visit Mode</td><td>Toggle + multi-select pills</td><td>Two-way toggle: <strong>Live Visit</strong> (Video, Phone, In-person — multi-select pills) or <strong>E-Consult</strong> (async). Cannot mix synchronous and asynchronous modes.</td></tr>
+  <tr><td>Session Type</td><td>Select</td><td>1:1 or Group</td></tr>
+  <tr><td>Slots (max)</td><td>Number input</td><td>1–99. Disabled and locked to 1 for 1:1 sessions.</td></tr>
+  <tr><td>Visible to Patients</td><td>Toggle</td><td>Controls whether this option appears in the booking flow.</td></tr>
+  <tr><td>Accepted Patient Types</td><td>Checkbox cards</td><td>At least one required. Only types enabled at the room level are available.</td></tr>
+</table>
+
+<h4>Payment Tab</h4>
+<p>Per-patient-type pricing configuration, displayed as sub-tabs (one tab per selected patient type).</p>
+
+<table>
+  <tr><th>Patient Type</th><th>Payment Methods Available</th></tr>
+  <tr>
+    <td><strong>Self-Pay</strong></td>
+    <td>
+      Radio selection: "No collection required" or "Collect specific amount" (with dollar input).
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Group-Covered</strong></td>
+    <td>
+      Status-based grid (Verified / Not Verified / Pending / Error). Per-status options: No collection, Collect copay (with fallback amount), Specific amount. Statuses blocked at clinic level are grayed out.
+    </td>
+  </tr>
+  <tr>
+    <td><strong>Insurance</strong></td>
+    <td>
+      Status-based grid (Eligible / Not Eligible / Pending / Error). Same per-status options as Group-Covered. Statuses blocked at clinic level are grayed out.
+    </td>
+  </tr>
+</table>
+
+<div class="callout callout-info">
+  <strong>Completeness Check:</strong> The system runs <code>isPaymentIncomplete()</code> to detect visit options where a payment method is set to "specific" but no amount is entered, or where copay is set but the status is not blocked. Incomplete items show a warning badge in the table.
+</div>
+
+<h4>Intake Flow Tab</h4>
+<ul>
+  <li>Full <strong>Workflow Customizer</strong> instance embedded in the modal for per-visit-option workflow override.</li>
+  <li>By default, inherits the clinic's default workflow (<code>workflowOverride: null</code>).</li>
+  <li>When overridden, provides the same visual flow builder with all 20 step types, drag-and-drop, and conditional branching.</li>
+  <li>Includes a <strong>Patient Preview</strong> panel that simulates the workflow in a mobile phone frame.</li>
+</ul>
+
+<h4>Visit Notes Tab</h4>
+<ul>
+  <li>Same inheritance model as Intake Flow: clinic default toggle + override dropdown.</li>
+  <li>Preview shows the template content in a read-only monospace textarea.</li>
+</ul>
+
+<h3>9.3 Delete Visit Option</h3>
+<p>Triggered from the table action column. Requires confirmation via modal. Irreversible.</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 9. PATIENT PREVIEW                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-preview">10. Feature: Patient Preview</h2>
+
+<p>A side-panel simulation of the patient booking flow, toggled from the room settings header.</p>
+
+<h3>Behavior</h3>
+<ul>
+  <li>Activating the preview switches the layout to a two-column grid (settings left, 400px preview panel right).</li>
+  <li>Preview renders a mobile-phone-style simulation of the patient-facing experience.</li>
+  <li>Reflects the <em>current unsaved state</em> in real time — changes in the settings form are immediately visible in the preview.</li>
+</ul>
+
+<h3>Preview Steps (Simulated Flow)</h3>
+<p>The preview walks through the workflow steps defined in the intake flow customizer. Each step type renders a fully interactive patient-facing simulation:</p>
+<ul>
+  <li><strong>Login / Signup / Verification:</strong> Simulated auth screens with form fields.</li>
+  <li><strong>Dependant List:</strong> Member selection with "Myself" option and dependant cards.</li>
+  <li><strong>Visit Selection:</strong> Shows all visible visit options with name, duration, mode icons, and group slot count.</li>
+  <li><strong>Calendar Picker:</strong> Interactive date/time slot selection grid.</li>
+  <li><strong>Intake Form / Guest Intake:</strong> Renders form fields respecting type, enabled/required flags.</li>
+  <li><strong>Insurance / Guarantor:</strong> Insurance card capture and billing party forms.</li>
+  <li><strong>Pharmacy / Emergency Contact:</strong> Pharmacy search and emergency contact entry.</li>
+  <li><strong>Payment:</strong> Credit card selection with pricing based on patient type and status.</li>
+  <li><strong>Test Device:</strong> Camera/microphone permission simulation.</li>
+  <li><strong>Setup Session / EMR:</strong> Loading/processing step simulations.</li>
+  <li><strong>Confirmation / Walk-in Confirmation:</strong> Summary screen with visit details.</li>
+  <li><strong>Conditional Branch:</strong> Automatically routes to the correct branch based on patient type or insurance status.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 10. DATA MODEL                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="data-model">11. Data Model</h2>
+
+<h3>Clinic Object</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>patientTypes</code></td><td>String[]</td><td>Enabled patient types (<code>self-pay</code>, <code>group-covered</code>, <code>insurance</code>)</td></tr>
+  <tr><td><code>specialties[]</code></td><td>Array</td><td>Clinic specialties (id, name) — assignable to visit options</td></tr>
+  <tr><td><code>paymentConfig</code></td><td>Object</td><td>Payment rules per patient type</td></tr>
+  <tr><td><code>defaultNotesTemplateId</code></td><td>String</td><td>ID of the default notes template</td></tr>
+  <tr><td><code>formLibrary[]</code></td><td>Array</td><td>Reusable forms (id, name, fields[]) — referenced by workflow form steps. Fields have: id, label, type, required, enabled.</td></tr>
+  <tr><td><code>notesTemplates[]</code></td><td>Array</td><td>Reusable notes templates (id, name, content, sections[])</td></tr>
+  <tr><td><code>defaultWorkflow</code></td><td>Object</td><td>Default patient intake workflow (id, name, steps[]) — see Intake Flow Customizer</td></tr>
+</table>
+
+<h3>Room Object</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>id</code></td><td>String</td><td>Unique room identifier (e.g., <code>room_1</code>)</td></tr>
+  <tr><td><code>roomName</code></td><td>String</td><td>Display name</td></tr>
+  <tr><td><code>roomCode</code></td><td>String</td><td>5-char alphanumeric sharing code</td></tr>
+  <tr><td><code>hours</code></td><td>Object</td><td>Timezone, mode (always/scheduled), schedule[], closureMessage</td></tr>
+  <tr><td><code>visibility</code></td><td>Enum</td><td><code>public</code> | <code>unlisted</code></td></tr>
+  <tr><td><code>patientTypes</code></td><td>String[]</td><td>Enabled patient types for the room</td></tr>
+  <tr><td><code>visitOptions[]</code></td><td>Array</td><td>Array of visit option objects</td></tr>
+</table>
+
+<h3>Visit Option Object</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>id</code></td><td>String</td><td>Unique identifier (e.g., <code>vo_1</code>)</td></tr>
+  <tr><td><code>name</code></td><td>String</td><td>Visit type name</td></tr>
+  <tr><td><code>duration</code></td><td>String</td><td>Duration label (e.g., "30 min")</td></tr>
+  <tr><td><code>type</code></td><td>Enum</td><td><code>1:1</code> | <code>Group</code></td></tr>
+  <tr><td><code>slots</code></td><td>Number</td><td>Max participants (1 for 1:1)</td></tr>
+  <tr><td><code>mode</code></td><td>String[]</td><td>Array of modes. Synchronous: <code>Video</code>, <code>Phone</code>, <code>In-person</code> (may combine). Asynchronous: <code>E-Consult</code> (exclusive). E.g. <code>["Video", "Phone"]</code></td></tr>
+  <tr><td><code>visible</code></td><td>Boolean</td><td>Whether patients can see this option</td></tr>
+  <tr><td><code>patientTypes</code></td><td>String[]</td><td>Accepted patient types for this visit</td></tr>
+  <tr><td><code>pricing</code></td><td>Object</td><td>Per-patient-type payment config (see Payment section)</td></tr>
+  <tr><td><code>specialties</code></td><td>String[]</td><td>IDs of assigned specialties from clinic specialties list</td></tr>
+  <tr><td><code>notesTemplateId</code></td><td>String|null</td><td><code>null</code> = clinic default; string = specific template ID</td></tr>
+  <tr><td><code>workflowOverride</code></td><td>Object|null</td><td><code>null</code> = use clinic default workflow; object = custom workflow (id, name, steps[])</td></tr>
+</table>
+
+<h3>Pricing Structure</h3>
+<div class="diagram">{
+  "self-pay": { method: "specific"|"none", amount: "$", fallback: "" },
+  "group-covered": {
+    "verified":     { method: "copay"|"specific"|"none", amount: "$", fallback: "$" },
+    "not_verified": { ... },
+    "pending":      { ... },
+    "error":        { ... }
+  },
+  "insurance": {
+    "eligible":     { method: "copay"|"specific"|"none", amount: "$", fallback: "$" },
+    "not_eligible": { ... },
+    "pending":      { ... },
+    "error":        { ... }
+  }
+}</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 11. ARCHITECTURE                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="architecture">12. Component Architecture</h2>
+
+<div class="diagram">App.jsx
+ └── VersionBLayout              (router / state owner)
+      ├── ClinicTemplatesPage    (clinic settings)
+      │    ├── PatientTypes
+      │    ├── PaymentSettings
+      │    ├── WorkflowCustomizer (intake flow builder)
+      │    │    ├── StepCard / Connector / AddStepPicker
+      │    │    └── ConditionalBranches
+      │    ├── FormLibraryEditor  (drag-and-drop form builder)
+      │    └── NotesTemplateEditor (drag-and-drop section builder)
+      ├── WaitingRoomsListPage   (room list / CRUD)
+      └── WaitingRoomSettingsV2  (single room config)
+           ├── Breadcrumb
+           ├── OperatingHours
+           ├── PatientTypes
+           ├── VisitOptionsTableV2  (up/down reorder)
+           │    ├── RoomVisitOptionModal   (add/edit modal)
+           │    └── ConfirmModal           (delete confirmation)
+           └── PatientPreview             (live patient simulation)
+                └── 15+ step components  (one per workflow step type)</div>
+
+<h3>State Management</h3>
+<ul>
+  <li><strong>VersionBLayout</strong> owns the top-level state: <code>clinic</code> object and <code>rooms[]</code> array.</li>
+  <li>Room settings page uses a <code>useDirty()</code> custom hook that tracks a serialized "saved" snapshot for dirty detection.</li>
+  <li>All state is held in React's <code>useState</code> — no external state management library.</li>
+  <li>Data flows downward via props; changes flow upward via callback props (<code>onChange</code>, <code>onSave</code>).</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 12. UX PATTERNS                                              -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="ux">13. UX &amp; Interaction Patterns</h2>
+
+<table>
+  <tr><th>Pattern</th><th>Implementation</th></tr>
+  <tr><td>Dirty state tracking</td><td>JSON serialization comparison via <code>useDirty()</code> hook. "Unsaved changes" badge + disabled save button.</td></tr>
+  <tr><td>Toast notifications</td><td>Auto-dismissible success toasts for save and clipboard copy actions.</td></tr>
+  <tr><td>Up/down reordering</td><td>Arrow buttons on visit options table for simple reordering (typical list &lt; 5 items).</td></tr>
+  <tr><td>Drag-and-drop</td><td>HTML5 Drag API in workflow customizer (step reordering, cross-branch moves), form library editor (field palette + reorder), and notes template editor (section palette + reorder). Visual drop zone feedback.</td></tr>
+  <tr><td>Modal overlay</td><td>Fixed overlay with scroll lock (<code>overflow: hidden</code>). Escape key and backdrop click to dismiss.</td></tr>
+  <tr><td>Confirmation dialogs</td><td>Used for all destructive actions (delete room, delete visit option, delete template).</td></tr>
+  <tr><td>Tab navigation</td><td>Used in visit option modal (General/Payment/Intake/Notes) and clinic settings (Payment/Intake/Notes).</td></tr>
+  <tr><td>Error indicators</td><td>Red dot on General tab when validation errors exist. Amber warning on incomplete payment.</td></tr>
+  <tr><td>Template inheritance</td><td>Toggle-based "Use clinic default" with inline preview. Override dropdown when toggled off.</td></tr>
+  <tr><td>Single-room shortcut</td><td>When only one room exists, skip list view and navigate directly to room settings.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 13. EDGE CASES                                               -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="edge-cases">14. Edge Cases &amp; Validation</h2>
+
+<table>
+  <tr><th>Scenario</th><th>Behavior</th></tr>
+  <tr><td>No patient types enabled at room level</td><td>Warning alert in visit option modal: "No patient types enabled for this room."</td></tr>
+  <tr><td>Visit option with no patient types selected</td><td>Validation error: "Select at least one patient type." Modal stays open on General tab.</td></tr>
+  <tr><td>Visit option with no mode selected</td><td>Validation error: "Select at least one visit mode."</td></tr>
+  <tr><td>Mixing sync and async visit modes</td><td>Prevented by UI: selecting "Live Visit" disables E-Consult toggle and vice versa. Implemented as a two-way segmented control.</td></tr>
+  <tr><td>Self-pay "specific amount" with no amount entered</td><td><code>isPaymentIncomplete()</code> returns true → amber warning in table.</td></tr>
+  <tr><td>Insurance/Group status blocked at clinic level</td><td>Status row grayed out in payment grid. Label: "Blocked in clinic settings." No pricing input.</td></tr>
+  <tr><td>Delete last remaining room</td><td>Delete button disabled with reduced opacity.</td></tr>
+  <tr><td>Delete template referenced by visit options</td><td>Confirmation warns: "Rooms referencing it will lose the link."</td></tr>
+  <tr><td>Session type changed from Group to 1:1</td><td>Slots automatically reset to 1 and input is disabled.</td></tr>
+  <tr><td>Switching to payment tab with no patient types</td><td>Warning: "Select at least one patient type in the General tab first."</td></tr>
+  <tr><td>Empty visit options list</td><td>Empty state illustration with "Add Visit Option" CTA.</td></tr>
+  <tr><td>Empty rooms list</td><td>Empty state illustration with "Add Room" CTA.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 14. FUTURE                                                   -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="future">15. Future Considerations</h2>
+
+<ul>
+  <li><strong>API integration &amp; persistence:</strong> Current implementation is client-side state only. Needs backend API for CRUD operations with optimistic UI updates.</li>
+  <li><strong>Role-based access control:</strong> Differentiate between clinic admin and provider-level permissions for room and template management.</li>
+  <li><strong>Custom intake fields:</strong> <span class="tag tag-must">Done</span> Form library now supports 8 field types with drag-and-drop builder. Future: add conditional visibility rules between fields.</li>
+  <li><strong>Multi-provider rooms:</strong> Support assigning multiple providers to a single waiting room with provider-specific visit options.</li>
+  <li><strong>Scheduling/calendar integration:</strong> Connect visit options to provider availability calendars for real-time slot booking.</li>
+  <li><strong>Stripe payment gateway:</strong> Complete the Stripe Connect integration (currently mocked) for actual payment collection.</li>
+  <li><strong>Audit log:</strong> Track configuration changes with timestamps and user attribution.</li>
+  <li><strong>Bulk operations:</strong> Copy visit options between rooms, duplicate room configurations.</li>
+  <li><strong>Localization:</strong> Support multi-language configuration for patient-facing content (room names, visit option names, closure messages).</li>
+</ul>
+
+<hr style="margin-top: 48px; border: none; border-top: 2px solid var(--border);">
+<p style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 16px;">
+  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.1 — April 2026
+</p>
+
+</body>
+</html>
