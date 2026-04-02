@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
+import { pinsCollection, doc, onSnapshot, setDoc, deleteDoc, isConfigured } from '../firebase';
 
 /* ── Persistence ────────────────────────────────────────── */
 
 const STORAGE_KEY = 'vsee_annotations';
-const load = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
-const save = (pins) => localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
+const loadLocal = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } };
+const saveLocal = (pins) => localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
 
 /* ── Page context — lets child components report the active page ── */
 
@@ -251,8 +252,31 @@ function InlineCommentPopup({ x, y, defaultAuthor, onSubmit, onCancel }) {
 
 /* ── Main Annotations Component ─────────────────────────── */
 
+/* ── Firestore helpers ──────────────────────────────────── */
+
+function pinToDoc(pin) {
+  return { ...pin, replies: JSON.stringify(pin.replies || []) };
+}
+
+function docToPin(d) {
+  const data = d.data ? d.data() : d;
+  return { ...data, id: d.id || data.id, replies: JSON.parse(data.replies || '[]') };
+}
+
+async function fbSave(pin) {
+  if (!isConfigured || !pinsCollection) return;
+  await setDoc(doc(pinsCollection, pin.id), pinToDoc(pin));
+}
+
+async function fbDelete(id) {
+  if (!isConfigured || !pinsCollection) return;
+  await deleteDoc(doc(pinsCollection, id));
+}
+
+/* ── Main Annotations Component ─────────────────────────── */
+
 export default function Annotations({ children }) {
-  const [pins, setPins] = useState(load);
+  const [pins, setPins] = useState(() => isConfigured ? [] : loadLocal());
   const [active, setActive] = useState(false); // annotation mode
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState(null);
@@ -262,8 +286,27 @@ export default function Annotations({ children }) {
   const [overlayPage, setOverlayPage] = useState(null);
   const currentPage = overlayPage || basePage;
   const containerRef = useRef(null);
+  const firestoreManaged = useRef(false); // true once Firestore snapshot is active
 
-  useEffect(() => { save(pins); }, [pins]);
+  // Real-time Firestore listener
+  useEffect(() => {
+    if (!isConfigured || !pinsCollection) return;
+    const unsub = onSnapshot(pinsCollection, (snapshot) => {
+      const all = snapshot.docs.map(docToPin);
+      all.sort((a, b) => a.time - b.time);
+      // Re-index
+      all.forEach((p, i) => { p.index = i + 1; });
+      setPins(all);
+      firestoreManaged.current = true;
+    });
+    return unsub;
+  }, []);
+
+  // localStorage fallback when Firebase is not configured
+  useEffect(() => {
+    if (!firestoreManaged.current) saveLocal(pins);
+  }, [pins]);
+
   useEffect(() => { if (lastAuthor) localStorage.setItem('vsee_annotation_author', lastAuthor); }, [lastAuthor]);
   // Clear placement and selection when navigating pages
   useEffect(() => { setPlacing(null); setSelectedPin(null); }, [currentPage]);
@@ -295,7 +338,7 @@ export default function Annotations({ children }) {
   const addPin = (author, text) => {
     if (!placing) return;
     const pin = {
-      id: `pin_${Date.now()}`,
+      id: `pin_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       x: placing.x, y: placing.y,
       author, text,
       time: Date.now(),
@@ -304,26 +347,44 @@ export default function Annotations({ children }) {
       page: currentPage,
     };
     setPins(prev => [...prev, pin]);
+    fbSave(pin);
     setLastAuthor(author);
     setPlacing(null);
   };
 
   const deletePin = (id) => {
     setPins(prev => prev.filter(p => p.id !== id));
+    fbDelete(id);
     if (selectedPin === id) setSelectedPin(null);
   };
 
   const addReply = (pinId, author, text) => {
-    setPins(prev => prev.map(p => p.id === pinId ? {
-      ...p,
-      replies: [...(p.replies || []), { author, text, time: Date.now() }],
-    } : p));
+    setPins(prev => {
+      const next = prev.map(p => p.id === pinId ? {
+        ...p,
+        replies: [...(p.replies || []), { author, text, time: Date.now() }],
+      } : p);
+      const updated = next.find(p => p.id === pinId);
+      if (updated) fbSave(updated);
+      return next;
+    });
     setLastAuthor(author);
   };
 
   const movePin = useCallback((id, x, y) => {
-    setPins(prev => prev.map(p => p.id === id ? { ...p, x, y } : p));
+    setPins(prev => {
+      const next = prev.map(p => p.id === id ? { ...p, x, y } : p);
+      const updated = next.find(p => p.id === id);
+      if (updated) fbSave(updated);
+      return next;
+    });
   }, []);
+
+  const clearAll = () => {
+    pins.forEach(p => fbDelete(p.id));
+    setPins([]);
+    setSelectedPin(null);
+  };
 
   const visiblePins = pins.filter(p => p.page === currentPage);
   const pageComments = visiblePins.reduce((n, p) => n + 1 + (p.replies?.length || 0), 0);
@@ -442,7 +503,7 @@ export default function Annotations({ children }) {
           <div style={{ display: 'flex', gap: 6 }}>
             {pins.length > 0 && (
               <button
-                onClick={() => { if (confirm('Clear all comments?')) { setPins([]); setSelectedPin(null); } }}
+                onClick={() => { if (confirm('Clear all comments?')) clearAll(); }}
                 title="Clear all"
                 style={{
                   background: 'none', border: '1px solid #E5E7EB', borderRadius: 6,
