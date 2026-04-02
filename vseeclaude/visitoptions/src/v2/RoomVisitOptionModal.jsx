@@ -3,7 +3,7 @@ import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
-import { NotesTemplateEditor, FormLibraryEditor } from './TemplateEditors';
+import { NotesTemplateEditor } from './TemplateEditors';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -61,7 +61,6 @@ const EMPTY = {
   specialties: [],
   pricing: { ...DEFAULT_PT_PRICING },
   notesTemplateId: null,    // null = use room visitDefaults
-  intakeFormId: null,       // null = no form selected
   workflowOverride: null,   // null = use clinic default intake flow
 };
 
@@ -132,7 +131,6 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
   const [editingNotesTemplate, setEditingNotesTemplate] = useState(null);
-  const [editingForm, setEditingForm] = useState(null);
 
   const { setOverlayPage } = useAnnotationPage();
   const modalPage = `modal:${existing ? existing.id : 'new'}:${activeTab}`;
@@ -389,22 +387,30 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     <span style={{ fontSize: 13 }}>No patient types enabled for this room. Add them in the Patient Types section.</span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                     {availableTypes.map((pt) => {
                       const checked = form.patientTypes.includes(pt.id);
                       return (
-                        <label key={pt.id} className={`pt-card${checked ? ' selected' : ''}`} style={{ padding: '10px 14px' }}>
+                        <label key={pt.id} className={`pt-card${checked ? ' selected' : ''}`}>
                           <input type="checkbox" checked={checked} onChange={() => togglePatientType(pt.id)} style={{ display: 'none' }} />
-                          <div className={`ds-checkbox${checked ? ' checked' : ''}`} aria-hidden="true">
+                          <div className={`ds-checkbox${checked ? ' checked' : ''}`} style={{ marginTop: 2 }} aria-hidden="true">
                             {checked && (
                               <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
                                 <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </div>
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 14, fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{pt.label}</span>
-                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{pt.description}</span>
+                          <div>
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              fontSize: 14, fontWeight: 600,
+                              color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
+                              marginBottom: 3,
+                            }}>
+                              <span style={{ color: checked ? 'var(--brand)' : 'var(--grey-400)' }}>{pt.icon}</span>
+                              {pt.label}
+                            </div>
+                            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{pt.description}</p>
                           </div>
                         </label>
                       );
@@ -666,75 +672,6 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                 })()}
               </div>
 
-              {/* ── Intake Form section ── */}
-              <div>
-                <label className="form-label" style={{ marginBottom: 8 }}>Intake Form</label>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                  Select an intake form patients fill out before the visit, or edit to customize fields.
-                </p>
-
-                {!editingForm && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(clinic.formLibrary || []).map(f => {
-                      const selected = form.intakeFormId === f.id;
-                      return (
-                        <div
-                          key={f.id}
-                          onClick={() => set('intakeFormId', selected ? null : f.id)}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '10px 14px', borderRadius: 'var(--r-md)', cursor: 'pointer',
-                            border: `1.5px solid ${selected ? 'var(--brand)' : 'var(--border)'}`,
-                            background: selected ? 'var(--brand-50)' : 'white',
-                            transition: 'all 150ms',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{
-                              width: 16, height: 16, borderRadius: '50%',
-                              border: `2px solid ${selected ? 'var(--brand)' : 'var(--border-strong)'}`,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)' }} />}
-                            </div>
-                            <div>
-                              <p style={{ fontSize: 13, fontWeight: selected ? 600 : 500, color: selected ? 'var(--brand)' : 'var(--text-primary)' }}>{f.name}</p>
-                              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{f.fields?.length || 0} fields</p>
-                            </div>
-                          </div>
-                          {selected && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={(e) => { e.stopPropagation(); setEditingForm({ ...f, fields: f.fields?.map(fl => ({ ...fl })) || [] }); }}
-                            >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              &nbsp;Edit
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {(clinic.formLibrary || []).length === 0 && (
-                      <div style={{ padding: '16px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 'var(--r-md)', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                        No intake forms configured. Create forms in Clinic Settings → Templates.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Inline form editor */}
-                {editingForm && (
-                  <FormLibraryEditor
-                    form={editingForm}
-                    onSave={(saved) => {
-                      setEditingForm(null);
-                      set('intakeFormId', saved.id);
-                    }}
-                    onCancel={() => setEditingForm(null)}
-                  />
-                )}
-              </div>
 
             </div>
           )}

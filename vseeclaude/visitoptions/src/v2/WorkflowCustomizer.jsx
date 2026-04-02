@@ -25,40 +25,8 @@ const STEP_TYPES = [
 
   // ── Forms ──
   { id: 'form', category: 'Forms', label: 'Form', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Custom form from the clinic form library.',
+    desc: 'A form from the clinic form library — includes intake forms, custom forms, and more.',
     icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>),
-  },
-  { id: 'intake_form', category: 'Forms', label: 'Intake Form', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Basic patient intake — collects demographics, contact info, reason for visit, and optional file attachments.',
-    icon: I(<><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></>),
-  },
-  { id: 'guest_intake', category: 'Forms', label: 'Guest Intake', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Simplified intake for walk-in guests — asks for the health concern and optional file attachments.',
-    icon: I(<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>),
-  },
-  { id: 'insurance_form', category: 'Forms', label: 'Insurance', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Collects insurance info including carrier, subscriber ID, group number, guarantor details, and card photo uploads.',
-    icon: I(<><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><path d="M7 15h4"/></>),
-  },
-  { id: 'guarantor', category: 'Forms', label: 'Guarantor', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Collects billing/responsible party details — name, relationship, contact info, and address.',
-    icon: I(<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>),
-  },
-  { id: 'pharmacy', category: 'Forms', label: 'Pharmacy', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Captures the patient\'s preferred pharmacy for prescriptions.',
-    icon: I(<><path d="M3 3h18v4H3z"/><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></>),
-  },
-  { id: 'emergency_contact', category: 'Forms', label: 'Emergency Contact', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Collects an emergency contact person\'s name, relationship, phone, and address.',
-    icon: I(<><path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.35a2 2 0 0 1-.45 2.11L7.91 8.3"/></>),
-  },
-  { id: 'create_dependant', category: 'Forms', label: 'Create Dependant', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'Form to register a new family member/dependant under the patient\'s account.',
-    icon: I(<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></>),
-  },
-  { id: 'cancel_survey', category: 'Forms', label: 'Cancel Intake Survey', color: '#EF4444', bgColor: '#FEF2F2',
-    desc: 'Asks the patient why they\'re cancelling — shown when they leave the workflow early.',
-    icon: I(<><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>),
   },
 
   // ── Steps ──
@@ -69,7 +37,6 @@ const STEP_TYPES = [
   },
   { id: 'dependant_list', category: 'Steps', label: 'Dependant List', color: 'var(--info)', bgColor: 'var(--info-light)',
     desc: 'Lets the patient choose who the visit is for — themselves or a family member/dependant.',
-    autoPair: 'create_dependant',
     icon: I(<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>),
   },
   { id: 'scheduling', category: 'Steps', label: 'Calendar Picker', color: 'var(--info)', bgColor: 'var(--info-light)',
@@ -146,6 +113,17 @@ function branchesForCondition(conditionType, clinic) {
   }
   return [];
 }
+
+const BUILTIN_FORMS = [
+  { id: '_intake_form',       name: 'Intake Form',       desc: 'Basic patient intake — demographics, contact info, reason for visit, and file attachments.' },
+  { id: '_guest_intake',      name: 'Guest Intake',      desc: 'Simplified intake for walk-in guests — health concern and optional file attachments.' },
+  { id: '_insurance_form',    name: 'Insurance Form',    desc: 'Insurance carrier, subscriber ID, group number, guarantor, and card photo uploads.' },
+  { id: '_guarantor',         name: 'Guarantor',         desc: 'Billing/responsible party details — name, relationship, contact info, and address.' },
+  { id: '_pharmacy',          name: 'Pharmacy',          desc: 'Patient\'s preferred pharmacy for prescriptions.' },
+  { id: '_emergency_contact', name: 'Emergency Contact', desc: 'Emergency contact person\'s name, relationship, phone, and address.' },
+  { id: '_create_dependant',  name: 'Create Dependant',  desc: 'Register a new family member/dependant under the patient\'s account.' },
+  { id: '_cancel_survey',     name: 'Cancel Intake Survey', desc: 'Asks the patient why they\'re cancelling the intake.' },
+];
 
 const uid = () => `step_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
@@ -341,7 +319,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
             </span>
             {step.type === 'form' && step.formId && (
               <span className="badge badge-info" style={{ fontSize: 10 }}>
-                {clinic?.formLibrary?.find(f => f.id === step.formId)?.name || step.formId}
+                {[...BUILTIN_FORMS, ...(clinic?.formLibrary || [])].find(f => f.id === step.formId)?.name || step.formId}
               </span>
             )}
             {step.type === 'conditional' && (
@@ -389,14 +367,22 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
               value={step.formId || ''}
               onChange={e => {
                 const formId = e.target.value || null;
-                const form = clinic?.formLibrary?.find(f => f.id === formId);
+                const allForms = [...BUILTIN_FORMS, ...(clinic?.formLibrary || [])];
+                const form = allForms.find(f => f.id === formId);
                 onUpdate({ ...step, formId, label: form?.name || step.label });
               }}
               className="input"
               style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', width: 240 }}
             >
               <option value="">— Select a form —</option>
-              {clinic?.formLibrary?.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              <optgroup label="Built-in">
+                {BUILTIN_FORMS.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </optgroup>
+              {(clinic?.formLibrary || []).length > 0 && (
+                <optgroup label="Custom">
+                  {clinic.formLibrary.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </optgroup>
+              )}
             </select>
           </div>
         </div>
