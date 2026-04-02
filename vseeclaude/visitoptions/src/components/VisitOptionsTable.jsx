@@ -163,13 +163,13 @@ export default function VisitOptionsTable({ items, allowedPatientTypes, paymentC
                     </div>
                   </td>
                   <td>
-                    <span
-                      title={item.mode}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}
-                    >
-                      {MODE_ICONS[item.mode]}
-                      <span style={{ fontSize: 13 }}>{item.mode}</span>
-                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {(Array.isArray(item.mode) ? item.mode : [item.mode]).map(m => (
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)', fontSize: 13 }}>
+                          {MODE_ICONS[m]}{m}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td>
                     <Toggle

@@ -12,7 +12,17 @@ const MODE_ICONS = {
   Video:       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
   Phone:       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
   'In-person': <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
-  Chat:        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+  'E-Consult': <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>,
+};
+
+const formatModes = (mode) => {
+  const modes = Array.isArray(mode) ? mode : [mode];
+  return modes.map((m, i) => (
+    <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      {i > 0 && <span style={{ color: 'var(--grey-300)', margin: '0 2px' }}>/</span>}
+      {MODE_ICONS[m]}{m}
+    </span>
+  ));
 };
 
 /* ── Back button helper ──────────────────────────────────── */
@@ -61,7 +71,7 @@ function VisitStep({ visits, onSelect, onBack }) {
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.duration}</span>
                 <span style={{ color: 'var(--grey-300)' }}>·</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {MODE_ICONS[visit.mode]} {visit.mode}
+                  {formatModes(visit.mode)}
                 </span>
                 {visit.type !== '1:1' && (
                   <>
@@ -1087,7 +1097,7 @@ function ConfirmationStep({ visit, ptId, onContinue, onBack }) {
                 {visit.duration}
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                {MODE_ICONS[visit.mode]} {visit.mode}
+                {formatModes(visit.mode)}
               </span>
             </div>
           </div>
@@ -1204,7 +1214,7 @@ function ConfirmStep({ visit, ptId, onConfirm, onBack }) {
               {visit.duration}
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {MODE_ICONS[visit.mode]} {visit.mode}
+              {formatModes(visit.mode)}
             </span>
           </div>
         </div>
@@ -1239,9 +1249,8 @@ function BookedStep({ visit, ptId, onReset }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.duration}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {MODE_ICONS[visit.mode]}
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{visit.mode}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+            {formatModes(visit.mode)}
           </div>
           {ptMeta && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

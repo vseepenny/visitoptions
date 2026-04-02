@@ -27,7 +27,7 @@ const MODE_ICONS = {
   Video:      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
   Phone:      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
   'In-person':<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
-  Chat:       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+  'E-Consult': <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>,
 };
 
 const PT_BADGES = {
@@ -77,39 +77,11 @@ function isPaymentIncomplete(item, clinic) {
 function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
-  const [dragId, setDragId] = useState(null);
-  const [dragOverId, setDragOverId] = useState(null);
-
-  const handleDragStart = (e, id) => {
-    e.dataTransfer.setData('text/plain', id);
-    e.dataTransfer.effectAllowed = 'move';
-    const el = e.currentTarget;
-    e.dataTransfer.setDragImage(el, el.offsetWidth / 2, el.offsetHeight / 2);
-    // Defer state update so browser captures drag image before re-render
-    requestAnimationFrame(() => setDragId(id));
-  };
-
-  const handleDragOver = (e, id) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (id !== dragId) setDragOverId(id);
-  };
-
-  const handleDrop = (e, targetId) => {
-    e.preventDefault();
-    if (!dragId || dragId === targetId) return;
-    const from = items.findIndex(it => it.id === dragId);
-    const to   = items.findIndex(it => it.id === targetId);
+  const moveItem = (from, to) => {
+    if (to < 0 || to >= items.length) return;
     const next = [...items];
     next.splice(to, 0, next.splice(from, 1)[0]);
     onChange(next);
-    setDragId(null);
-    setDragOverId(null);
-  };
-
-  const handleDragEnd = () => {
-    setDragId(null);
-    setDragOverId(null);
   };
 
   const handleSave = (formData) => {
@@ -175,7 +147,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
           <table className="table" style={{ minWidth: 700 }}>
             <thead>
               <tr>
-                <th style={{ width: 32 }} />
+                <th style={{ width: 48 }}>Order</th>
                 <th>Name</th>
                 <th>Duration</th>
                 <th>Mode</th>
@@ -185,34 +157,23 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
               </tr>
             </thead>
             <tbody>
-              {items.map(item => {
-                const isDragging = dragId === item.id;
-                const isOver = dragOverId === item.id;
+              {items.map((item, idx) => {
                 const incomplete = isPaymentIncomplete(item, clinic);
                 return (
-                  <tr
-                    key={item.id}
-                    draggable
-                    onDragStart={e => handleDragStart(e, item.id)}
-                    onDragOver={e => handleDragOver(e, item.id)}
-                    onDrop={e => handleDrop(e, item.id)}
-                    onDragEnd={handleDragEnd}
-                    style={{
-                      opacity: isDragging ? 0.35 : 1,
-                      outline: isOver ? '2px solid var(--brand)' : 'none',
-                      outlineOffset: -2,
-                      transition: 'opacity 150ms',
-                    }}
-                  >
-                    <td style={{ width: 32, padding: '0 4px 0 8px', cursor: 'grab' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--grey-400)" strokeWidth="2" style={{ display: 'block' }}>
-                        <circle cx="9" cy="5"  r="1" fill="var(--grey-400)" stroke="none" />
-                        <circle cx="9" cy="12" r="1" fill="var(--grey-400)" stroke="none" />
-                        <circle cx="9" cy="19" r="1" fill="var(--grey-400)" stroke="none" />
-                        <circle cx="15" cy="5"  r="1" fill="var(--grey-400)" stroke="none" />
-                        <circle cx="15" cy="12" r="1" fill="var(--grey-400)" stroke="none" />
-                        <circle cx="15" cy="19" r="1" fill="var(--grey-400)" stroke="none" />
-                      </svg>
+                  <tr key={item.id}>
+                    <td style={{ width: 48, padding: '0 4px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        {idx > 0 && (
+                          <button className="btn-icon" style={{ width: 22, height: 18 }} onClick={() => moveItem(idx, idx - 1)} title="Move up">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                          </button>
+                        )}
+                        {idx < items.length - 1 && (
+                          <button className="btn-icon" style={{ width: 22, height: 18 }} onClick={() => moveItem(idx, idx + 1)} title="Move down">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={{ fontWeight: 500 }}>
                       <div>{item.name}</div>
@@ -239,10 +200,13 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
                       </div>
                     </td>
                     <td>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)' }}>
-                        {MODE_ICONS[item.mode]}
-                        <span style={{ fontSize: 13 }}>{item.mode}</span>
-                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {(Array.isArray(item.mode) ? item.mode : [item.mode]).map(m => (
+                          <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)', fontSize: 13 }}>
+                            {MODE_ICONS[m]}{m}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td>
                       <Toggle checked={item.visible} onChange={() => toggleVisible(item.id)} label={`Toggle visibility for ${item.name}`} />

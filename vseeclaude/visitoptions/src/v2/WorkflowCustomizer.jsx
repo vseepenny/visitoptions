@@ -590,8 +590,9 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
       {/* Branch columns */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${Math.max(step.branches?.length || 1, 1)}, 1fr)`,
+        gridTemplateColumns: `repeat(${Math.max(step.branches?.length || 1, 1)}, minmax(180px, 1fr))`,
         gap: 10,
+        overflowX: 'auto',
       }}>
         {(step.branches || []).map((branch, bi) => (
           <div key={branch.id} style={{
@@ -599,7 +600,7 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
             borderRadius: 'var(--r-lg)',
             background: 'var(--grey-100)',
             padding: 10,
-            minWidth: 0,
+            minWidth: 180,
           }}>
             {/* Branch header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -812,7 +813,7 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic }) {
         )}
 
         {steps.map((step, i) => (
-          <div key={step.id} style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div key={step.id} style={{ width: '100%', maxWidth: step.type === 'conditional' ? 820 : 560, display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'max-width 200ms' }}>
             {/* Connector before step (or add-step picker) */}
             {addingAtIndex === i ? (
               <>

@@ -46,7 +46,9 @@ export const HOURS = [
 
 export const DURATIONS = ['15 min', '30 min', '45 min', '60 min', '90 min', '120 min'];
 export const TYPES = ['1:1', 'Group'];
-export const MODES = ['Video', 'Phone', 'In-person', 'Chat'];
+export const SYNC_MODES = ['Video', 'Phone', 'In-person'];
+export const ASYNC_MODES = ['E-Consult'];
+export const MODES = [...SYNC_MODES, ...ASYNC_MODES];
 
 export const ROOM_DEFAULT_INTAKE_FIELDS = [
   { id: 'chief_complaint',   label: 'Chief Complaint',       required: true,  enabled: true  },
@@ -82,7 +84,7 @@ export const defaultVisitOptions = [
     duration: '30 min',
     type: '1:1',
     slots: 1,
-    mode: 'Video',
+    mode: ['Video'],
     visible: true,
     patientTypes: ['self-pay', 'insurance'],
     intakeInherited: true,
@@ -103,7 +105,7 @@ export const defaultVisitOptions = [
     duration: '15 min',
     type: '1:1',
     slots: 1,
-    mode: 'Video',
+    mode: ['Video'],
     visible: true,
     patientTypes: ['self-pay', 'group-covered', 'insurance'],
     intakeInherited: true,

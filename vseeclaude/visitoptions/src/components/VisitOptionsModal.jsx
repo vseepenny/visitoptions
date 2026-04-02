@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DURATIONS, TYPES, MODES, NOTES_PRESETS, ROOM_DEFAULT_INTAKE_FIELDS } from '../data/initialData';
+import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES, NOTES_PRESETS, ROOM_DEFAULT_INTAKE_FIELDS } from '../data/initialData';
 import { PATIENT_TYPES } from './PatientTypes';
 
 /* ── Pricing constants ───────────────────────────────────── */
@@ -65,7 +65,7 @@ const EMPTY = {
   duration: '30 min',
   type: '1:1',
   slots: 1,
-  mode: 'Video',
+  mode: ['Video'],
   visible: true,
   patientTypes: [],
   pricing: { ...DEFAULT_PT_PRICING },
@@ -193,8 +193,8 @@ export default function VisitOptionsModal({ existing, allowedPatientTypes, payme
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
                 <div className="form-group">
                   <label className="form-label">Visit Mode</label>
-                  <select value={form.mode} onChange={(e) => set('mode', e.target.value)} className="input">
-                    {MODES.map((m) => <option key={m}>{m}</option>)}
+                  <select value={form.mode?.[0] || 'Video'} onChange={(e) => set('mode', [e.target.value])} className="input">
+                    {[...SYNC_MODES, ...ASYNC_MODES].map((m) => <option key={m}>{m}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
