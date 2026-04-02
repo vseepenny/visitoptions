@@ -265,12 +265,20 @@ function docToPin(d) {
 
 async function fbSave(pin) {
   if (!isConfigured || !pinsCollection) return;
-  await setDoc(doc(pinsCollection, pin.id), pinToDoc(pin));
+  try {
+    await setDoc(doc(pinsCollection, pin.id), pinToDoc(pin));
+  } catch (err) {
+    console.error('[Annotations] Firestore save failed:', err);
+  }
 }
 
 async function fbDelete(id) {
   if (!isConfigured || !pinsCollection) return;
-  await deleteDoc(doc(pinsCollection, id));
+  try {
+    await deleteDoc(doc(pinsCollection, id));
+  } catch (err) {
+    console.error('[Annotations] Firestore delete failed:', err);
+  }
 }
 
 /* ── Main Annotations Component ─────────────────────────── */
@@ -294,10 +302,12 @@ export default function Annotations({ children }) {
     const unsub = onSnapshot(pinsCollection, (snapshot) => {
       const all = snapshot.docs.map(docToPin);
       all.sort((a, b) => a.time - b.time);
-      // Re-index
       all.forEach((p, i) => { p.index = i + 1; });
       setPins(all);
       firestoreManaged.current = true;
+      console.log('[Annotations] Firestore synced:', all.length, 'pins');
+    }, (err) => {
+      console.error('[Annotations] Firestore listener error:', err);
     });
     return unsub;
   }, []);
