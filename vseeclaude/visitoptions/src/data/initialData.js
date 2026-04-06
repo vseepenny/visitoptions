@@ -140,16 +140,16 @@ export const defaultPaymentConfig = {
     verificationAccess: {
       verified:     { access: 'allow' },
       not_verified: { access: 'block' },
-      pending:      { access: 'review' },
-      error:        { access: 'review' },
+      pending:      { access: 'allow' },
+      error:        { access: 'allow' },
     },
   },
   'insurance': {
     eligibilityAccess: {
       eligible:     { access: 'allow' },
       not_eligible: { access: 'block' },
-      pending:      { access: 'review' },
-      error:        { access: 'review' },
+      pending:      { access: 'allow' },
+      error:        { access: 'allow' },
     },
   },
 };

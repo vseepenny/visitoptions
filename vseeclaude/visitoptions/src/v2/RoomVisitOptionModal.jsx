@@ -119,6 +119,116 @@ function SpecialtyPicker({ specialties, selected, onChange }) {
   );
 }
 
+/* ── Visit Mode Picker (6 variants for comparison) ─────── */
+
+const MODE_ICONS_LG = {
+  Video:       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
+  Phone:       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
+  'In-person': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
+  'E-Consult': <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+};
+
+function VisitModePicker({ modes, onChange, error }) {
+  const toggleMode = (m) => {
+    if (ASYNC_MODES.includes(m)) {
+      // Clicking async: if already async and selected, do nothing (can't deselect last). Otherwise switch to async.
+      if (!modes.includes(m)) onChange([m]);
+    } else {
+      // Clicking a sync mode: clear any async first, then toggle this sync mode
+      const syncOnly = modes.filter(x => !ASYNC_MODES.includes(x));
+      const next = syncOnly.includes(m) ? syncOnly.filter(x => x !== m) : [...syncOnly, m];
+      if (next.length > 0) onChange(next);
+      else onChange([m]); // can't end up empty, re-select
+    }
+  };
+  const ALL_MODES = [...SYNC_MODES, ...ASYNC_MODES];
+
+  return (
+    <div className="form-group" style={{ gridColumn: 'span 3' }}>
+      <label className="form-label">Visit Mode</label>
+
+      {(() => {
+        const syncActive = modes.some(m => SYNC_MODES.includes(m));
+        const asyncActive = modes.some(m => ASYNC_MODES.includes(m));
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* Sync group */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase',
+                  color: syncActive ? 'var(--brand)' : 'var(--text-tertiary)',
+                  transition: 'color 150ms',
+                }}>Synchronous</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {SYNC_MODES.map(m => {
+                    const checked = modes.includes(m);
+                    return (
+                      <button key={m} type="button" onClick={() => toggleMode(m)} style={{
+                        width: 80, height: 72, display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 6,
+                        borderRadius: 'var(--r-lg)',
+                        border: checked ? '2px solid var(--brand)' : '1.5px solid var(--border)',
+                        background: checked ? 'var(--brand-50)' : 'white',
+                        cursor: 'pointer', transition: 'all 120ms', position: 'relative',
+                      }}>
+                        <span style={{ color: checked ? 'var(--brand)' : 'var(--grey-400)', display: 'flex' }}>{MODE_ICONS_LG[m]}</span>
+                        <span style={{ fontSize: 11, fontWeight: checked ? 700 : 500, color: checked ? 'var(--brand)' : 'var(--text-secondary)' }}>{m}</span>
+                        {checked && (
+                          <div style={{ position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: '50%', background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ width: 1, background: 'var(--border)', margin: '18px 4px 4px', flexShrink: 0 }} />
+
+              {/* Async group */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase',
+                  color: asyncActive ? 'var(--brand)' : 'var(--text-tertiary)',
+                  transition: 'color 150ms',
+                }}>Asynchronous</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {ASYNC_MODES.map(m => {
+                    const checked = modes.includes(m);
+                    return (
+                      <button key={m} type="button" onClick={() => toggleMode(m)} style={{
+                        width: 80, height: 72, display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 6,
+                        borderRadius: 'var(--r-lg)',
+                        border: checked ? '2px solid var(--brand)' : '1.5px solid var(--border)',
+                        background: checked ? 'var(--brand-50)' : 'white',
+                        cursor: 'pointer', transition: 'all 120ms', position: 'relative',
+                      }}>
+                        <span style={{ color: checked ? 'var(--brand)' : 'var(--grey-400)', display: 'flex' }}>{MODE_ICONS_LG[m]}</span>
+                        <span style={{ fontSize: 11, fontWeight: checked ? 700 : 500, color: checked ? 'var(--brand)' : 'var(--text-secondary)' }}>{m}</span>
+                        {checked && (
+                          <div style={{ position: 'absolute', top: 4, right: 4, width: 14, height: 14, borderRadius: '50%', background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>Select one or more live modes, or E-Consult alone.</p>
+          </div>
+        );
+      })()}
+
+      {error && <p className="form-error">{error}</p>}
+    </div>
+  );
+}
+
 /* ── Component ───────────────────────────────────────────── */
 
 export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose }) {
@@ -251,80 +361,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     {DURATIONS.map((d) => <option key={d}>{d}</option>)}
                   </select>
                 </div>
-                <div className="form-group" style={{ gridColumn: 'span 3' }}>
-                  <label className="form-label">Visit Mode</label>
-                  {(() => {
-                    const modes = form.mode || [];
-                    const isAsync = modes.some(m => ASYNC_MODES.includes(m));
-                    const category = isAsync ? 'async' : 'live';
-                    const setCategory = (cat) => {
-                      set('mode', cat === 'async' ? ['E-Consult'] : ['Video']);
-                    };
-                    const toggleSyncMode = (m) => {
-                      const next = modes.includes(m) ? modes.filter(x => x !== m) : [...modes, m];
-                      if (next.length > 0) set('mode', next);
-                    };
-                    const MODE_ICONS = {
-                      Video:       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>,
-                      Phone:       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>,
-                      'In-person': <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
-                    };
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '6px 0' }}>
-                        {/* Toggle: Live vs Async */}
-                        <div style={{
-                          display: 'inline-flex', borderRadius: 'var(--r-md)', border: '1px solid var(--border)',
-                          overflow: 'hidden', alignSelf: 'flex-start',
-                        }}>
-                          {[
-                            { id: 'live', label: 'Live Visit' },
-                            { id: 'async', label: 'E-Consult (Async)' },
-                          ].map(opt => (
-                            <button
-                              key={opt.id} type="button"
-                              onClick={() => setCategory(opt.id)}
-                              style={{
-                                padding: '7px 18px', fontSize: 13, fontWeight: 600, border: 'none',
-                                background: category === opt.id ? 'var(--brand)' : 'white',
-                                color: category === opt.id ? 'white' : 'var(--text-secondary)',
-                                cursor: 'pointer', transition: 'all 150ms',
-                              }}
-                            >{opt.label}</button>
-                          ))}
-                        </div>
-                        {/* Sub-options for Live Visit */}
-                        {category === 'live' && (
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            {SYNC_MODES.map(m => {
-                              const checked = modes.includes(m);
-                              return (
-                                <button
-                                  key={m} type="button"
-                                  onClick={() => toggleSyncMode(m)}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '6px 14px', borderRadius: 'var(--r-full)',
-                                    fontSize: 13, fontWeight: checked ? 600 : 400,
-                                    border: checked ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                                    background: checked ? 'var(--brand-50)' : 'white',
-                                    color: checked ? 'var(--brand)' : 'var(--text-secondary)',
-                                    cursor: 'pointer', transition: 'all 150ms',
-                                  }}
-                                >{MODE_ICONS[m]}{m}</button>
-                              );
-                            })}
-                          </div>
-                        )}
-                        {category === 'async' && (
-                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
-                            Patient submits a request — provider reviews and responds asynchronously.
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  {errors.mode && <p className="form-error">{errors.mode}</p>}
-                </div>
+                <VisitModePicker modes={form.mode || []} onChange={(m) => set('mode', m)} error={errors.mode} />
                 <div className="form-group">
                   <label className="form-label">Session Type</label>
                   <select

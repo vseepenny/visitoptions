@@ -74,6 +74,8 @@ function isPaymentIncomplete(item, clinic) {
 
 /* ── Visit Options Table V2 ───────────────────────────────── */
 
+const ORDER_VARIANT = 'pills'; // kept A2: side-by-side pills
+
 function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
@@ -143,11 +145,12 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
           <button onClick={() => setModal({ mode: 'add' })} className="btn btn-secondary btn-sm">Add Visit Option</button>
         </div>
       ) : (
+        <>
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflowX: 'auto' }}>
           <table className="table" style={{ minWidth: 700 }}>
             <thead>
               <tr>
-                <th style={{ width: 48 }}>Order</th>
+                <th style={{ width: 56 }}></th>
                 <th>Name</th>
                 <th>Duration</th>
                 <th>Mode</th>
@@ -159,20 +162,39 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
             <tbody>
               {items.map((item, idx) => {
                 const incomplete = isPaymentIncomplete(item, clinic);
+                const isFirst = idx === 0;
+                const isLast = idx === items.length - 1;
                 return (
                   <tr key={item.id}>
-                    <td style={{ width: 48, padding: '0 4px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                        {idx > 0 && (
-                          <button className="btn-icon" style={{ width: 22, height: 18 }} onClick={() => moveItem(idx, idx - 1)} title="Move up">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-                          </button>
-                        )}
-                        {idx < items.length - 1 && (
-                          <button className="btn-icon" style={{ width: 22, height: 18 }} onClick={() => moveItem(idx, idx + 1)} title="Move down">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                          </button>
-                        )}
+
+                    <td style={{ width: 56, padding: '0 4px' }}>
+                      <div style={{ display: 'inline-flex', borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                        <button
+                          onClick={() => !isFirst && moveItem(idx, idx - 1)}
+                          disabled={isFirst}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 24, height: 26, border: 'none', borderRight: '1px solid var(--border)',
+                            background: isFirst ? 'var(--grey-50)' : 'white', cursor: isFirst ? 'default' : 'pointer',
+                            color: isFirst ? 'var(--grey-300)' : 'var(--text-secondary)',
+                          }}
+                          title="Move up"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <button
+                          onClick={() => !isLast && moveItem(idx, idx + 1)}
+                          disabled={isLast}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 24, height: 26, border: 'none',
+                            background: isLast ? 'var(--grey-50)' : 'white', cursor: isLast ? 'default' : 'pointer',
+                            color: isLast ? 'var(--grey-300)' : 'var(--text-secondary)',
+                          }}
+                          title="Move down"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
                       </div>
                     </td>
                     <td style={{ fontWeight: 500 }}>
@@ -243,6 +265,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {modal && (

@@ -340,13 +340,13 @@
   <tr>
     <td><strong>Group-Covered</strong></td>
     <td>
-      Require group ID toggle, require referral toggle, verification status access rules (verified / not verified / pending / error → allow / block / review).
+      Require group ID toggle, require referral toggle, verification status access rules (verified / not verified / pending / error → allow / block).
     </td>
   </tr>
   <tr>
     <td><strong>Insurance</strong></td>
     <td>
-      Eligibility status access rules (eligible / not eligible / pending / error → allow / block / review).
+      Eligibility status access rules (eligible / not eligible / pending / error → allow / block).
     </td>
   </tr>
 </table>
@@ -772,6 +772,7 @@
 
 <ul>
   <li><strong>API integration &amp; persistence:</strong> Current implementation is client-side state only. Needs backend API for CRUD operations with optimistic UI updates.</li>
+  <li><strong>Review access option:</strong> Add a third access level ("Review") for Group-Covered verification and Insurance eligibility statuses — patient can book but requires staff approval before the visit is confirmed. Currently only Allow / Block are supported.</li>
   <li><strong>Role-based access control:</strong> Differentiate between clinic admin and provider-level permissions for room and template management.</li>
   <li><strong>Custom intake fields:</strong> <span class="tag tag-must">Done</span> Form library now supports 8 field types with drag-and-drop builder. Future: add conditional visibility rules between fields.</li>
   <li><strong>Multi-provider rooms:</strong> Support assigning multiple providers to a single waiting room with provider-specific visit options.</li>

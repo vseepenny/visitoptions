@@ -142,8 +142,7 @@ function GroupCoveredPanel({ config, onChange }) {
       <div className="form-group">
         <label className="form-label">Verification-Based Access</label>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Control whether patients can book based on their group ID verification outcome.{' '}
-          <span style={{ color: 'var(--text-tertiary)' }}>Review = patient can book but requires staff approval. Payment amounts are configured per visit option.</span>
+          Control whether patients can book based on their group ID verification outcome. Payment amounts are configured per visit option.
         </p>
         <StatusAccessTable
           statuses={GROUP_STATUSES}
@@ -172,7 +171,6 @@ const GROUP_STATUSES = [
 const ACCESS_OPTIONS = [
   { value: 'allow',  label: 'Allow' },
   { value: 'block',  label: 'Block' },
-  { value: 'review', label: 'Review' },
 ];
 
 function StatusAccessTable({ statuses, config, onChangeConfig }) {
@@ -209,8 +207,7 @@ function InsurancePanel({ config, onChange }) {
       <div className="form-group">
         <label className="form-label">Eligibility-Based Access</label>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-          Control whether patients can book based on their insurance eligibility status.{' '}
-          <span style={{ color: 'var(--text-tertiary)' }}>Review = patient can book but requires staff approval. Payment amounts are configured per visit option.</span>
+          Control whether patients can book based on their insurance eligibility status. Payment amounts are configured per visit option.
         </p>
         <StatusAccessTable
           statuses={ELIGIBILITY_STATUSES}
