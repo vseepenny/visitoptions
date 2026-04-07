@@ -190,7 +190,7 @@
     <tr><td>Author</td><td>Penny (penny@vsee.com)</td></tr>
     <tr><td>Date</td><td>April 2, 2026</td></tr>
     <tr><td>Status</td><td>Draft</td></tr>
-    <tr><td>Version</td><td>2.2 (V2 architecture)</td></tr>
+    <tr><td>Version</td><td>2.3 (V2 architecture)</td></tr>
     <tr><td>Stack</td><td>React 19 · Vite 7 · Tailwind CSS 4</td></tr>
   </table>
 </div>
@@ -432,8 +432,8 @@
 <ul>
   <li><strong>Flow canvas:</strong> Vertical flow with "Patient Enters" start node, step cards connected by lines, and "Session Starts" end node.</li>
   <li><strong>Add Step:</strong> Full-width "Add step" button between each step. Opens a categorized picker dropdown.</li>
-  <li><strong>Drag-and-drop reordering:</strong> Each step card has a drag handle. Drop zones appear between steps during drag with visual feedback.</li>
-  <li><strong>Conditional branches:</strong> Branch on patient type or insurance status. Each branch is a column with its own step list. Steps can be dragged between branches.</li>
+  <li><strong>Drag-and-drop reordering:</strong> Each step card has a drag handle. Drop zones appear between steps during drag with visual feedback. Step card actions: joined up/down pill on the left, expand/collapse (±) and delete (×) on the right.</li>
+  <li><strong>Conditional branches:</strong> Branch on patient type or insurance status. Uses a <strong>tabbed layout</strong> — each branch condition is a tab with colored indicator dot and step count badge. Active tab shows its step list at full width. Steps can be dragged between branches by switching tabs.</li>
   <li><strong>Auto-pairing:</strong> Some steps auto-pair (e.g., Signup → Signup Verification).</li>
   <li><strong>Singleton enforcement:</strong> Certain steps (e.g., Consultation) can only appear once.</li>
 </ul>
@@ -446,7 +446,7 @@
 </ul>
 
 <div class="callout callout-info">
-  <strong>Conditional Branches:</strong> Branch columns expand to 820px max-width with 180px minimum per branch to prevent content clipping. Horizontal scroll is available as a fallback for many branches.
+  <strong>Conditional Branches:</strong> Rendered as a tabbed interface rather than side-by-side columns. Each branch condition is a tab; the active tab's step list gets the full available width. This scales well to 3–4+ branches without cramping. Tab bar scrolls horizontally if needed.
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -523,7 +523,7 @@
 <h3>9.1 Visit Options Table</h3>
 <ul>
   <li>Columns: order (up/down buttons), name, duration + session type badge, mode (with icons), visible toggle, patient type badges, action buttons (edit, delete).</li>
-  <li><strong>Up/down button reordering</strong> — simple arrow buttons to move visit options up or down in the list. Suitable for the typical case of &lt; 5 visit options per room.</li>
+  <li><strong>Pill-style reorder buttons</strong> — joined up/down button group (side-by-side pill) per row. Disabled state (grey) at top/bottom boundaries. Suitable for the typical case of &lt; 5 visit options per room.</li>
   <li><strong>Inline visibility toggle</strong> — switch visit options on/off without opening the modal.</li>
   <li><strong>Payment warning indicator</strong> — amber triangle with "Set up payment" link when pricing is incomplete. Clicking opens the modal directly on the Payment tab.</li>
   <li>Empty state with call-to-action when no visit options exist.</li>
@@ -538,7 +538,7 @@
   <tr><th>Field</th><th>Type</th><th>Validation</th></tr>
   <tr><td>Visit Name</td><td>Text input</td><td>Required. Error shown on empty.</td></tr>
   <tr><td>Duration</td><td>Select</td><td>15 / 30 / 45 / 60 / 90 / 120 min</td></tr>
-  <tr><td>Visit Mode</td><td>Toggle + multi-select pills</td><td>Two-way toggle: <strong>Live Visit</strong> (Video, Phone, In-person — multi-select pills) or <strong>E-Consult</strong> (async). Cannot mix synchronous and asynchronous modes.</td></tr>
+  <tr><td>Visit Mode</td><td>Icon tile picker</td><td>Grouped under <strong>Synchronous</strong> (Video, Phone, In-person — multi-select) and <strong>Asynchronous</strong> (E-Consult — exclusive). Group headers highlight green when active. Selecting async clears sync and vice versa. Default: Video.</td></tr>
   <tr><td>Session Type</td><td>Select</td><td>1:1 or Group</td></tr>
   <tr><td>Slots (max)</td><td>Number input</td><td>1–99. Disabled and locked to 1 for 1:1 sessions.</td></tr>
   <tr><td>Visible to Patients</td><td>Toggle</td><td>Controls whether this option appears in the booking flow.</td></tr>
@@ -734,7 +734,7 @@
   <tr><th>Pattern</th><th>Implementation</th></tr>
   <tr><td>Dirty state tracking</td><td>JSON serialization comparison via <code>useDirty()</code> hook. "Unsaved changes" badge + disabled save button.</td></tr>
   <tr><td>Toast notifications</td><td>Auto-dismissible success toasts for save and clipboard copy actions.</td></tr>
-  <tr><td>Up/down reordering</td><td>Arrow buttons on visit options table for simple reordering (typical list &lt; 5 items).</td></tr>
+  <tr><td>Pill-style reordering</td><td>Joined up/down button group (side-by-side pill) on visit options table and workflow step cards. Disabled state at boundaries.</td></tr>
   <tr><td>Drag-and-drop</td><td>HTML5 Drag API in workflow customizer (step reordering, cross-branch moves), form library editor (field palette + reorder), and notes template editor (section palette + reorder). Visual drop zone feedback.</td></tr>
   <tr><td>Modal overlay</td><td>Fixed overlay with scroll lock (<code>overflow: hidden</code>). Escape key and backdrop click to dismiss.</td></tr>
   <tr><td>Confirmation dialogs</td><td>Used for all destructive actions (delete room, delete visit option, delete template).</td></tr>
@@ -785,7 +785,7 @@
 
 <hr style="margin-top: 48px; border: none; border-top: 2px solid var(--border);">
 <p style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 16px;">
-  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.2 — April 2026
+  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.3 — April 2026
 </p>
 
 </body>
