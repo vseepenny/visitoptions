@@ -308,6 +308,44 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
         </span>
 
+        {/* Up/Down pill */}
+        <div style={{ display: 'inline-flex', borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', flexShrink: 0 }}>
+            {index > 0 ? (
+              <button onClick={onMoveUp} title="Move up" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, border: 'none', borderRight: '1px solid var(--border)',
+                background: 'white', cursor: 'pointer', color: 'var(--text-secondary)',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+            ) : (
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, borderRight: '1px solid var(--border)',
+                background: 'var(--grey-50)', color: 'var(--grey-300)',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+              </span>
+            )}
+            {index < total - 1 ? (
+              <button onClick={onMoveDown} title="Move down" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, border: 'none',
+                background: 'white', cursor: 'pointer', color: 'var(--text-secondary)',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            ) : (
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24,
+                background: 'var(--grey-50)', color: 'var(--grey-300)',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            )}
+          </div>
+
         {/* Icon */}
         <span style={{ color: typeDef?.color, display: 'flex', flexShrink: 0 }}>{typeDef?.icon}</span>
 
@@ -333,22 +371,12 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          {index > 0 && (
-            <button className="btn-icon" style={{ width: 26, height: 26 }} onClick={onMoveUp} title="Move up">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-          )}
-          {index < total - 1 && (
-            <button className="btn-icon" style={{ width: 26, height: 26 }} onClick={onMoveDown} title="Move down">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-          )}
+        {/* Actions: expand + delete on right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           {step.type === 'conditional' && (
             <button className="btn-icon" style={{ width: 26, height: 26 }} onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                {expanded ? <polyline points="6 9 12 15 18 9"/> : <polyline points="9 6 15 12 9 18"/>}
+                {expanded ? <line x1="5" y1="12" x2="19" y2="12"/> : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
               </svg>
             </button>
           )}
@@ -558,6 +586,83 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
     updateBranch(branchIdx, { steps: newSteps });
   };
 
+  const [activeTab, setActiveTab] = useState(0);
+  const branches = step.branches || [];
+  const safeBi = Math.min(activeTab, branches.length - 1);
+
+  const BRANCH_COLORS = ['#0D875C', '#2563EB', '#7C3AED', '#D97706', '#DC2626', '#0891B2', '#4F46E5', '#BE185D'];
+
+  const renderBranchContent = (branch, bi) => (
+    <>
+      {branch.steps.length === 0 && !(addingAt?.branchIndex === bi) && (
+        <EmptyBranchDrop
+          onAdd={() => setAddingAt({ branchIndex: bi, insertIndex: 0 })}
+          canDrop={branchDrag !== null}
+          onDrop={() => dropAtBranchSlot(bi, 0)}
+        />
+      )}
+
+      {branch.steps.map((bs, si) => {
+        const isBranchDragSrc = branchDrag?.branchIndex === bi && branchDrag?.stepIndex === si;
+        const canDropBefore = branchDrag !== null && !(branchDrag.branchIndex === bi && (branchDrag.stepIndex === si || branchDrag.stepIndex === si - 1));
+        return (
+        <div key={bs.id}>
+          {si > 0 && (
+            <BranchConnector
+              canDrop={canDropBefore}
+              onDrop={() => dropAtBranchSlot(bi, si)}
+            />
+          )}
+          <StepCard
+            step={bs}
+            index={si}
+            total={branch.steps.length}
+            onUpdate={updated => updateBranchStep(bi, si, updated)}
+            onDelete={() => deleteBranchStep(bi, si)}
+            onMoveUp={() => moveBranchStep(bi, si, si - 1)}
+            onMoveDown={() => moveBranchStep(bi, si, si + 1)}
+            clinic={clinic}
+            depth={depth + 1}
+            dragHandlers={{
+              isDragging: isBranchDragSrc,
+              onDragStart: (e) => {
+                setAddingAt(null);
+                e.dataTransfer.effectAllowed = 'move';
+                requestAnimationFrame(() => setBranchDrag({ branchIndex: bi, stepIndex: si }));
+              },
+              onDragEnd: () => setBranchDrag(null),
+            }}
+          />
+          {addingAt?.branchIndex === bi && addingAt?.insertIndex === si + 1 ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+              <AddStepPicker
+                onSelect={type => addStepToBranch(bi, si + 1, type)}
+                onCancel={() => setAddingAt(null)}
+              />
+            </div>
+          ) : (
+            <BranchConnector
+              canDrop={branchDrag !== null && !(branchDrag.branchIndex === bi && (branchDrag.stepIndex === si || branchDrag.stepIndex === si + 1))}
+              onDrop={() => dropAtBranchSlot(bi, si + 1)}
+              showAdd
+              onAdd={() => setAddingAt({ branchIndex: bi, insertIndex: si + 1 })}
+            />
+          )}
+        </div>
+        );
+      })}
+
+      {branch.steps.length === 0 && addingAt?.branchIndex === bi && addingAt?.insertIndex === 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <AddStepPicker
+            onSelect={type => addStepToBranch(bi, 0, type)}
+            onCancel={() => setAddingAt(null)}
+          />
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div style={{ padding: '14px' }}>
       {/* Condition selector */}
@@ -573,100 +678,67 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
         </select>
       </div>
 
-      {/* Branch columns */}
+      {/* Branch tabs */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${Math.max(step.branches?.length || 1, 1)}, minmax(180px, 1fr))`,
-        gap: 10,
-        overflowX: 'auto',
+        display: 'flex', gap: 0, borderBottom: '2px solid var(--border)',
+        marginBottom: 0, overflowX: 'auto',
       }}>
-        {(step.branches || []).map((branch, bi) => (
-          <div key={branch.id} style={{
-            border: '1.5px dashed var(--border-strong)',
-            borderRadius: 'var(--r-lg)',
-            background: 'var(--grey-100)',
-            padding: 10,
-            minWidth: 180,
-          }}>
-            {/* Branch header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: `hsl(${bi * 90}, 60%, 50%)`, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
+        {branches.map((branch, bi) => {
+          const color = BRANCH_COLORS[bi % BRANCH_COLORS.length];
+          const isActive = safeBi === bi;
+          const stepCount = branch.steps.length;
+          return (
+            <button
+              key={branch.id}
+              onClick={() => setActiveTab(bi)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px',
+                background: 'none', border: 'none',
+                borderBottom: `2px solid ${isActive ? color : 'transparent'}`,
+                marginBottom: -2,
+                cursor: 'pointer',
+                transition: 'all 120ms',
+                opacity: isActive ? 1 : 0.6,
+              }}
+            >
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: color, flexShrink: 0,
+              }} />
+              <span style={{
+                fontSize: 12, fontWeight: isActive ? 700 : 500,
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                whiteSpace: 'nowrap',
+              }}>
                 {branch.label || branch.condition || `Branch ${bi + 1}`}
               </span>
-            </div>
-
-            {/* Branch steps */}
-            {branch.steps.length === 0 && !(addingAt?.branchIndex === bi) && (
-              <EmptyBranchDrop
-                onAdd={() => setAddingAt({ branchIndex: bi, insertIndex: 0 })}
-                canDrop={branchDrag !== null}
-                onDrop={() => dropAtBranchSlot(bi, 0)}
-              />
-            )}
-
-            {branch.steps.map((bs, si) => {
-              const isBranchDragSrc = branchDrag?.branchIndex === bi && branchDrag?.stepIndex === si;
-              const canDropBefore = branchDrag !== null && !(branchDrag.branchIndex === bi && (branchDrag.stepIndex === si || branchDrag.stepIndex === si - 1));
-              return (
-              <div key={bs.id}>
-                {si > 0 && (
-                  <BranchConnector
-                    canDrop={canDropBefore}
-                    onDrop={() => dropAtBranchSlot(bi, si)}
-                  />
-                )}
-                <StepCard
-                  step={bs}
-                  index={si}
-                  total={branch.steps.length}
-                  onUpdate={updated => updateBranchStep(bi, si, updated)}
-                  onDelete={() => deleteBranchStep(bi, si)}
-                  onMoveUp={() => moveBranchStep(bi, si, si - 1)}
-                  onMoveDown={() => moveBranchStep(bi, si, si + 1)}
-                  clinic={clinic}
-                  depth={depth + 1}
-                  dragHandlers={{
-                    isDragging: isBranchDragSrc,
-                    onDragStart: (e) => {
-                      setAddingAt(null);
-                      e.dataTransfer.effectAllowed = 'move';
-                      requestAnimationFrame(() => setBranchDrag({ branchIndex: bi, stepIndex: si }));
-                    },
-                    onDragEnd: () => setBranchDrag(null),
-                  }}
-                />
-                {/* Add between / drop zone after */}
-                {addingAt?.branchIndex === bi && addingAt?.insertIndex === si + 1 ? (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
-                    <AddStepPicker
-                      onSelect={type => addStepToBranch(bi, si + 1, type)}
-                      onCancel={() => setAddingAt(null)}
-                    />
-                  </div>
-                ) : (
-                  <BranchConnector
-                    canDrop={branchDrag !== null && !(branchDrag.branchIndex === bi && (branchDrag.stepIndex === si || branchDrag.stepIndex === si + 1))}
-                    onDrop={() => dropAtBranchSlot(bi, si + 1)}
-                    showAdd
-                    onAdd={() => setAddingAt({ branchIndex: bi, insertIndex: si + 1 })}
-                  />
-                )}
-              </div>
-              );
-            })}
-
-            {branch.steps.length === 0 && addingAt?.branchIndex === bi && addingAt?.insertIndex === 0 && (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <AddStepPicker
-                  onSelect={type => addStepToBranch(bi, 0, type)}
-                  onCancel={() => setAddingAt(null)}
-                />
-              </div>
-            )}
-          </div>
-        ))}
+              <span style={{
+                fontSize: 10, fontWeight: 600,
+                color: isActive ? color : 'var(--text-tertiary)',
+                background: isActive ? `${color}14` : 'var(--grey-100)',
+                padding: '1px 6px', borderRadius: 'var(--r-full)',
+              }}>
+                {stepCount}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Active branch content */}
+      {branches[safeBi] && (
+        <div style={{
+          border: '1.5px dashed var(--border-strong)',
+          borderTop: 'none',
+          borderRadius: '0 0 var(--r-lg) var(--r-lg)',
+          background: 'var(--grey-50)',
+          padding: 12,
+          minHeight: 60,
+        }}>
+          {renderBranchContent(branches[safeBi], safeBi)}
+        </div>
+      )}
 
       {/* Hint */}
       <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
