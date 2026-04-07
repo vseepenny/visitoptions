@@ -127,6 +127,135 @@ const BUILTIN_FORMS = [
 
 const uid = () => `step_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
+/* ── Workflow Templates (preset library) ─────────────────── */
+
+function stampIds(steps) {
+  return steps.map(s => {
+    const ns = { ...s, id: uid() };
+    if (ns.branches) ns.branches = ns.branches.map(b => ({
+      ...b, id: uid(), steps: stampIds(b.steps),
+    }));
+    return ns;
+  });
+}
+
+const WORKFLOW_TEMPLATES = [
+  {
+    id: 'tpl_standard',
+    name: 'Standard Telehealth',
+    desc: 'Full intake with login, scheduling, intake form, payment branching, device test, and confirmation.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+    steps: [
+      { type: 'login', label: 'Login' },
+      { type: 'dependant_list', label: 'Dependant List' },
+      { type: 'visit_selection', label: 'Consultation' },
+      { type: 'scheduling', label: 'Calendar Picker' },
+      { type: 'form', label: 'Intake Form', formId: '_intake_form' },
+      { type: 'conditional', label: 'By Patient Type', conditionType: 'patient_type', branches: [
+        { label: 'Self-Pay', condition: 'self-pay', steps: [
+          { type: 'payment', label: 'Payment Options' },
+        ]},
+        { label: 'Insurance', condition: 'insurance', steps: [
+          { type: 'form', label: 'Insurance Form', formId: '_insurance_form' },
+          { type: 'payment', label: 'Payment Options' },
+        ]},
+        { label: 'Group-Covered', condition: 'group-covered', steps: [] },
+      ]},
+      { type: 'form', label: 'Pharmacy', formId: '_pharmacy' },
+      { type: 'form', label: 'Emergency Contact', formId: '_emergency_contact' },
+      { type: 'test_device', label: 'Test Device' },
+      { type: 'setup_session', label: 'Setup Session' },
+      { type: 'confirmation', label: 'Confirmation' },
+    ],
+  },
+  {
+    id: 'tpl_quick_walkin',
+    name: 'Quick Walk-in',
+    desc: 'Minimal steps for walk-in urgent care — signup, guest intake, device test, straight to waiting room.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    steps: [
+      { type: 'signup', label: 'Signup' },
+      { type: 'signup_verification', label: 'Signup Verification' },
+      { type: 'form', label: 'Guest Intake', formId: '_guest_intake' },
+      { type: 'test_device', label: 'Test Device' },
+      { type: 'setup_session', label: 'Setup Session' },
+      { type: 'walkin_confirmation', label: 'Walk-in Confirmation' },
+    ],
+  },
+  {
+    id: 'tpl_scheduled',
+    name: 'Scheduled Visit',
+    desc: 'Login, pick a visit, schedule, intake form, payment, and confirmation. No walk-in path.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    steps: [
+      { type: 'login', label: 'Login' },
+      { type: 'visit_selection', label: 'Consultation' },
+      { type: 'scheduling', label: 'Calendar Picker' },
+      { type: 'form', label: 'Intake Form', formId: '_intake_form' },
+      { type: 'payment', label: 'Payment Options' },
+      { type: 'test_device', label: 'Test Device' },
+      { type: 'setup_session', label: 'Setup Session' },
+      { type: 'confirmation', label: 'Confirmation' },
+    ],
+  },
+  {
+    id: 'tpl_insurance_heavy',
+    name: 'Insurance-First',
+    desc: 'Insurance verification upfront before scheduling. Includes eligibility branching and guarantor form.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    steps: [
+      { type: 'login', label: 'Login' },
+      { type: 'form', label: 'Insurance Form', formId: '_insurance_form' },
+      { type: 'form', label: 'Guarantor', formId: '_guarantor' },
+      { type: 'conditional', label: 'By Insurance Status', conditionType: 'insurance_status', branches: [
+        { label: 'Eligible', condition: 'eligible', steps: [
+          { type: 'visit_selection', label: 'Consultation' },
+          { type: 'scheduling', label: 'Calendar Picker' },
+        ]},
+        { label: 'Not Eligible', condition: 'not_eligible', steps: [
+          { type: 'payment', label: 'Payment Options' },
+          { type: 'visit_selection', label: 'Consultation' },
+          { type: 'scheduling', label: 'Calendar Picker' },
+        ]},
+        { label: 'Pending', condition: 'pending', steps: [
+          { type: 'visit_selection', label: 'Consultation' },
+          { type: 'scheduling', label: 'Calendar Picker' },
+        ]},
+        { label: 'Error', condition: 'error', steps: [
+          { type: 'payment', label: 'Payment Options' },
+          { type: 'visit_selection', label: 'Consultation' },
+        ]},
+      ]},
+      { type: 'form', label: 'Intake Form', formId: '_intake_form' },
+      { type: 'test_device', label: 'Test Device' },
+      { type: 'setup_session', label: 'Setup Session' },
+      { type: 'confirmation', label: 'Confirmation' },
+    ],
+  },
+  {
+    id: 'tpl_self_pay_only',
+    name: 'Self-Pay Only',
+    desc: 'Streamlined flow for cash-pay clinics — no insurance forms, just intake, payment, and go.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    steps: [
+      { type: 'login', label: 'Login' },
+      { type: 'visit_selection', label: 'Consultation' },
+      { type: 'scheduling', label: 'Calendar Picker' },
+      { type: 'form', label: 'Intake Form', formId: '_intake_form' },
+      { type: 'payment', label: 'Payment Options' },
+      { type: 'setup_session', label: 'Setup Session' },
+      { type: 'confirmation', label: 'Confirmation' },
+    ],
+  },
+  {
+    id: 'tpl_blank',
+    name: 'Blank',
+    desc: 'Start from scratch — empty workflow canvas.',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+    steps: [],
+  },
+];
+
 /* ── Connector line between steps (also a drop zone) ─────── */
 
 function Connector({ onAdd, dropTarget }) {
@@ -785,11 +914,244 @@ function FlowTerminal({ label, color }) {
   );
 }
 
+/* ── Workflow Template Modal ─────────────────────────────── */
+
+function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId, initialMode, currentSteps, currentName, onSelect, onSave, onDelete, onClose }) {
+  const [mode, setMode] = useState(initialMode); // 'browse' | 'save'
+  const [saveName, setSaveName] = useState(currentName);
+  const [search, setSearch] = useState('');
+
+  const allTemplates = [...builtinTemplates, ...customTemplates];
+  const filtered = search.trim()
+    ? allTemplates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()) || t.desc?.toLowerCase().includes(search.toLowerCase()))
+    : allTemplates;
+
+  const builtinFiltered = filtered.filter(t => !t.custom);
+  const customFiltered = filtered.filter(t => t.custom);
+
+  const handleSave = () => {
+    if (!saveName.trim() || !onSave) return;
+    const stripIds = (steps) => steps.map(s => {
+      const { id, ...rest } = s;
+      if (rest.branches) rest.branches = rest.branches.map(b => {
+        const { id: bid, ...brest } = b;
+        return { ...brest, steps: stripIds(b.steps) };
+      });
+      return rest;
+    });
+    onSave({
+      id: `custom_${Date.now()}`,
+      name: saveName.trim(),
+      desc: `Custom template — ${currentSteps.length} steps`,
+      custom: true,
+      steps: stripIds(currentSteps),
+    });
+  };
+
+  // Count steps including branch sub-steps
+  const countSteps = (steps) => steps.reduce((n, s) => {
+    let c = 1;
+    if (s.branches) s.branches.forEach(b => { c += countSteps(b.steps); });
+    return n + c;
+  }, 0);
+
+  const renderCard = (tpl) => {
+    const isActive = tpl.id === currentTplId;
+    const totalSteps = countSteps(tpl.steps);
+    const hasBranch = tpl.steps.some(s => s.type === 'conditional' || s.branches);
+    return (
+      <div
+        key={tpl.id}
+        style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: '16px',
+          background: isActive ? 'var(--brand-50)' : 'white',
+          border: `1.5px solid ${isActive ? 'var(--brand)' : 'var(--border)'}`,
+          borderRadius: 'var(--r-lg)',
+          cursor: 'pointer',
+          transition: 'all 150ms',
+          position: 'relative',
+        }}
+        onClick={() => onSelect(tpl)}
+        onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}}
+        onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}}
+      >
+        {isActive && (
+          <span style={{ position: 'absolute', top: 10, right: 12 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          </span>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--brand)', display: 'flex', flexShrink: 0 }}>{tpl.icon || (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          )}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{tpl.name}</span>
+          {tpl.custom && <span className="badge badge-info" style={{ fontSize: 10 }}>Custom</span>}
+        </div>
+        {tpl.desc && <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>{tpl.desc}</p>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+            {totalSteps} step{totalSteps !== 1 ? 's' : ''}
+          </span>
+          {hasBranch && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--warning)', fontWeight: 600 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              Branching
+            </span>
+          )}
+          {/* Step type summary */}
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+            {tpl.steps.filter(s => s.type !== 'conditional').map(s => s.label).slice(0, 4).join(' → ')}{tpl.steps.length > 4 ? ' → …' : ''}
+          </span>
+        </div>
+        {tpl.custom && onDelete && (
+          <button
+            className="btn-icon danger"
+            style={{ position: 'absolute', bottom: 12, right: 12, width: 24, height: 24 }}
+            onClick={(e) => { e.stopPropagation(); onDelete(tpl.id); }}
+            title="Delete custom template"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)',
+    }} onClick={onClose}>
+      <div
+        style={{
+          background: 'white', borderRadius: 'var(--r-xl)',
+          width: '100%', maxWidth: 680, maxHeight: '85vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+          animation: 'slideUp 200ms ease both',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px 24px', borderBottom: '1px solid var(--border)',
+          flexShrink: 0,
+        }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              {mode === 'save' ? 'Save as Template' : 'Workflow Templates'}
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              {mode === 'save' ? 'Save the current workflow as a reusable template.' : 'Choose a starting point for your intake flow.'}
+            </p>
+          </div>
+          <button
+            className="btn-icon"
+            style={{ width: 32, height: 32 }}
+            onClick={onClose}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        {mode === 'browse' ? (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* Search + tabs */}
+            <div style={{ padding: '14px 24px 0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search templates..."
+                  className="input"
+                  style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
+                />
+              </div>
+              {onSave && (
+                <button
+                  className="btn btn-secondary btn-xs"
+                  onClick={() => setMode('save')}
+                  style={{ flexShrink: 0 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Save Current
+                </button>
+              )}
+            </div>
+
+            {/* Template grid */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 24px 24px' }}>
+              {builtinFiltered.length > 0 && (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>Built-in</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginBottom: 18 }}>
+                    {builtinFiltered.map(renderCard)}
+                  </div>
+                </>
+              )}
+              {customFiltered.length > 0 && (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>Custom</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                    {customFiltered.map(renderCard)}
+                  </div>
+                </>
+              )}
+              {filtered.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                  No templates match "{search}"
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Save mode */
+          <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Template Name</label>
+              <input
+                type="text"
+                value={saveName}
+                onChange={e => setSaveName(e.target.value)}
+                placeholder="e.g. My Custom Intake"
+                className="input"
+                style={{ maxWidth: 400 }}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose(); }}
+              />
+            </div>
+            <div style={{ padding: '12px 14px', background: 'var(--grey-50)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                This will save the current workflow ({currentSteps.length} step{currentSteps.length !== 1 ? 's' : ''}) as a reusable template. You can apply it to other workflows later.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => initialMode === 'save' ? onClose() : setMode('browse')}>
+                Cancel
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={!saveName.trim()}>
+                Save Template
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Workflow Customizer ─────────────────────────────── */
 
-export default function WorkflowCustomizer({ workflow, onChange, clinic }) {
+export default function WorkflowCustomizer({ workflow, onChange, clinic, customTemplates = [], onSaveTemplate, onDeleteTemplate }) {
   const [addingAtIndex, setAddingAtIndex] = useState(null);
-  const [dragFrom, setDragFrom] = useState(null); // index being dragged
+  const [dragFrom, setDragFrom] = useState(null);
+  const [showTplModal, setShowTplModal] = useState(false);
   const steps = workflow?.steps || [];
 
   const updateStep = (index, updated) => {
@@ -827,20 +1189,80 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic }) {
     setAddingAtIndex(null);
   };
 
+  const allTemplates = [...WORKFLOW_TEMPLATES, ...customTemplates];
+  const currentTplId = workflow?.templateId || '';
+  const currentTpl = allTemplates.find(t => t.id === currentTplId);
+
+  const applyTemplate = (tpl) => {
+    onChange({
+      ...workflow,
+      name: tpl.name,
+      templateId: tpl.id,
+      steps: stampIds(tpl.steps),
+    });
+    setShowTplModal(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      {/* Workflow name */}
-      <div className="form-group" style={{ marginBottom: 20 }}>
-        <label className="form-label">Workflow Name</label>
-        <input
-          type="text"
-          value={workflow?.name || ''}
-          onChange={e => onChange({ ...workflow, name: e.target.value })}
-          placeholder="e.g. Default Intake Flow"
-          className="input"
-          style={{ maxWidth: 400 }}
-        />
+      {/* Workflow template bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <label className="form-label" style={{ marginBottom: 6 }}>Workflow Template</label>
+          <button
+            onClick={() => setShowTplModal(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: 420,
+              padding: '8px 14px', background: 'white',
+              border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+              cursor: 'pointer', textAlign: 'left', transition: 'border-color 150ms',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--brand)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            {currentTpl ? (
+              <>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>{currentTpl.name}</span>
+                {currentTpl.custom && <span className="badge badge-info" style={{ fontSize: 10 }}>Custom</span>}
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{currentTpl.steps.length} steps</span>
+              </>
+            ) : (
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', flex: 1 }}>— Select a template —</span>
+            )}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        {steps.length > 0 && onSaveTemplate && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowTplModal('save')}
+            style={{ flexShrink: 0, height: 36, alignSelf: 'flex-end' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save as Template
+          </button>
+        )}
       </div>
+
+      {/* Template modal */}
+      {showTplModal && (
+        <WorkflowTemplateModal
+          builtinTemplates={WORKFLOW_TEMPLATES}
+          customTemplates={customTemplates}
+          currentTplId={currentTplId}
+          initialMode={showTplModal === 'save' ? 'save' : 'browse'}
+          currentSteps={steps}
+          currentName={workflow?.name || ''}
+          onSelect={applyTemplate}
+          onSave={onSaveTemplate ? (tpl) => {
+            onSaveTemplate(tpl);
+            onChange({ ...workflow, name: tpl.name, templateId: tpl.id });
+            setShowTplModal(false);
+          } : null}
+          onDelete={onDeleteTemplate}
+          onClose={() => setShowTplModal(false)}
+        />
+      )}
 
       {/* Flow canvas */}
       <div style={{

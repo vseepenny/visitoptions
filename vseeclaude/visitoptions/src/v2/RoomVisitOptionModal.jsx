@@ -613,6 +613,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   workflow={form.workflowOverride}
                   onChange={wf => set('workflowOverride', wf)}
                   clinic={clinic}
+                  customTemplates={clinic.workflowTemplates || []}
                 />
               )}
             </div>

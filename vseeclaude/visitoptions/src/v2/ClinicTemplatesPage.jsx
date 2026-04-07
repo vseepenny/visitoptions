@@ -191,6 +191,9 @@ export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
                 workflow={state.defaultWorkflow}
                 onChange={wf => update({ defaultWorkflow: wf })}
                 clinic={state}
+                customTemplates={state.workflowTemplates || []}
+                onSaveTemplate={tpl => update({ workflowTemplates: [...(state.workflowTemplates || []), tpl] })}
+                onDeleteTemplate={id => update({ workflowTemplates: (state.workflowTemplates || []).filter(t => t.id !== id) })}
               />
             </div>
           )}

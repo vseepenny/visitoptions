@@ -190,7 +190,7 @@
     <tr><td>Author</td><td>Penny (penny@vsee.com)</td></tr>
     <tr><td>Date</td><td>April 2, 2026</td></tr>
     <tr><td>Status</td><td>Draft</td></tr>
-    <tr><td>Version</td><td>2.3 (V2 architecture)</td></tr>
+    <tr><td>Version</td><td>2.4 (V2 architecture)</td></tr>
     <tr><td>Stack</td><td>React 19 · Vite 7 · Tailwind CSS 4</td></tr>
   </table>
 </div>
@@ -449,6 +449,40 @@
   <strong>Conditional Branches:</strong> Rendered as a tabbed interface rather than side-by-side columns. Each branch condition is a tab; the active tab's step list gets the full available width. This scales well to 3–4+ branches without cramping. Tab bar scrolls horizontally if needed.
 </div>
 
+<h3>6.4 Workflow Template Library</h3>
+
+<p>Pre-built and custom workflow templates provide starting points for intake flow configuration. Users select a template, then customize from there.</p>
+
+<h4>Built-in Templates</h4>
+<table>
+  <tr><th>Template</th><th>Description</th><th>Key Steps</th></tr>
+  <tr><td>Standard Telehealth</td><td>Full intake with payment branching by patient type</td><td>Login → Dependant → Consultation → Schedule → Intake Form → Branch (Self-Pay / Insurance / Group) → Pharmacy → Emergency Contact → Device Test → Confirmation</td></tr>
+  <tr><td>Quick Walk-in</td><td>Minimal flow for urgent care walk-ins</td><td>Signup → Verification → Guest Intake → Device Test → Walk-in Confirmation</td></tr>
+  <tr><td>Scheduled Visit</td><td>Standard scheduled appointment, no branching</td><td>Login → Consultation → Schedule → Intake Form → Payment → Device Test → Confirmation</td></tr>
+  <tr><td>Insurance-First</td><td>Insurance verification upfront with 4-branch eligibility routing</td><td>Login → Insurance Form → Guarantor → Branch (Eligible / Not Eligible / Pending / Error) → Intake Form → Device Test → Confirmation</td></tr>
+  <tr><td>Self-Pay Only</td><td>Streamlined for cash-pay clinics</td><td>Login → Consultation → Schedule → Intake Form → Payment → Confirmation</td></tr>
+  <tr><td>Blank</td><td>Empty canvas</td><td>—</td></tr>
+</table>
+
+<h4>Template Selection Modal</h4>
+<ul>
+  <li><strong>Trigger:</strong> Clicking the template name button opens a full-screen modal with search bar and card grid.</li>
+  <li><strong>Card layout:</strong> Each template card shows icon, name, description, total step count, branching indicator, and step flow preview (first 4 step labels joined by →).</li>
+  <li><strong>Sections:</strong> Built-in and Custom templates displayed in separate labeled groups.</li>
+  <li><strong>Search:</strong> Filters by template name and description.</li>
+  <li><strong>Active indicator:</strong> Checkmark badge on the currently selected template.</li>
+  <li><strong>Applying:</strong> Clicking a card applies the template (stamps fresh IDs on all steps) and closes the modal.</li>
+</ul>
+
+<h4>Save as Template</h4>
+<ul>
+  <li><strong>"Save as Template" button</strong> appears next to the template selector when the workflow has steps and the <code>onSaveTemplate</code> callback is provided (clinic settings only).</li>
+  <li>Opens the modal in save mode with a name input, step count summary, and Save/Cancel actions.</li>
+  <li>Saved templates appear in the Custom section and are stored in <code>clinic.workflowTemplates[]</code>.</li>
+  <li>Custom templates can be deleted via a trash icon on their card.</li>
+  <li>Visit option modal shows custom templates for selection but does not provide save functionality (read-only).</li>
+</ul>
+
 <!-- ═══════════════════════════════════════════════════════════ -->
 <!-- 7. WAITING ROOMS LIST                                        -->
 <!-- ═══════════════════════════════════════════════════════════ -->
@@ -640,7 +674,8 @@
   <tr><td><code>defaultNotesTemplateId</code></td><td>String</td><td>ID of the default notes template</td></tr>
   <tr><td><code>formLibrary[]</code></td><td>Array</td><td>Reusable forms (id, name, fields[]) — referenced by workflow form steps. Fields have: id, label, type, required, enabled.</td></tr>
   <tr><td><code>notesTemplates[]</code></td><td>Array</td><td>Reusable notes templates (id, name, content, sections[])</td></tr>
-  <tr><td><code>defaultWorkflow</code></td><td>Object</td><td>Default patient intake workflow (id, name, steps[]) — see Intake Flow Customizer</td></tr>
+  <tr><td><code>defaultWorkflow</code></td><td>Object</td><td>Default patient intake workflow (id, name, templateId, steps[]) — see Intake Flow Customizer</td></tr>
+  <tr><td><code>workflowTemplates[]</code></td><td>Array</td><td>Custom workflow templates (id, name, desc, custom: true, steps[]) — saved from the template modal. Built-in templates are hardcoded.</td></tr>
 </table>
 
 <h3>Room Object</h3>
@@ -785,7 +820,7 @@
 
 <hr style="margin-top: 48px; border: none; border-top: 2px solid var(--border);">
 <p style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 16px;">
-  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.3 — April 2026
+  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.4 — April 2026
 </p>
 
 </body>
