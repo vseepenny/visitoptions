@@ -231,7 +231,7 @@ function VisitModePicker({ modes, onChange, error }) {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     notesTemplateId:  existing.notesTemplateId  ?? null,
@@ -614,6 +614,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   onChange={wf => set('workflowOverride', wf)}
                   clinic={clinic}
                   customTemplates={clinic.workflowTemplates || []}
+                  onSaveTemplate={onSaveTemplate}
                 />
               )}
             </div>

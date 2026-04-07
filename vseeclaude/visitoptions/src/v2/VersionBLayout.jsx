@@ -150,6 +150,7 @@ export default function VersionBLayout() {
           onChange={updated => handleRoomChange({ ...updated, id: selectedRoom.id })}
           onSave={handleSave}
           onBack={handleBackToRooms}
+          onSaveTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: [...(c.workflowTemplates || []), tpl] }))}
         />
       )}
 
