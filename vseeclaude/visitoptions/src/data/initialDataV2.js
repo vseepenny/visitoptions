@@ -84,9 +84,32 @@ export const initialClinic = {
   ],
 
   notesTemplates: [
-    { id: 'nt_1', name: 'SOAP Note',     content: 'Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n' },
-    { id: 'nt_2', name: 'Progress Note', content: 'Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n' },
-    { id: 'nt_3', name: 'Blank',         content: '' },
+    { id: 'nt_1', name: 'SOAP Note', content: 'Subjective:\n\nObjective:\n\nAssessment:\n\nPlan:\n', sections: [
+      { id: 'nt1_s1', type: 'heading', value: 'Subjective:' },
+      { id: 'nt1_s2', type: 'text',    value: '' },
+      { id: 'nt1_s3', type: 'heading', value: 'Objective:' },
+      { id: 'nt1_s4', type: 'text',    value: '' },
+      { id: 'nt1_s5', type: 'heading', value: 'Assessment:' },
+      { id: 'nt1_s6', type: 'text',    value: '' },
+      { id: 'nt1_s7', type: 'heading', value: 'Plan:' },
+      { id: 'nt1_s8', type: 'text',    value: '' },
+      { id: 'nt1_s9', type: 'date',    value: 'Follow-up date' },
+    ]},
+    { id: 'nt_2', name: 'Progress Note', content: 'Progress Note\n\nInterval History:\n\nExam:\n\nImpression:\n\nPlan:\n', sections: [
+      { id: 'nt2_s1', type: 'heading',  value: 'Progress Note' },
+      { id: 'nt2_s2', type: 'heading',  value: 'Interval History:' },
+      { id: 'nt2_s3', type: 'text',     value: '' },
+      { id: 'nt2_s4', type: 'scale',    value: 'Symptom severity' },
+      { id: 'nt2_s5', type: 'divider',  value: '' },
+      { id: 'nt2_s6', type: 'heading',  value: 'Exam:' },
+      { id: 'nt2_s7', type: 'text',     value: '' },
+      { id: 'nt2_s8', type: 'checkbox', value: 'Reviewed current medications' },
+      { id: 'nt2_s9', type: 'heading',  value: 'Impression:' },
+      { id: 'nt2_s10', type: 'text',    value: '' },
+      { id: 'nt2_s11', type: 'heading', value: 'Plan:' },
+      { id: 'nt2_s12', type: 'text',    value: '' },
+    ]},
+    { id: 'nt_3', name: 'Blank', content: '' },
   ],
 
   // ── Default patient workflow ──

@@ -2,13 +2,33 @@ import { useState } from 'react';
 import { NOTES_PRESETS } from '../data/initialData';
 
 /* ── Notes Section Types ─────────────────────────────────── */
+// Same palette model as the form editor: structured, typed sections.
+// `value` holds the heading text / field label / free-text content.
 
 export const NOTES_SECTION_TYPES = [
   { id: 'heading',   label: 'Section Heading', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 4v16M18 4v16M6 12h12"/></svg>, default: 'Section:' },
   { id: 'text',      label: 'Text Area',       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10M7 11h10M7 15h6"/></svg>, default: '' },
+  { id: 'textinput', label: 'Text Input',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 10H3"/><path d="M21 6H3"/><path d="M21 14H3"/><path d="M17 18H3"/></svg>, default: 'Label' },
   { id: 'checkbox',  label: 'Checkbox',        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>, default: 'Checkbox item' },
+  { id: 'scale',     label: 'Scale (0–3)',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>, default: 'Severity' },
+  { id: 'select',    label: 'Dropdown',        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="8 10 12 14 16 10"/></svg>, default: 'Choose one' },
+  { id: 'date',      label: 'Date Picker',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, default: 'Date' },
   { id: 'divider',   label: 'Divider',         icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/></svg>, default: '' },
 ];
+
+// Parse a notes template into sections: prefers structured `sections`,
+// falls back to line-parsing legacy `content` strings.
+export function sectionsFromTemplate(tmpl) {
+  if (tmpl.sections?.length) return tmpl.sections;
+  if (tmpl.content) {
+    return tmpl.content.split('\n').filter(l => l.trim() !== '').map((line, i) => ({
+      id: `ns_parsed_${i}`,
+      type: line.endsWith(':') ? 'heading' : 'text',
+      value: line,
+    }));
+  }
+  return [];
+}
 
 /* ── Form Field Types ────────────────────────────────────── */
 
@@ -26,19 +46,7 @@ export const FIELD_TYPES = [
 /* ── Notes Template Editor ───────────────────────────────── */
 
 export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
-  const initSections = () => {
-    if (tmpl.sections) return tmpl.sections.map(s => ({ ...s }));
-    if (tmpl.content) {
-      return tmpl.content.split('\n').filter(l => l.trim() !== '').map((line, i) => ({
-        id: `ns_${Date.now()}_${i}`,
-        type: line.endsWith(':') ? 'heading' : 'text',
-        value: line,
-      }));
-    }
-    return [];
-  };
-
-  const [form, setForm] = useState({ name: tmpl.name, sections: initSections() });
+  const [form, setForm] = useState({ name: tmpl.name, sections: sectionsFromTemplate(tmpl).map(s => ({ ...s })) });
   const [dragFromPalette, setDragFromPalette] = useState(null);
   const [dragFromIdx, setDragFromIdx] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -79,6 +87,10 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
       if (s.type === 'divider') return '---';
       if (s.type === 'heading') return `${s.value}`;
       if (s.type === 'checkbox') return `☐ ${s.value}`;
+      if (s.type === 'textinput') return `${s.value}: ______`;
+      if (s.type === 'scale') return `${s.value}: 0 · 1 · 2 · 3`;
+      if (s.type === 'select') return `${s.value}: [select]`;
+      if (s.type === 'date') return `${s.value}: __/__/____`;
       return s.value;
     }).join('\n\n');
     onSave({ ...tmpl, name: form.name, content, sections: form.sections });
@@ -131,18 +143,20 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
         {/* Section palette */}
         <div style={{ width: 160, flexShrink: 0 }}>
-          <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Drag to add</label>
+          <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Click or drag to add</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {NOTES_SECTION_TYPES.map(st => (
               <div
                 key={st.id}
                 draggable
+                onClick={() => insertSection(form.sections.length, st.id)}
                 onDragStart={(e) => {
                   e.dataTransfer.setData('text/plain', st.id);
                   e.dataTransfer.effectAllowed = 'copy';
                   requestAnimationFrame(() => setDragFromPalette(st.id));
                 }}
                 onDragEnd={() => { setDragFromPalette(null); setDropTarget(null); }}
+                title={`Add ${st.label}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px',
                   background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
@@ -166,7 +180,7 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
 
           {form.sections.length === 0 && !isDragging && (
             <div style={{ padding: '24px 16px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 'var(--r-lg)', color: 'var(--text-tertiary)', fontSize: 13 }}>
-              Drag a section type from the left, or use a preset above
+              Click or drag a section type from the left, or use a preset above
             </div>
           )}
 
@@ -197,7 +211,7 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
                   <span style={{ color: 'var(--brand)', display: 'flex', flexShrink: 0, paddingTop: 4 }}>{st?.icon}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {section.type === 'divider' ? (
-                      <div style={{ borderTop: '1px solid var(--border-strong)', margin: '10px 0' }} />
+                      <div style={{ borderTop: '1px solid var(--border-strong)', margin: '14px 0' }} />
                     ) : section.type === 'heading' ? (
                       <input
                         type="text" value={section.value}
@@ -206,15 +220,7 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
                         className="input"
                         style={{ height: 30, fontSize: 13, fontWeight: 700 }}
                       />
-                    ) : section.type === 'checkbox' ? (
-                      <input
-                        type="text" value={section.value}
-                        onChange={e => updateSection(idx, { value: e.target.value })}
-                        placeholder="Checkbox label…"
-                        className="input"
-                        style={{ height: 30, fontSize: 12 }}
-                      />
-                    ) : (
+                    ) : section.type === 'text' ? (
                       <textarea
                         value={section.value}
                         onChange={e => updateSection(idx, { value: e.target.value })}
@@ -222,9 +228,27 @@ export function NotesTemplateEditor({ tmpl, onSave, onCancel }) {
                         className="input"
                         style={{ width: '100%', minHeight: 48, fontSize: 12, lineHeight: 1.5, padding: '6px 8px', resize: 'vertical' }}
                       />
+                    ) : (
+                      <input
+                        type="text" value={section.value}
+                        onChange={e => updateSection(idx, { value: e.target.value })}
+                        placeholder="Field label…"
+                        className="input"
+                        style={{ height: 30, fontSize: 12 }}
+                      />
                     )}
                   </div>
-                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', paddingTop: 6 }}>{st?.label}</span>
+                  <select
+                    value={section.type}
+                    onChange={e => {
+                      const nt = NOTES_SECTION_TYPES.find(t => t.id === e.target.value);
+                      updateSection(idx, { type: e.target.value, value: section.value || nt?.default || '' });
+                    }}
+                    className="input"
+                    style={{ height: 30, fontSize: 11, padding: '0 24px 0 6px', width: 118, flexShrink: 0 }}
+                  >
+                    {NOTES_SECTION_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
                   <button className="btn-icon danger" style={{ width: 24, height: 24, flexShrink: 0, marginTop: 2 }} onClick={() => removeSection(idx)} title="Remove section">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
@@ -317,12 +341,14 @@ export function FormLibraryEditor({ form, onSave, onCancel }) {
       <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
         {/* Field palette */}
         <div style={{ width: 170, flexShrink: 0 }}>
-          <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Drag to add</label>
+          <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Click or drag to add</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {FIELD_TYPES.map(ft => (
               <div
                 key={ft.id}
                 draggable
+                onClick={() => insertField(draft.fields.length, ft.id)}
+                title={`Add ${ft.label}`}
                 onDragStart={(e) => {
                   e.dataTransfer.setData('text/plain', ft.id);
                   e.dataTransfer.effectAllowed = 'copy';
@@ -354,7 +380,7 @@ export function FormLibraryEditor({ form, onSave, onCancel }) {
             <div
               style={{ padding: '24px 16px', textAlign: 'center', border: '2px dashed var(--border)', borderRadius: 'var(--r-lg)', color: 'var(--text-tertiary)', fontSize: 13 }}
             >
-              Drag a field type from the left to start building your form
+              Click or drag a field type from the left to start building your form
             </div>
           )}
 
@@ -422,6 +448,96 @@ export function FormLibraryEditor({ form, onSave, onCancel }) {
         <button onClick={onCancel} className="btn btn-ghost btn-sm">Cancel</button>
         <button onClick={() => onSave(draft)} className="btn btn-primary btn-sm" disabled={!draft.name?.trim()}>Save Form</button>
       </div>
+    </div>
+  );
+}
+
+/* ── Notes Template Preview (read-only structured render) ── */
+// Renders a notes template the way the provider will see it —
+// replaces the old raw monospace-textarea preview.
+
+export function NotesTemplatePreview({ tmpl, dimmed }) {
+  const sections = sectionsFromTemplate(tmpl);
+
+  if (sections.length === 0) {
+    return (
+      <div style={{ padding: '20px 16px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 'var(--r-lg)', color: 'var(--text-tertiary)', fontSize: 12.5, opacity: dimmed ? 0.75 : 1 }}>
+        Blank template — the provider starts from an empty note.
+      </div>
+    );
+  }
+
+  const fieldLabel = (v) => (
+    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{v}</span>
+  );
+  const boxStyle = {
+    border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+    background: 'white', minHeight: 30,
+    display: 'flex', alignItems: 'center', padding: '0 10px',
+    fontSize: 12, color: 'var(--text-tertiary)',
+  };
+
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
+      background: 'var(--grey-50)', padding: '14px 16px',
+      display: 'flex', flexDirection: 'column', gap: 10,
+      opacity: dimmed ? 0.75 : 1,
+    }}>
+      {sections.map((s, i) => {
+        switch (s.type) {
+          case 'heading':
+            return <p key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', margin: i === 0 ? 0 : '4px 0 0' }}>{s.value}</p>;
+          case 'divider':
+            return <div key={i} style={{ borderTop: '1px solid var(--border-strong)', margin: '2px 0' }} />;
+          case 'checkbox':
+            return (
+              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-primary)' }}>
+                <input type="checkbox" disabled style={{ accentColor: 'var(--brand)' }} />
+                {s.value}
+              </label>
+            );
+          case 'textinput':
+            return <div key={i}>{fieldLabel(s.value)}<div style={{ ...boxStyle, maxWidth: 320 }} /></div>;
+          case 'scale':
+            return (
+              <div key={i}>
+                {fieldLabel(s.value)}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[0, 1, 2, 3].map(n => (
+                    <span key={n} style={{ width: 28, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'white', fontSize: 11.5, color: 'var(--text-secondary)' }}>{n}</span>
+                  ))}
+                </div>
+              </div>
+            );
+          case 'select':
+            return (
+              <div key={i}>
+                {fieldLabel(s.value)}
+                <div style={{ ...boxStyle, maxWidth: 240, justifyContent: 'space-between' }}>
+                  <span>Select…</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+            );
+          case 'date':
+            return (
+              <div key={i}>
+                {fieldLabel(s.value)}
+                <div style={{ ...boxStyle, maxWidth: 180, gap: 8 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span>mm/dd/yyyy</span>
+                </div>
+              </div>
+            );
+          default: // 'text' — free-text area
+            return (
+              <div key={i} style={{ ...boxStyle, minHeight: 44, alignItems: s.value ? 'center' : 'flex-start', padding: '8px 10px' }}>
+                {s.value || ''}
+              </div>
+            );
+        }
+      })}
     </div>
   );
 }

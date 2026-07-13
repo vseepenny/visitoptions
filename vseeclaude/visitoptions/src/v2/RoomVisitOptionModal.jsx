@@ -3,7 +3,7 @@ import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
-import { NotesTemplateEditor } from './TemplateEditors';
+import { NotesTemplateEditor, NotesTemplatePreview } from './TemplateEditors';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -231,7 +231,7 @@ function VisitModePicker({ modes, onChange, error }) {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onUpdateNotesTemplate }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     notesTemplateId:  existing.notesTemplateId  ?? null,
@@ -615,6 +615,8 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   clinic={clinic}
                   customTemplates={clinic.workflowTemplates || []}
                   onSaveTemplate={onSaveTemplate}
+                  onUpdateTemplate={onUpdateTemplate}
+                  onDeleteTemplate={onDeleteTemplate}
                 />
               )}
             </div>
@@ -680,9 +682,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                     {form.notesTemplateId && (() => {
                       const preview = clinic.notesTemplates.find(t => t.id === form.notesTemplateId);
                       if (!preview) return null;
-                      return (
-                        <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 120, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none' }} />
-                      );
+                      return <NotesTemplatePreview tmpl={preview} />;
                     })()}
                   </div>
                 )}
@@ -692,6 +692,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   <NotesTemplateEditor
                     tmpl={editingNotesTemplate}
                     onSave={(saved) => {
+                      onUpdateNotesTemplate?.(saved);
                       setEditingNotesTemplate(null);
                       set('notesTemplateId', saved.id);
                     }}
@@ -705,7 +706,7 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   return (
                     <div>
                       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Preview of <strong>{resolvedNotesName}</strong> (clinic default):</p>
-                      <textarea readOnly value={preview.content} className="input" style={{ width: '100%', minHeight: 120, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, padding: '10px 12px', background: 'var(--grey-50)', resize: 'none', opacity: 0.75 }} />
+                      <NotesTemplatePreview tmpl={preview} dimmed />
                     </div>
                   );
                 })()}

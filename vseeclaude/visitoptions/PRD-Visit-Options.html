@@ -190,7 +190,7 @@
     <tr><td>Author</td><td>Penny (penny@vsee.com)</td></tr>
     <tr><td>Date</td><td>April 2, 2026</td></tr>
     <tr><td>Status</td><td>Draft</td></tr>
-    <tr><td>Version</td><td>2.4 (V2 architecture)</td></tr>
+    <tr><td>Version</td><td>2.7 (V2 architecture)</td></tr>
     <tr><td>Stack</td><td>React 19 · Vite 7 · Tailwind CSS 4</td></tr>
   </table>
 </div>
@@ -205,6 +205,7 @@
     <li><a href="#goals">Goals &amp; Success Metrics</a></li>
     <li><a href="#users">Users &amp; Personas</a></li>
     <li><a href="#scope">Scope &amp; Feature Map</a></li>
+    <li><a href="#userflows">Core User Flows</a></li>
     <li><a href="#feature-clinic">Feature: Clinic-Level Settings</a></li>
     <li><a href="#feature-workflow">Feature: Intake Flow Customizer</a></li>
     <li><a href="#feature-rooms">Feature: Waiting Rooms List</a></li>
@@ -320,13 +321,216 @@
                                      └──────────────────────┘</div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 5. CLINIC-LEVEL SETTINGS                                     -->
+<!-- 5. CORE USER FLOWS                                            -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-clinic">5. Feature: Clinic-Level Settings</h2>
+<h2 id="userflows">5. Core User Flows</h2>
+
+<p>The following user flows describe end-to-end journeys through the module. Each flow is written from the perspective of a clinic admin performing a common task.</p>
+
+<!-- Flow 1: First-time setup -->
+<h3>5.1 First-Time Clinic Setup</h3>
+<p>A new clinic admin configures their clinic from scratch for the first time.</p>
+
+<div class="diagram">Clinic Settings                          Waiting Room Settings
+─────────────                          ─────────────────────
+1. Navigate to "Clinic Settings"
+2. Patient Types tab
+   → Enable patient types (e.g. Self-Pay, Insurance)
+   → Configure payment rules per type
+3. Intake Flow tab
+   → Select a workflow template (e.g. "Standard Telehealth")
+   → Customize steps as needed
+   → Save
+4. Notes Templates tab
+   → Create notes template (e.g. SOAP Note)
+   → Set as default
+   → Save
+                                       5. Navigate to "Waiting Rooms"
+                                       6. Click into the default room
+                                          → Set room name &amp; operating hours
+                                          → Set visibility (Public / Unlisted)
+                                       7. Add first visit option
+                                          → Fill General tab (name, duration, mode)
+                                          → Select patient types
+                                          → Verify inherited intake flow
+                                          → Verify inherited notes template
+                                          → Save
+                                       8. Click "Patient Preview" to verify
+                                       9. Save room settings</div>
+
+<div class="callout callout-info">
+  <strong>Key Decision Points:</strong> The admin decides at step 3 whether the clinic default workflow is sufficient, or whether individual visit options will need overrides (step 7). Most clinics use the default for 70%+ of visit options.
+</div>
+
+<!-- Flow 2: Add a new visit option -->
+<h3>5.2 Add a New Visit Option</h3>
+<p>An admin adds a new visit type to an existing room.</p>
+
+<ol>
+  <li>Navigate to <strong>Waiting Rooms</strong> → select room.</li>
+  <li>In the Visit Options section, click <strong>"Add Visit Option"</strong>.</li>
+  <li><strong>General tab:</strong> Enter visit name, select duration, choose visit mode (Video / Phone / In-person / E-Consult), set session type (1:1 or Group).</li>
+  <li><strong>Patient Types tab:</strong> Select accepted patient types. Configure per-type payment amounts.</li>
+  <li><strong>Intake Flow tab:</strong> By default, "Use clinic default" is on. Toggle off to customize:
+    <ul>
+      <li>Select a workflow template or start from blank.</li>
+      <li>Add/remove/reorder steps using the visual flow builder.</li>
+      <li>Add conditional branches if needed (e.g. branch by patient type).</li>
+      <li>Optionally save the custom workflow as a reusable template.</li>
+    </ul>
+  </li>
+  <li><strong>Visit Notes tab:</strong> Use clinic default or select a specific notes template. Edit inline if needed.</li>
+  <li>Click <strong>"Save Visit Option"</strong>.</li>
+  <li>Back on the room page, reorder the new option using the up/down pill buttons.</li>
+  <li>Use the <strong>Patient Preview</strong> to verify the booking flow.</li>
+</ol>
+
+<!-- Flow 3: Configure payment for multiple patient types -->
+<h3>5.3 Configure Payment for Multiple Patient Types</h3>
+<p>An admin sets up payment collection for a visit option that accepts Self-Pay, Insurance, and Group-Covered patients.</p>
+
+<ol>
+  <li>Open the visit option modal → <strong>Patient Types tab</strong>.</li>
+  <li>Select all three patient types.</li>
+  <li>Payment sub-tabs appear — one per patient type:
+    <ul>
+      <li><strong>Self-Pay tab:</strong> Choose "Collect specific amount" → enter $150.</li>
+      <li><strong>Insurance tab:</strong> For each verification status (Eligible / Not Eligible / Pending / Error), choose collection method:
+        <ul>
+          <li>Eligible → Collect copay ($25, fallback $50)</li>
+          <li>Not Eligible → Collect specific amount ($150)</li>
+          <li>Pending → No collection</li>
+          <li>Error → No collection</li>
+        </ul>
+      </li>
+      <li><strong>Group-Covered tab:</strong> Configure per-status rules similarly.</li>
+    </ul>
+  </li>
+  <li>Save. If any "specific amount" field is left blank, an amber warning appears in the visit options table.</li>
+</ol>
+
+<div class="callout callout-warning">
+  <strong>Incomplete Payment Warning:</strong> The table shows an amber triangle with "Set up payment" link next to any visit option with incomplete pricing. Clicking it opens the modal directly on the Payment tab.
+</div>
+
+<!-- Flow 4: Build a custom intake flow -->
+<h3>5.4 Build a Custom Intake Flow with Branching</h3>
+<p>An admin creates a workflow that branches by patient type — sending Self-Pay and Insurance patients through different paths.</p>
+
+<ol>
+  <li>Navigate to <strong>Clinic Settings → Intake Flow</strong> tab (or open a visit option's Intake Flow tab and toggle off "Use clinic default").</li>
+  <li>Click the template name button → select <strong>"Standard Telehealth"</strong> template from the modal.</li>
+  <li>Template applies with pre-configured steps. Customize:
+    <ul>
+      <li>Click the <strong>"+"</strong> button between steps to add a new step.</li>
+      <li>Select <strong>Logic → Conditional Branch</strong>.</li>
+      <li>Choose branch condition: <strong>"Patient Type"</strong>.</li>
+    </ul>
+  </li>
+  <li>Configure each branch using the <strong>tabbed interface</strong>:
+    <ul>
+      <li>Click the <strong>Self-Pay</strong> tab → add "Payment Options" step.</li>
+      <li>Click the <strong>Insurance</strong> tab → add "Insurance Form" → "Guarantor" steps.</li>
+      <li>Click the <strong>Group-Covered</strong> tab → add relevant steps.</li>
+    </ul>
+  </li>
+  <li>Reorder steps within branches using the joined up/down pill buttons.</li>
+  <li>Expand any step card (click <strong>+</strong> icon) to see and edit configuration details.</li>
+  <li>Click <strong>"Save as Template"</strong> to save this workflow for reuse in other visit options.</li>
+  <li>Save settings.</li>
+</ol>
+
+<!-- Flow 5: Use workflow templates -->
+<h3>5.5 Use and Manage Workflow Templates</h3>
+<p>An admin applies a template and saves a customized version for reuse.</p>
+
+<ol>
+  <li>In the intake flow editor, click the <strong>template name button</strong> to open the template modal (list on the left, preview on the right).</li>
+  <li>Browse built-in templates (Standard Telehealth, Quick Walk-in, Scheduled Visit, Insurance-First, Self-Pay Only, Blank) and any saved custom templates. Use the <strong>search bar</strong> to filter by name or description.</li>
+  <li>Click a template in the list to <strong>preview</strong> its full step flow — including branch contents — without applying it.</li>
+  <li>Click <strong>"Use This Template"</strong> in the preview footer to apply it. The footer warns that this replaces the current workflow (all step IDs are regenerated).</li>
+  <li>Customize the applied template as needed.</li>
+  <li>Click <strong>"Save as Template"</strong>:
+    <ul>
+      <li>The modal opens in save mode with a name input.</li>
+      <li>If the workflow came from a custom template, choose <em>Update "&lt;name&gt;"</em> (overwrite in place) or <em>Save as a new template</em>.</li>
+      <li>Enter a name (e.g. "Dermatology Intake") and save.</li>
+      <li>New templates appear in the Custom section of the template modal.</li>
+    </ul>
+  </li>
+  <li>Custom templates can be <strong>renamed</strong> (pencil icon) or <strong>deleted</strong> (trash icon) from the preview pane header.</li>
+</ol>
+
+<div class="callout callout-info">
+  <strong>Template Availability:</strong> Custom templates saved from Clinic Settings <em>or</em> from a visit option's intake flow editor are stored at the clinic level and available across all rooms and visit options.
+</div>
+
+<!-- Flow 6: Override per-visit-option -->
+<h3>5.6 Override Clinic Defaults for a Specific Visit Option</h3>
+<p>An admin customizes the intake flow and notes template for a single visit option, leaving all others on clinic defaults.</p>
+
+<ol>
+  <li>Open the visit option modal → <strong>Intake Flow tab</strong>.</li>
+  <li>The clinic default workflow is shown as a read-only preview.</li>
+  <li>Toggle off <strong>"Use clinic default intake flow"</strong>.</li>
+  <li>The clinic workflow is cloned into an editable copy. Modify as needed.</li>
+  <li>Switch to <strong>Visit Notes tab</strong>.</li>
+  <li>Toggle off <strong>"Use clinic default"</strong> → select a specific notes template from the dropdown.</li>
+  <li>Click <strong>"Edit"</strong> to modify the template inline using the form-editor-style builder — click or drag from the 8-type section palette (headings, text, inputs, checkboxes, scales, dropdowns, dates, dividers). Saves apply clinic-wide.</li>
+  <li>Save the visit option. Only this visit option uses the overrides; all others continue using clinic defaults.</li>
+</ol>
+
+<!-- Flow 7: Manage multiple rooms -->
+<h3>5.7 Manage Multiple Waiting Rooms</h3>
+<p>An admin sets up and manages multiple rooms for different use cases (e.g. General Practice room and Mental Health room).</p>
+
+<ol>
+  <li>Navigate to <strong>Waiting Rooms</strong> list page.</li>
+  <li>Click <strong>"Add Room"</strong> — a new room is created with defaults (unlisted, self-pay, always open, random code).</li>
+  <li>Click into the new room to configure:
+    <ul>
+      <li>Set room name (e.g. "Mental Health Clinic").</li>
+      <li>Configure operating hours (scheduled, Mon–Fri 9–5).</li>
+      <li>Set visibility to Public.</li>
+      <li>Add visit options specific to this room.</li>
+    </ul>
+  </li>
+  <li>Use <strong>Patient Preview</strong> to verify the patient experience for this room.</li>
+  <li>Navigate back to the rooms list via breadcrumb.</li>
+  <li>The list shows a summary: room name, code, visibility badge, patient type count, and visit option count.</li>
+  <li>To remove a room, click the delete icon (confirmation required). The last remaining room cannot be deleted.</li>
+</ol>
+
+<!-- Flow 8: Verify with patient preview -->
+<h3>5.8 Verify Configuration with Patient Preview</h3>
+<p>An admin uses the live preview to verify the patient-facing booking experience before publishing.</p>
+
+<ol>
+  <li>On the room settings page, click <strong>"Patient Preview"</strong> button in the header.</li>
+  <li>The layout splits: settings on the left, mobile-frame preview on the right.</li>
+  <li>The preview simulates the full patient journey step by step:
+    <ul>
+      <li>Login / Signup screens.</li>
+      <li>Visit option selection (shows all visible options with name, duration, mode icons).</li>
+      <li>Calendar/scheduling step (if present).</li>
+      <li>Intake forms — renders actual fields from the form library.</li>
+      <li>Payment step — shows pricing based on patient type and verification status.</li>
+      <li>Device test, session setup, and confirmation screens.</li>
+    </ul>
+  </li>
+  <li>Changes made in the settings panel reflect <strong>immediately</strong> in the preview (real-time, no save required).</li>
+  <li>Toggle patient type or insurance status in the preview to test different branching paths.</li>
+  <li>Click <strong>"Hide Preview"</strong> to return to the full-width settings view.</li>
+</ol>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 6. CLINIC-LEVEL SETTINGS                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="feature-clinic">6. Feature: Clinic-Level Settings</h2>
 
 <p>Centralized configuration that applies across all waiting rooms. Accessible via the "Clinic Settings" nav item.</p>
 
-<h3>5.1 Payment Configuration</h3>
+<h3>6.1 Payment Configuration</h3>
 <p>Defines how payments are collected for each patient type. These settings govern the payment options available when configuring individual visit options.</p>
 
 <table>
@@ -351,7 +555,7 @@
   </tr>
 </table>
 
-<h3>5.2 Form Library</h3>
+<h3>6.2 Form Library</h3>
 <p>Reusable form templates that define what patient information is collected. Referenced by workflow form steps.</p>
 <ul>
   <li>Each form has a name and an ordered list of fields.</li>
@@ -369,18 +573,24 @@
   <li>Empty state prompts users to drag from the palette.</li>
 </ul>
 
-<h3>5.3 Notes Templates</h3>
+<h3>6.3 Notes Templates</h3>
 <p>Reusable clinical note templates that pre-populate the provider's visit notes.</p>
 
-<h4>Notes Editor — Section-Based Builder</h4>
-<p>The notes template editor uses a drag-and-drop section builder:</p>
+<h4>Notes Editor — Same Builder UI as the Form Editor</h4>
+<p>The notes template editor uses the same field-based builder UI as the Form Library editor — palette on the left, typed rows on the right:</p>
 <ul>
-  <li><strong>Section types:</strong> Section Heading, Text Area, Checkbox, Divider — each draggable from a left palette.</li>
+  <li><strong>Section types (8):</strong> Section Heading, Text Area, Text Input, Checkbox, Scale (0–3), Dropdown, Date Picker, Divider — <strong>click or drag</strong> from the left palette to add (click appends, drag positions).</li>
+  <li><strong>Row anatomy matches the form editor:</strong> drag handle, type icon, label/content input, type dropdown (rows can be converted between types in place), and remove button.</li>
   <li>Existing sections can be reordered via drag handles.</li>
-  <li>Inline editing: headings render as bold text inputs, text areas render as textareas, checkboxes as label inputs, dividers as horizontal rules.</li>
   <li><strong>Presets:</strong> SOAP Note, Progress Note, and Blank quick-load structured sections.</li>
-  <li>On save, sections are serialized to both a structured <code>sections[]</code> array and a plain-text <code>content</code> string for backward compatibility.</li>
+  <li>On save, sections are serialized to both a structured <code>sections[]</code> array and a plain-text <code>content</code> string for backward compatibility (structured types flatten to text placeholders, e.g. scale → <code>Label: 0 · 1 · 2 · 3</code>).</li>
   <li>Same default/override inheritance model as form templates.</li>
+</ul>
+
+<h4>Structured Notes Preview</h4>
+<ul>
+  <li>Wherever a notes template is previewed (Visit Notes tab of the visit option modal, clinic-default preview), it renders as a <strong>structured read-only mock of the provider note</strong> — bold headings, empty entry boxes, checkbox rows, 0–3 scale pills, dropdown and date field mocks, dividers — instead of the previous raw monospace textarea.</li>
+  <li>Legacy content-string templates are line-parsed into headings/text for rendering; structured <code>sections[]</code> templates render each typed section natively.</li>
 </ul>
 
 <div class="callout callout-success">
@@ -388,13 +598,13 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 6. INTAKE FLOW CUSTOMIZER                                    -->
+<!-- 7. INTAKE FLOW CUSTOMIZER                                    -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-workflow">6. Feature: Intake Flow Customizer</h2>
+<h2 id="feature-workflow">7. Feature: Intake Flow Customizer</h2>
 
 <p>A visual flow-chart-style builder that defines the patient journey through the clinic's intake process. Configured at the clinic level as the default workflow, with per-visit-option overrides available.</p>
 
-<h3>6.1 Workflow Modules</h3>
+<h3>7.1 Workflow Modules</h3>
 <p>Step types organized into 4 categories, matching the VSee API:</p>
 
 <table>
@@ -409,7 +619,7 @@
       <strong>Form</strong> — a unified step type with a form picker that includes both <strong>built-in</strong> and <strong>custom</strong> forms:
       <ul style="margin-top:6px; margin-bottom:0">
         <li><em>Built-in:</em> Intake Form, Guest Intake, Insurance Form, Guarantor, Pharmacy, Emergency Contact, Create Dependant, Cancel Intake Survey</li>
-        <li><em>Custom:</em> Any form from the clinic's Form Library (see §5.2)</li>
+        <li><em>Custom:</em> Any form from the clinic's Form Library (see §6.2)</li>
       </ul>
       The form picker groups these into &lt;optgroup&gt; sections for clarity.
     </td>
@@ -428,7 +638,7 @@
   <strong>Unified Form Model:</strong> All form types (intake, insurance, pharmacy, etc.) are treated as instances of the single "Form" step type. Built-in forms provide standard templates; custom forms come from the clinic's form library. This simplifies the step palette and avoids redundant step types.
 </div>
 
-<h3>6.2 Visual Flow Builder</h3>
+<h3>7.2 Visual Flow Builder</h3>
 <ul>
   <li><strong>Flow canvas:</strong> Vertical flow with "Patient Enters" start node, step cards connected by lines, and "Session Starts" end node.</li>
   <li><strong>Add Step:</strong> Full-width "Add step" button between each step. Opens a categorized picker dropdown.</li>
@@ -438,7 +648,7 @@
   <li><strong>Singleton enforcement:</strong> Certain steps (e.g., Consultation) can only appear once.</li>
 </ul>
 
-<h3>6.3 Workflow Architecture</h3>
+<h3>7.3 Workflow Architecture</h3>
 <ul>
   <li>The <strong>Visit Selection</strong> step marks the boundary: steps before it run for all patients; steps after it follow the selected visit option.</li>
   <li>Individual visit options can override the post-selection workflow via <code>workflowOverride</code>.</li>
@@ -449,7 +659,7 @@
   <strong>Conditional Branches:</strong> Rendered as a tabbed interface rather than side-by-side columns. Each branch condition is a tab; the active tab's step list gets the full available width. This scales well to 3–4+ branches without cramping. Tab bar scrolls horizontally if needed.
 </div>
 
-<h3>6.4 Workflow Template Library</h3>
+<h3>7.4 Workflow Template Library</h3>
 
 <p>Pre-built and custom workflow templates provide starting points for intake flow configuration. Users select a template, then customize from there.</p>
 
@@ -464,29 +674,30 @@
   <tr><td>Blank</td><td>Empty canvas</td><td>—</td></tr>
 </table>
 
-<h4>Template Selection Modal</h4>
+<h4>Template Selection Modal — Master-Detail with Preview</h4>
 <ul>
-  <li><strong>Trigger:</strong> Clicking the template name button opens a full-screen modal with search bar and card grid.</li>
-  <li><strong>Card layout:</strong> Each template card shows icon, name, description, total step count, branching indicator, and step flow preview (first 4 step labels joined by →).</li>
-  <li><strong>Sections:</strong> Built-in and Custom templates displayed in separate labeled groups.</li>
+  <li><strong>Trigger:</strong> Clicking the template name button opens a wide modal (~880px) with a master-detail layout: template list on the left, preview pane on the right.</li>
+  <li><strong>Template list (left):</strong> Search bar on top; compact rows (icon, name, step count) grouped into Built-in and Custom sections. A checkmark marks the currently applied template. "Save Current as Template" button pinned at the bottom.</li>
+  <li><strong>Preview pane (right):</strong> Selecting a list item previews it — nothing is applied yet. Shows name, Custom/Applied badges, description, step count, branching indicator, and a read-only <strong>mini flow</strong> (Patient Enters → step cards with icons → Session Starts). Conditional branches render as labeled groups with nested sub-steps; empty branches read "No steps — continues directly".</li>
+  <li><strong>Applying:</strong> Explicit <strong>"Use This Template"</strong> button in the preview footer applies the template (stamps fresh IDs on all steps) and closes the modal. The footer warns "Applying replaces your current workflow (N steps)"; if the previewed template is already applied, the button reads <strong>"Re-apply Template"</strong> with a reset warning instead.</li>
   <li><strong>Search:</strong> Filters by template name and description.</li>
-  <li><strong>Active indicator:</strong> Checkmark badge on the currently selected template.</li>
-  <li><strong>Applying:</strong> Clicking a card applies the template (stamps fresh IDs on all steps) and closes the modal.</li>
 </ul>
 
-<h4>Save as Template</h4>
+<h4>Save, Rename, Update &amp; Delete Custom Templates</h4>
 <ul>
-  <li><strong>"Save as Template" button</strong> appears next to the template selector when the workflow has steps and the <code>onSaveTemplate</code> callback is provided (clinic settings only).</li>
-  <li>Opens the modal in save mode with a name input, step count summary, and Save/Cancel actions.</li>
+  <li><strong>"Save as Template" button</strong> appears next to the template selector when the workflow has steps and the <code>onSaveTemplate</code> callback is provided.</li>
+  <li>Opens the modal in save mode with a name input (pre-filled with the workflow name), step count summary, and Save/Cancel actions.</li>
+  <li><strong>Update in place:</strong> If the current workflow was applied from a custom template, save mode offers a "Save to" choice — <em>Update "&lt;name&gt;"</em> (overwrites the existing template's steps, default) or <em>Save as a new template</em>. The confirmation copy and button label ("Update Template" / "Save Template") follow the selection.</li>
+  <li><strong>Rename:</strong> A pencil icon in the preview pane header (custom templates only) swaps the title for an inline input — Enter saves, Escape cancels. Renaming the currently applied template also updates the workflow's displayed name.</li>
+  <li><strong>Delete:</strong> A trash icon in the preview pane header removes the custom template; the preview falls back to the first built-in template.</li>
   <li>Saved templates appear in the Custom section and are stored in <code>clinic.workflowTemplates[]</code>.</li>
-  <li>Custom templates can be deleted via a trash icon on their card.</li>
-  <li>Visit option modal shows custom templates for selection but does not provide save functionality (read-only).</li>
+  <li>All of the above is available in both Clinic Settings and the visit option modal's Intake Flow tab — templates saved from either location are stored at the clinic level and shared across all rooms.</li>
 </ul>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 7. WAITING ROOMS LIST                                        -->
+<!-- 8. WAITING ROOMS LIST                                        -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-rooms">7. Feature: Waiting Rooms List</h2>
+<h2 id="feature-rooms">8. Feature: Waiting Rooms List</h2>
 
 
 <p>Displays all waiting rooms in a table view with summary information. Serves as the entry point for room management.</p>
@@ -501,20 +712,20 @@
 </ul>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 7. WAITING ROOM SETTINGS                                     -->
+<!-- 9. WAITING ROOM SETTINGS                                     -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-room-settings">8. Feature: Waiting Room Settings</h2>
+<h2 id="feature-room-settings">9. Feature: Waiting Room Settings</h2>
 
 <p>The primary configuration page for an individual waiting room. Organized as a single-page form with distinct sections.</p>
 
-<h3>8.1 Room Identity</h3>
+<h3>9.1 Room Identity</h3>
 <table>
   <tr><th>Field</th><th>Type</th><th>Behavior</th></tr>
   <tr><td>Room Name</td><td>Text input</td><td>Editable. Displayed in breadcrumb and patient-facing UI.</td></tr>
   <tr><td>Room Code</td><td>Read-only + copy</td><td>Auto-generated 5-character alphanumeric code. Clipboard copy with toast confirmation.</td></tr>
 </table>
 
-<h3>8.2 Operating Hours</h3>
+<h3>9.2 Operating Hours</h3>
 <ul>
   <li><strong>Timezone:</strong> Dropdown with 14 common timezone options.</li>
   <li><strong>Mode:</strong> "Always Open" or "Scheduled Hours."</li>
@@ -522,13 +733,13 @@
   <li><strong>Closure Message:</strong> Custom text shown to patients when the room is closed.</li>
 </ul>
 
-<h3>8.3 Visibility</h3>
+<h3>9.3 Visibility</h3>
 <ul>
   <li><strong>Public:</strong> Discoverable via search in the VSee Clinic mobile app.</li>
   <li><strong>Unlisted:</strong> Accessible only via direct link or room code.</li>
 </ul>
 
-<h3>8.4 Patient Types</h3>
+<h3>9.4 Patient Types</h3>
 <p>Multi-select of which patient categories this room accepts:</p>
 <ul>
   <li><strong>Self-Pay</strong> — Patients paying out of pocket.</li>
@@ -539,7 +750,7 @@
   <strong>Dependency:</strong> The patient types enabled at the room level constrain which types can be selected on individual visit options. Disabling a type at the room level removes it as an option for all visit options in that room.
 </div>
 
-<h3>8.5 Dirty State &amp; Save</h3>
+<h3>9.5 Dirty State &amp; Save</h3>
 <ul>
   <li>Changes are tracked via JSON serialization comparison.</li>
   <li>"Unsaved changes" indicator appears when the form is dirty.</li>
@@ -548,13 +759,13 @@
 </ul>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 8. VISIT OPTIONS                                             -->
+<!-- 10. VISIT OPTIONS                                            -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-visit-options">9. Feature: Visit Options</h2>
+<h2 id="feature-visit-options">10. Feature: Visit Options</h2>
 
 <p>The core of the module. Visit options define the appointment types patients can book within a waiting room.</p>
 
-<h3>9.1 Visit Options Table</h3>
+<h3>10.1 Visit Options Table</h3>
 <ul>
   <li>Columns: order (up/down buttons), name, duration + session type badge, mode (with icons), visible toggle, patient type badges, action buttons (edit, delete).</li>
   <li><strong>Pill-style reorder buttons</strong> — joined up/down button group (side-by-side pill) per row. Disabled state (grey) at top/bottom boundaries. Suitable for the typical case of &lt; 5 visit options per room.</li>
@@ -563,7 +774,7 @@
   <li>Empty state with call-to-action when no visit options exist.</li>
 </ul>
 
-<h3>9.2 Visit Option Modal (Add / Edit)</h3>
+<h3>10.2 Visit Option Modal (Add / Edit)</h3>
 
 <p>A multi-tab modal for full visit option configuration. Four tabs: <strong>General</strong>, <strong>Patient Types</strong>, <strong>Intake Flow</strong>, <strong>Visit Notes</strong>.</p>
 
@@ -617,24 +828,25 @@
   <li>Full <strong>Workflow Customizer</strong> instance embedded in the modal for per-visit-option workflow override.</li>
   <li>By default, inherits the clinic's default workflow (<code>workflowOverride: null</code>).</li>
   <li>When overridden, provides the same visual flow builder with drag-and-drop and conditional branching.</li>
-  <li>The <strong>Form</strong> step type uses a unified picker with built-in forms (Intake, Insurance, Pharmacy, etc.) and custom forms from the clinic library — all forms are selected from a single dropdown grouped by category (see §6.1).</li>
+  <li>The <strong>Form</strong> step type uses a unified picker with built-in forms (Intake, Insurance, Pharmacy, etc.) and custom forms from the clinic library — all forms are selected from a single dropdown grouped by category (see §7.1).</li>
   <li>Includes a <strong>Patient Preview</strong> panel that simulates the workflow in a mobile phone frame.</li>
 </ul>
 
 <h4>Visit Notes Tab</h4>
 <ul>
   <li>Same inheritance model as Intake Flow: clinic default toggle + override dropdown.</li>
-  <li>When a specific template is selected, an <strong>Edit</strong> button opens the <code>NotesTemplateEditor</code> inline within the modal — the same drag-and-drop section builder used in Clinic Settings (see §5.3).</li>
-  <li>Preview shows the template content in a read-only monospace textarea when not editing.</li>
+  <li>When a specific template is selected, an <strong>Edit</strong> button opens the <code>NotesTemplateEditor</code> inline within the modal — the same form-editor-style builder used in Clinic Settings (see §6.3), with the full 8-type section palette.</li>
+  <li>Edits save back to <code>clinic.notesTemplates[]</code> via the <code>onUpdateNotesTemplate</code> callback, so templates edited from a visit option are updated clinic-wide.</li>
+  <li>When not editing, the template renders as a <strong>structured read-only preview</strong> of the provider note (see §6.3 Structured Notes Preview) — both for the selected override and the dimmed clinic-default preview.</li>
 </ul>
 
-<h3>9.3 Delete Visit Option</h3>
+<h3>10.3 Delete Visit Option</h3>
 <p>Triggered from the table action column. Requires confirmation via modal. Irreversible.</p>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 9. PATIENT PREVIEW                                           -->
+<!-- 11. PATIENT PREVIEW                                          -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="feature-preview">10. Feature: Patient Preview</h2>
+<h2 id="feature-preview">11. Feature: Patient Preview</h2>
 
 <p>A side-panel simulation of the patient booking flow, toggled from the room settings header.</p>
 
@@ -661,9 +873,9 @@
 </ul>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 10. DATA MODEL                                               -->
+<!-- 12. DATA MODEL                                               -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="data-model">11. Data Model</h2>
+<h2 id="data-model">12. Data Model</h2>
 
 <h3>Clinic Object</h3>
 <table>
@@ -725,9 +937,9 @@
 }</div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 11. ARCHITECTURE                                             -->
+<!-- 13. ARCHITECTURE                                             -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="architecture">12. Component Architecture</h2>
+<h2 id="architecture">13. Component Architecture</h2>
 
 <div class="diagram">App.jsx
  └── VersionBLayout              (router / state owner)
@@ -761,9 +973,9 @@
 </ul>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 12. UX PATTERNS                                              -->
+<!-- 14. UX PATTERNS                                              -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="ux">13. UX &amp; Interaction Patterns</h2>
+<h2 id="ux">14. UX &amp; Interaction Patterns</h2>
 
 <table>
   <tr><th>Pattern</th><th>Implementation</th></tr>
@@ -780,9 +992,9 @@
 </table>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 13. EDGE CASES                                               -->
+<!-- 15. EDGE CASES                                               -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="edge-cases">14. Edge Cases &amp; Validation</h2>
+<h2 id="edge-cases">15. Edge Cases &amp; Validation</h2>
 
 <table>
   <tr><th>Scenario</th><th>Behavior</th></tr>
@@ -801,9 +1013,9 @@
 </table>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- 14. FUTURE                                                   -->
+<!-- 16. FUTURE                                                   -->
 <!-- ═══════════════════════════════════════════════════════════ -->
-<h2 id="future">15. Future Considerations</h2>
+<h2 id="future">16. Future Considerations</h2>
 
 <ul>
   <li><strong>API integration &amp; persistence:</strong> Current implementation is client-side state only. Needs backend API for CRUD operations with optimistic UI updates.</li>
@@ -820,7 +1032,7 @@
 
 <hr style="margin-top: 48px; border: none; border-top: 2px solid var(--border);">
 <p style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 16px;">
-  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.4 — April 2026
+  VSee Clinic — Visit Options &amp; Waiting Room Settings PRD v2.5 — April 2026
 </p>
 
 </body>

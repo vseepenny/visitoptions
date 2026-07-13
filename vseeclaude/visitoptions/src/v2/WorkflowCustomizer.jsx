@@ -914,9 +914,84 @@ function FlowTerminal({ label, color }) {
   );
 }
 
+/* ── Template preview mini-flow ───────────────────────────── */
+
+function MiniStepRow({ step }) {
+  const meta = STEP_TYPES.find(t => t.id === step.type) || {};
+  const formName = step.type === 'form' && step.formId
+    ? (BUILTIN_FORMS.find(f => f.id === step.formId)?.name || 'Custom form')
+    : null;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '7px 12px', background: 'white',
+      border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+      width: '100%',
+    }}>
+      <span style={{
+        width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: meta.color || 'var(--text-secondary)', background: meta.bgColor || 'var(--grey-100)',
+      }}>{meta.icon || null}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>{step.label || meta.label}</span>
+      {formName && formName !== step.label && (
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto', flexShrink: 0 }}>{formName}</span>
+      )}
+    </div>
+  );
+}
+
+function MiniConnector() {
+  return <div style={{ width: 2, height: 14, background: 'var(--border-strong)', flexShrink: 0 }} />;
+}
+
+function TemplateMiniFlow({ steps }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <FlowTerminal label="Patient Enters" color="start" />
+      {steps.map((step, i) => (
+        <div key={i} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <MiniConnector />
+          {step.type === 'conditional' ? (
+            <div style={{
+              width: '100%', border: '1.5px dashed var(--border-strong)', borderRadius: 'var(--r-lg)',
+              padding: 10, background: 'var(--grey-50)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <span style={{ color: '#D97706', display: 'flex' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{step.label || 'Conditional Branch'}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(step.branches || []).map((b, bi) => (
+                  <div key={bi}>
+                    <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--text-tertiary)', margin: '0 0 4px' }}>{b.label}</p>
+                    {b.steps.length === 0 ? (
+                      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic', margin: '0 0 0 8px' }}>No steps — continues directly</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 8 }}>
+                        {b.steps.map((s, si) => <MiniStepRow key={si} step={s} />)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <MiniStepRow step={step} />
+          )}
+        </div>
+      ))}
+      <MiniConnector />
+      <FlowTerminal label="Session Starts" color="end" />
+    </div>
+  );
+}
+
 /* ── Workflow Template Modal ─────────────────────────────── */
 
-function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId, initialMode, currentSteps, currentName, onSelect, onSave, onDelete, onClose }) {
+function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId, initialMode, currentSteps, currentName, onSelect, onSave, onUpdate, onDelete, onClose }) {
   const [mode, setMode] = useState(initialMode); // 'browse' | 'save'
   const [saveName, setSaveName] = useState(currentName);
   const [search, setSearch] = useState('');
@@ -929,23 +1004,53 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
   const builtinFiltered = filtered.filter(t => !t.custom);
   const customFiltered = filtered.filter(t => t.custom);
 
-  const handleSave = () => {
-    if (!saveName.trim() || !onSave) return;
-    const stripIds = (steps) => steps.map(s => {
-      const { id, ...rest } = s;
-      if (rest.branches) rest.branches = rest.branches.map(b => {
-        const { id: bid, ...brest } = b;
-        return { ...brest, steps: stripIds(b.steps) };
-      });
-      return rest;
+  // Preview selection (browse mode) — templates are previewed before applying
+  const [previewId, setPreviewId] = useState(
+    allTemplates.some(t => t.id === currentTplId) ? currentTplId : (builtinTemplates[0]?.id || null)
+  );
+  const previewTpl = allTemplates.find(t => t.id === previewId) || null;
+  const [renaming, setRenaming] = useState(false);
+  const [renameVal, setRenameVal] = useState('');
+
+  // Save mode — offer updating the source custom template instead of creating a new one
+  const currentCustomTpl = customTemplates.find(t => t.id === currentTplId) || null;
+  const [saveTarget, setSaveTarget] = useState(currentCustomTpl && onUpdate ? 'update' : 'new');
+
+  const stripIds = (steps) => steps.map(s => {
+    const { id, ...rest } = s;
+    if (rest.branches) rest.branches = rest.branches.map(b => {
+      const { id: bid, ...brest } = b;
+      return { ...brest, steps: stripIds(b.steps) };
     });
-    onSave({
-      id: `custom_${Date.now()}`,
+    return rest;
+  });
+
+  const handleSave = () => {
+    if (!saveName.trim()) return;
+    const payload = {
       name: saveName.trim(),
       desc: `Custom template — ${currentSteps.length} steps`,
       custom: true,
       steps: stripIds(currentSteps),
-    });
+    };
+    if (saveTarget === 'update' && currentCustomTpl && onUpdate) {
+      onUpdate({ ...currentCustomTpl, ...payload });
+      onClose();
+    } else if (onSave) {
+      onSave({ id: `custom_${Date.now()}`, ...payload });
+    }
+  };
+
+  const handleRename = () => {
+    if (!renameVal.trim() || !previewTpl || !onUpdate) return;
+    onUpdate({ ...previewTpl, name: renameVal.trim() });
+    setRenaming(false);
+  };
+
+  const handleDelete = (id) => {
+    onDelete(id);
+    if (previewId === id) setPreviewId(builtinTemplates[0]?.id || null);
+    setRenaming(false);
   };
 
   // Count steps including branch sub-steps
@@ -955,66 +1060,36 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
     return n + c;
   }, 0);
 
-  const renderCard = (tpl) => {
-    const isActive = tpl.id === currentTplId;
-    const totalSteps = countSteps(tpl.steps);
-    const hasBranch = tpl.steps.some(s => s.type === 'conditional' || s.branches);
+  const renderListItem = (tpl) => {
+    const isApplied = tpl.id === currentTplId;
+    const isPreviewed = tpl.id === previewId;
     return (
-      <div
+      <button
         key={tpl.id}
+        onClick={() => { setPreviewId(tpl.id); setRenaming(false); }}
         style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-          padding: '16px',
-          background: isActive ? 'var(--brand-50)' : 'white',
-          border: `1.5px solid ${isActive ? 'var(--brand)' : 'var(--border)'}`,
-          borderRadius: 'var(--r-lg)',
-          cursor: 'pointer',
-          transition: 'all 150ms',
-          position: 'relative',
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          padding: '9px 12px', textAlign: 'left',
+          background: isPreviewed ? 'var(--brand-50)' : 'transparent',
+          border: `1.5px solid ${isPreviewed ? 'var(--brand)' : 'transparent'}`,
+          borderRadius: 'var(--r-md)', cursor: 'pointer', transition: 'all 120ms',
         }}
-        onClick={() => onSelect(tpl)}
-        onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}}
-        onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none'; }}}
+        onMouseEnter={e => { if (!isPreviewed) e.currentTarget.style.background = 'var(--grey-100)'; }}
+        onMouseLeave={e => { if (!isPreviewed) e.currentTarget.style.background = 'transparent'; }}
       >
-        {isActive && (
-          <span style={{ position: 'absolute', top: 10, right: 12 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+        <span style={{ color: 'var(--brand)', display: 'flex', flexShrink: 0 }}>{tpl.icon || (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        )}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tpl.name}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{countSteps(tpl.steps)} steps</span>
+        </span>
+        {isApplied && (
+          <span title="Currently applied" style={{ display: 'flex', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           </span>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--brand)', display: 'flex', flexShrink: 0 }}>{tpl.icon || (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          )}</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{tpl.name}</span>
-          {tpl.custom && <span className="badge badge-info" style={{ fontSize: 10 }}>Custom</span>}
-        </div>
-        {tpl.desc && <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>{tpl.desc}</p>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>
-            {totalSteps} step{totalSteps !== 1 ? 's' : ''}
-          </span>
-          {hasBranch && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--warning)', fontWeight: 600 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-              Branching
-            </span>
-          )}
-          {/* Step type summary */}
-          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
-            {tpl.steps.filter(s => s.type !== 'conditional').map(s => s.label).slice(0, 4).join(' → ')}{tpl.steps.length > 4 ? ' → …' : ''}
-          </span>
-        </div>
-        {tpl.custom && onDelete && (
-          <button
-            className="btn-icon danger"
-            style={{ position: 'absolute', bottom: 12, right: 12, width: 24, height: 24 }}
-            onClick={(e) => { e.stopPropagation(); onDelete(tpl.id); }}
-            title="Delete custom template"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        )}
-      </div>
+      </button>
     );
   };
 
@@ -1027,7 +1102,8 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
       <div
         style={{
           background: 'white', borderRadius: 'var(--r-xl)',
-          width: '100%', maxWidth: 680, maxHeight: '85vh',
+          width: '100%', maxWidth: mode === 'browse' ? 880 : 680,
+          height: mode === 'browse' ? 'min(640px, 85vh)' : 'auto', maxHeight: '85vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
           animation: 'slideUp 200ms ease both',
@@ -1059,56 +1135,145 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
 
         {/* Body */}
         {mode === 'browse' ? (
-          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {/* Search + tabs */}
-            <div style={{ padding: '14px 24px 0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search templates..."
-                  className="input"
-                  style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
-                />
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
+            {/* Left: searchable template list */}
+            <div style={{ width: 268, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '14px 14px 10px', flexShrink: 0 }}>
+                <div style={{ position: 'relative' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search templates..."
+                    className="input"
+                    style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
+                  />
+                </div>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 14px' }}>
+                {builtinFiltered.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', margin: '4px 4px 6px' }}>Built-in</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {builtinFiltered.map(renderListItem)}
+                    </div>
+                  </>
+                )}
+                {customFiltered.length > 0 && (
+                  <>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', margin: '14px 4px 6px' }}>Custom</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {customFiltered.map(renderListItem)}
+                    </div>
+                  </>
+                )}
+                {filtered.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-tertiary)', fontSize: 12.5 }}>
+                    No templates match "{search}"
+                  </div>
+                )}
               </div>
               {onSave && (
-                <button
-                  className="btn btn-secondary btn-xs"
-                  onClick={() => setMode('save')}
-                  style={{ flexShrink: 0 }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Save Current
-                </button>
-              )}
-            </div>
-
-            {/* Template grid */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 24px 24px' }}>
-              {builtinFiltered.length > 0 && (
-                <>
-                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>Built-in</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10, marginBottom: 18 }}>
-                    {builtinFiltered.map(renderCard)}
-                  </div>
-                </>
-              )}
-              {customFiltered.length > 0 && (
-                <>
-                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>Custom</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                    {customFiltered.map(renderCard)}
-                  </div>
-                </>
-              )}
-              {filtered.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-tertiary)', fontSize: 13 }}>
-                  No templates match "{search}"
+                <div style={{ padding: 12, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                  <button
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => setMode('save')}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Save Current as Template
+                  </button>
                 </div>
               )}
             </div>
+
+            {/* Right: preview pane */}
+            {previewTpl ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+                {/* Preview header */}
+                <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                  {renaming ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        className="input"
+                        autoFocus
+                        value={renameVal}
+                        onChange={e => setRenameVal(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setRenaming(false); }}
+                        style={{ height: 32, fontSize: 13, maxWidth: 280 }}
+                      />
+                      <button className="btn btn-primary btn-xs" onClick={handleRename} disabled={!renameVal.trim()}>Save</button>
+                      <button className="btn btn-ghost btn-xs" onClick={() => setRenaming(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{previewTpl.name}</h4>
+                      {previewTpl.custom && <span className="badge badge-info" style={{ fontSize: 10 }}>Custom</span>}
+                      {previewTpl.id === currentTplId && <span className="badge badge-success" style={{ fontSize: 10 }}>Applied</span>}
+                      <span style={{ flex: 1 }} />
+                      {previewTpl.custom && onUpdate && (
+                        <button
+                          className="btn-icon"
+                          title="Rename template"
+                          style={{ width: 26, height: 26 }}
+                          onClick={() => { setRenameVal(previewTpl.name); setRenaming(true); }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                      )}
+                      {previewTpl.custom && onDelete && (
+                        <button
+                          className="btn-icon danger"
+                          title="Delete template"
+                          style={{ width: 26, height: 26 }}
+                          onClick={() => handleDelete(previewTpl.id)}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {previewTpl.desc && <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45, margin: '6px 0 0' }}>{previewTpl.desc}</p>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                      {countSteps(previewTpl.steps)} step{countSteps(previewTpl.steps) !== 1 ? 's' : ''}
+                    </span>
+                    {previewTpl.steps.some(s => s.type === 'conditional' || s.branches) && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--warning)', fontWeight: 600 }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                        Branching
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step flow preview */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: 'var(--grey-100)' }}>
+                  <div style={{ maxWidth: 400, margin: '0 auto' }}>
+                    <TemplateMiniFlow steps={previewTpl.steps} />
+                  </div>
+                </div>
+
+                {/* Apply footer */}
+                <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                  <p style={{ flex: 1, fontSize: 11.5, color: 'var(--text-tertiary)', margin: 0 }}>
+                    {previewTpl.id === currentTplId
+                      ? 'This template is currently applied. Re-applying resets any customizations.'
+                      : currentSteps.length > 0
+                        ? `Applying replaces your current workflow (${currentSteps.length} step${currentSteps.length !== 1 ? 's' : ''}).`
+                        : 'Applying sets this as your workflow starting point.'}
+                  </p>
+                  <button className="btn btn-primary btn-sm" onClick={() => onSelect(previewTpl)} style={{ flexShrink: 0 }}>
+                    {previewTpl.id === currentTplId ? 'Re-apply Template' : 'Use This Template'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                Select a template to preview
+              </div>
+            )}
           </div>
         ) : (
           /* Save mode */
@@ -1126,9 +1291,30 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
                 onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose(); }}
               />
             </div>
+            {currentCustomTpl && onUpdate && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label className="form-label" style={{ marginBottom: 0 }}>Save to</label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                  <input type="radio" name="tpl-save-target" checked={saveTarget === 'update'} onChange={() => setSaveTarget('update')} style={{ marginTop: 2 }} />
+                  <span>
+                    Update "{currentCustomTpl.name}"
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-tertiary)' }}>Overwrites the existing template everywhere it's used as a starting point.</span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                  <input type="radio" name="tpl-save-target" checked={saveTarget === 'new'} onChange={() => setSaveTarget('new')} style={{ marginTop: 2 }} />
+                  <span>
+                    Save as a new template
+                    <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-tertiary)' }}>Keeps "{currentCustomTpl.name}" unchanged.</span>
+                  </span>
+                </label>
+              </div>
+            )}
             <div style={{ padding: '12px 14px', background: 'var(--grey-50)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                This will save the current workflow ({currentSteps.length} step{currentSteps.length !== 1 ? 's' : ''}) as a reusable template. You can apply it to other workflows later.
+                {saveTarget === 'update' && currentCustomTpl && onUpdate
+                  ? `This will replace the steps of "${currentCustomTpl.name}" with the current workflow (${currentSteps.length} step${currentSteps.length !== 1 ? 's' : ''}).`
+                  : `This will save the current workflow (${currentSteps.length} step${currentSteps.length !== 1 ? 's' : ''}) as a reusable template. You can apply it to other workflows later.`}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1136,7 +1322,7 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
                 Cancel
               </button>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={!saveName.trim()}>
-                Save Template
+                {saveTarget === 'update' && currentCustomTpl && onUpdate ? 'Update Template' : 'Save Template'}
               </button>
             </div>
           </div>
@@ -1148,7 +1334,7 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
 
 /* ── Main Workflow Customizer ─────────────────────────────── */
 
-export default function WorkflowCustomizer({ workflow, onChange, clinic, customTemplates = [], onSaveTemplate, onDeleteTemplate }) {
+export default function WorkflowCustomizer({ workflow, onChange, clinic, customTemplates = [], onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
   const [addingAtIndex, setAddingAtIndex] = useState(null);
   const [dragFrom, setDragFrom] = useState(null);
   const [showTplModal, setShowTplModal] = useState(false);
@@ -1258,6 +1444,10 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic, customT
             onSaveTemplate(tpl);
             onChange({ ...workflow, name: tpl.name, templateId: tpl.id });
             setShowTplModal(false);
+          } : null}
+          onUpdate={onUpdateTemplate ? (tpl) => {
+            onUpdateTemplate(tpl);
+            if (workflow?.templateId === tpl.id) onChange({ ...workflow, name: tpl.name });
           } : null}
           onDelete={onDeleteTemplate}
           onClose={() => setShowTplModal(false)}
