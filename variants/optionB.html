@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant B — Visit Type Catalog</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7; --brand-light:#D1FAE5;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-300:#D1D5DB; --grey-600:#4B5563;
+    --warning:#D97706; --warning-light:#FEF3C7; --info:#0284C7; --info-light:#E0F2FE;
+    --success:#059669; --success-light:#D1FAE5; --danger:#DC2626;
+    --r-md:6px; --r-lg:8px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  .topbar{display:flex;align-items:center;gap:24px;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .logo-mark{width:28px;height:28px;background:var(--brand);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .nav-btn{background:none;border:none;font-size:14px;font-weight:500;color:var(--text-secondary);padding:8px 4px;border-bottom:2px solid transparent}
+  .nav-btn.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  .variant-tag{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;color:#7C3AED;background:#F5F3FF;padding:4px 10px;border-radius:var(--r-full)}
+  .page{max-width:980px;margin:0 auto;padding:28px 24px 80px}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+  .page-sub{font-size:13.5px;color:var(--text-secondary);margin-bottom:22px;line-height:1.55}
+  .panel{border:1px solid var(--border);border-radius:var(--r-xl);background:#fff}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full)}
+  .badge-grey{background:var(--grey-100);color:var(--grey-600)}
+  .badge-default{background:var(--success-light);color:#065F46}
+  .chip-inherit{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:var(--r-full);background:var(--grey-100);color:var(--grey-600)}
+  .chip-override{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:var(--r-full);background:var(--warning-light);color:#92400E}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:13px;font-weight:600;padding:7px 14px;border:1px solid transparent;transition:all .15s}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dark)}
+  .btn-secondary{background:#fff;color:var(--text-primary);border-color:var(--border-strong)}
+  .btn-secondary:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-ghost{background:none;color:var(--text-secondary)}
+  .btn-ghost:hover{background:var(--grey-100);color:var(--text-primary)}
+  .btn-xs{font-size:12px;padding:4px 10px}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--grey-50)}
+  td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr.clickable:hover{background:var(--grey-50);cursor:pointer}
+  .ovr-dots{display:inline-flex;gap:4px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--grey-300)}
+  .dot.on{background:var(--warning)}
+  /* visit type editor layout */
+  .vt-layout{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;min-height:480px}
+  .vt-nav{width:220px;flex-shrink:0;border-right:1px solid var(--border);background:var(--grey-50);padding:14px 10px}
+  .vt-nav-item{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;text-align:left;font-size:13.5px;font-weight:500;color:var(--text-secondary);padding:9px 12px;border-radius:var(--r-md)}
+  .vt-nav-item:hover{background:var(--grey-100)}
+  .vt-nav-item.active{background:#fff;color:var(--text-primary);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .vt-content{flex:1;padding:22px 26px;min-width:0}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .sec-title{font-size:16px;font-weight:700}
+  .sec-desc{font-size:12.5px;color:var(--text-secondary);margin-bottom:16px;line-height:1.55}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+  .input{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:#fff;width:100%;max-width:300px}
+  .input:disabled{background:var(--grey-50);color:var(--text-secondary)}
+  .steps-box{background:var(--grey-50);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px}
+  .step-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--brand);flex-shrink:0}
+  .explain{border:1px dashed var(--border-strong);border-radius:var(--r-lg);background:var(--grey-50);padding:14px 18px;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:22px}
+  .explain strong{color:var(--text-primary)}
+  code{font-size:12px;background:var(--grey-100);padding:1px 5px;border-radius:4px}
+  .crumb{font-size:12.5px;color:var(--text-secondary);margin-bottom:14px}
+  .crumb a{color:var(--brand);text-decoration:none;cursor:pointer}
+  /* room curation */
+  .curate-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:6px;background:#fff}
+  .curate-row.off{opacity:.55;background:var(--grey-50)}
+  .curate-row input[type=checkbox]{accent-color:var(--brand);width:15px;height:15px}
+  .order-btns{display:flex;gap:2px}
+  .order-btn{border:1px solid var(--border-strong);background:#fff;border-radius:var(--r-md);width:24px;height:24px;font-size:11px;color:var(--text-secondary)}
+  .order-btn:disabled{opacity:.35}
+  .pill-badges{display:flex;gap:4px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══ Mock data — identical values to the current app, reorganized:
+   visit types are clinic-level; rooms curate them. ══ */
+const CLINIC_DEFAULTS = {
+  patientTypes:['Self-Pay','Insurance','Group-Covered'],
+  flowName:'Clinic Default Flow',
+  flowSteps:['Login','Dependant List','Consultation','Calendar Picker','Intake Form','Branch: By Patient Type','Pharmacy','Emergency Contact','Test Device','Setup Session','Confirmation'],
+  notesName:'SOAP Note',
+  notesSections:'Subjective · Objective · Assessment · Plan · Follow-up date',
+};
+const SECTIONS = [
+  {id:'general', label:'General'},
+  {id:'patients', label:'Patient Types & Payment'},
+  {id:'flow', label:'Intake Flow'},
+  {id:'notes', label:'Visit Notes'},
+];
+const state = {
+  page:'types', vtId:null, section:'general', roomId:null,
+  visitTypes:[
+    { id:'vt_1', name:'New Patient Consult', duration:'30 min', mode:'Video', session:'1:1',
+      overrides:{ general:true, patients:true, flow:false, notes:false },
+      patientTypes:['Self-Pay','Insurance'], price:'$150 self-pay · $30 copay',
+      flowName:null, flowSteps:null, notesName:null },
+    { id:'vt_2', name:'Urgent Care Visit', duration:'15 min', mode:'Video', session:'1:1',
+      overrides:{ general:true, patients:true, flow:false, notes:true },
+      patientTypes:['Self-Pay','Group-Covered','Insurance'], price:'$75 self-pay · copays',
+      flowName:null, flowSteps:null, notesName:'Progress Note' },
+    { id:'vt_3', name:'Initial Assessment', duration:'60 min', mode:'Video', session:'1:1',
+      overrides:{ general:true, patients:true, flow:true, notes:false },
+      patientTypes:['Self-Pay','Insurance'], price:'not set',
+      flowName:'Mental Health Initial Assessment',
+      flowSteps:['Calendar Picker','Intake Form','Mental Health Intake','PHQ-9 Assessment','Emergency Contact','Pharmacy','Payment Options','Test Device','Setup Session','Confirmation'],
+      notesName:null },
+    { id:'vt_4', name:'Follow-up Session', duration:'45 min', mode:'Video', session:'1:1',
+      overrides:{ general:true, patients:true, flow:false, notes:false },
+      patientTypes:['Self-Pay','Insurance'], price:'copay only',
+      flowName:null, flowSteps:null, notesName:null },
+  ],
+  rooms:[
+    { id:'room_1', name:'General Waiting Room', code:'GHTNC', visibility:'Public',
+      enabled:['vt_1','vt_2'], order:['vt_1','vt_2'] },
+    { id:'room_2', name:'Mental Health Room', code:'MHLTH', visibility:'Unlisted',
+      enabled:['vt_3','vt_4'], order:['vt_3','vt_4'] },
+  ],
+};
+const vt = id => state.visitTypes.find(v=>v.id===id);
+const roomsUsing = vtId => state.rooms.filter(r=>r.enabled.includes(vtId));
+
+/* ══ Views ══ */
+function topbar(){
+  const active = id => (state.page===id || (id==='types'&&state.page==='type') || (id==='rooms'&&state.page==='room')) ? 'active':'';
+  return `<nav class="topbar">
+    <span class="logo"><span class="logo-mark">V</span>VSee Clinic</span>
+    <button class="nav-btn ${active('clinic')}" onclick="go('clinic')">Clinic Settings</button>
+    <button class="nav-btn ${active('types')}" onclick="go('types')">Visit Types</button>
+    <button class="nav-btn ${active('rooms')}" onclick="go('rooms')">Waiting Rooms</button>
+    <span class="variant-tag">VARIANT B — VISIT TYPE CATALOG</span>
+  </nav>`;
+}
+function explainBox(){
+  return `<div class="explain"><strong>Model:</strong> visit types are <strong>first-class, clinic-level objects</strong> — configured once in a full-page editor, reused in any room.
+  Each configuration section is either <span class="chip-inherit">Inherited from clinic default</span> or <span class="chip-override">Overridden</span>, section by section.
+  Rooms don't own visit types anymore — a room just <strong>selects and orders</strong> which catalog entries it exposes.</div>`;
+}
+
+function typesPage(){
+  return `<div class="page">
+    <h1 class="page-title">Visit Types</h1>
+    <p class="page-sub">The clinic-wide catalog. One "Initial Assessment" can be offered in any number of rooms — configured exactly once.</p>
+    ${explainBox()}
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-xs">+ New Visit Type</button></div>
+    <div class="panel"><table>
+      <tr><th>Visit Type</th><th>Duration</th><th>Patient types</th><th>Overrides</th><th>Offered in</th><th></th></tr>
+      ${state.visitTypes.map(v=>{
+        const rs = roomsUsing(v.id);
+        return `<tr class="clickable" onclick="openType('${v.id}')">
+          <td style="font-weight:600">${v.name}</td>
+          <td>${v.duration}</td>
+          <td><div class="pill-badges">${v.patientTypes.map(p=>`<span class="badge badge-grey">${p}</span>`).join('')}</div></td>
+          <td><span class="ovr-dots" title="General · Patients · Flow · Notes">
+            ${SECTIONS.map(s=>`<span class="dot ${v.overrides[s.id]&&(s.id==='flow'||s.id==='notes')?'on':''}" title="${s.label}: ${v.overrides[s.id]&&(s.id==='flow'||s.id==='notes')?'overridden':'inherited/own'}"></span>`).join('')}
+          </span>${(v.overrides.flow||v.overrides.notes)?`<span style="font-size:11px;color:var(--warning);font-weight:600;margin-left:6px">${['flow','notes'].filter(k=>v.overrides[k]).length} override${['flow','notes'].filter(k=>v.overrides[k]).length>1?'s':''}</span>`:`<span style="font-size:11px;color:var(--text-tertiary);margin-left:6px">defaults</span>`}</td>
+          <td>${rs.length?rs.map(r=>`<span class="badge badge-default" style="margin-right:4px">${r.name.replace(' Waiting','').replace(' Room','')}</span>`).join(''):'<span style="color:var(--text-tertiary)">no rooms</span>'}</td>
+          <td style="text-align:right"><button class="btn btn-ghost btn-xs">Configure ›</button></td>
+        </tr>`;}).join('')}
+    </table></div>
+  </div>`;
+}
+
+function sectionContent(v, sec){
+  const chip = ovr => ovr
+    ? `<span class="chip-override">⚡ Overridden</span>`
+    : `<span class="chip-inherit">↓ Inherited from clinic default</span>`;
+  if(sec==='general') return `
+    <div class="sec-head"><span class="sec-title">General</span><span class="chip-inherit" style="background:var(--brand-50);color:var(--brand-dark)">Own settings — always per visit type</span></div>
+    <p class="sec-desc">Identity settings have no clinic default; they define the visit type itself.</p>
+    <div class="field"><label>Name</label><input class="input" value="${v.name}"></div>
+    <div class="field"><label>Duration</label><input class="input" value="${v.duration}" style="max-width:120px"></div>
+    <div class="field"><label>Mode</label><input class="input" value="${v.mode}" style="max-width:160px"></div>
+    <div class="field"><label>Session</label><input class="input" value="${v.session}" style="max-width:120px"></div>`;
+  if(sec==='patients') return `
+    <div class="sec-head"><span class="sec-title">Patient Types &amp; Payment</span>${chip(true)}</div>
+    <p class="sec-desc">Clinic default accepts all 3 patient types. This visit type ${v.patientTypes.length===3?'follows that':'narrows it'} — pricing is always per visit type.</p>
+    <div class="field"><label>Accepted patient types</label>
+      ${CLINIC_DEFAULTS.patientTypes.map(p=>`<label style="display:inline-flex;align-items:center;gap:6px;margin-right:14px;font-size:13px"><input type="checkbox" ${v.patientTypes.includes(p)?'checked':''} style="accent-color:var(--brand)">${p}</label>`).join('')}
+    </div>
+    <div class="field"><label>Pricing</label><input class="input" value="${v.price}" style="max-width:340px"></div>`;
+  if(sec==='flow'){
+    const ovr = v.overrides.flow;
+    const steps = ovr ? v.flowSteps : CLINIC_DEFAULTS.flowSteps;
+    const name = ovr ? v.flowName : CLINIC_DEFAULTS.flowName;
+    return `
+    <div class="sec-head"><span class="sec-title">Intake Flow</span>${chip(ovr)}
+      <span style="flex:1"></span>
+      ${ovr?`<button class="btn btn-secondary btn-xs" onclick="resetSection('${v.id}','flow')">↺ Reset to clinic default</button>`
+           :`<button class="btn btn-secondary btn-xs" onclick="overrideSection('${v.id}','flow')">⚡ Override for this visit type</button>`}
+    </div>
+    <p class="sec-desc">${ovr
+      ? `This visit type uses its own flow, <strong>${name}</strong>. Resetting discards it and re-inherits the clinic default.`
+      : `Showing the <strong>effective</strong> configuration — the clinic default flow. Editing it happens in Clinic Settings and applies to every inheriting visit type.`}</p>
+    <div class="steps-box" ${ovr?'':'style="opacity:.75"'}>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:6px">${name} · ${steps.length} steps ${ovr?'(editable here — full-page builder)':'(read-only, inherited)'}</p>
+      ${steps.map(s=>`<div class="step-row"><span class="step-dot"></span>${s}</div>`).join('')}
+    </div>`;
+  }
+  if(sec==='notes'){
+    const ovr = v.overrides.notes;
+    const name = ovr ? v.notesName : CLINIC_DEFAULTS.notesName;
+    return `
+    <div class="sec-head"><span class="sec-title">Visit Notes</span>${chip(ovr)}
+      <span style="flex:1"></span>
+      ${ovr?`<button class="btn btn-secondary btn-xs" onclick="resetSection('${v.id}','notes')">↺ Reset to clinic default</button>`
+           :`<button class="btn btn-secondary btn-xs" onclick="overrideSection('${v.id}','notes')">⚡ Override for this visit type</button>`}
+    </div>
+    <p class="sec-desc">${ovr
+      ? `This visit type uses <strong>${name}</strong> instead of the clinic default (${CLINIC_DEFAULTS.notesName}).`
+      : `Providers get the clinic default template, <strong>${CLINIC_DEFAULTS.notesName}</strong>, for this visit type.`}</p>
+    <div class="steps-box" ${ovr?'':'style="opacity:.75"'}>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:6px">${name}</p>
+      <div class="step-row">${name==='Progress Note'?'Interval History · Symptom scale · Exam · Med-review checkbox · Impression · Plan':CLINIC_DEFAULTS.notesSections}</div>
+    </div>`;
+  }
+}
+
+function typePage(){
+  const v = vt(state.vtId);
+  const rs = roomsUsing(v.id);
+  return `<div class="page">
+    <p class="crumb"><a onclick="go('types')">Visit Types</a> / ${v.name}</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <h1 class="page-title" style="margin:0">${v.name}</h1>
+      ${rs.map(r=>`<span class="badge badge-default">${r.name}</span>`).join('')}
+    </div>
+    <p class="page-sub">Full-page editor — no modal. Each section states whether it's inherited or overridden, and can be flipped independently.</p>
+    <div class="vt-layout">
+      <div class="vt-nav">
+        ${SECTIONS.map(s=>`<button class="vt-nav-item ${state.section===s.id?'active':''}" onclick="setSection('${s.id}')">
+          <span>${s.label}</span>
+          ${(s.id==='flow'||s.id==='notes') ? (v.overrides[s.id]?'<span class="dot on"></span>':'<span class="dot"></span>') : ''}
+        </button>`).join('')}
+      </div>
+      <div class="vt-content">${sectionContent(v, state.section)}</div>
+    </div>
+  </div>`;
+}
+
+function roomsPage(){
+  return `<div class="page">
+    <h1 class="page-title">Waiting Rooms</h1>
+    <p class="page-sub">Rooms are now thin: identity, hours, visibility — and a picker of catalog visit types.</p>
+    ${explainBox()}
+    <div class="panel"><table>
+      <tr><th>Room</th><th>Code</th><th>Visibility</th><th>Visit types offered</th><th></th></tr>
+      ${state.rooms.map(r=>`<tr class="clickable" onclick="openRoom('${r.id}')">
+        <td style="font-weight:600">${r.name}</td><td><code>${r.code}</code></td>
+        <td><span class="badge ${r.visibility==='Public'?'badge-default':'badge-grey'}">${r.visibility}</span></td>
+        <td>${r.enabled.map(id=>`<span class="badge badge-grey" style="margin-right:4px">${vt(id).name}</span>`).join('')}</td>
+        <td style="text-align:right"><button class="btn btn-ghost btn-xs">Configure ›</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function roomPage(){
+  const r = state.rooms.find(x=>x.id===state.roomId);
+  const ordered = r.order.filter(id=>r.enabled.includes(id));
+  const others = state.visitTypes.filter(v=>!r.enabled.includes(v.id));
+  return `<div class="page">
+    <p class="crumb"><a onclick="go('rooms')">Waiting Rooms</a> / ${r.name}</p>
+    <h1 class="page-title">${r.name} <code style="font-size:13px">${r.code}</code></h1>
+    <p class="page-sub">Room identity, operating hours and visibility stay here (unchanged from current design, collapsed for this prototype). Below: curation replaces per-room visit option management.</p>
+    <div class="panel" style="padding:18px 22px;margin-bottom:16px">
+      <p style="font-size:12px;color:var(--text-secondary)">Hours: <strong>Always open</strong> · Visibility: <strong>${r.visibility}</strong> · Timezone: Pacific</p>
+    </div>
+    <p style="font-size:14px;font-weight:700;margin-bottom:4px">Visit types in this room</p>
+    <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px">Check to offer a catalog visit type here; reorder to control how patients see them. Configuration lives on the visit type itself — <a style="color:var(--brand);cursor:pointer" onclick="go('types')">open the catalog</a> to change it.</p>
+    ${ordered.map((id,i)=>{
+      const v=vt(id);
+      return `<div class="curate-row">
+        <input type="checkbox" checked onchange="toggleVT('${r.id}','${id}')">
+        <span style="flex:1"><strong>${v.name}</strong> <span style="color:var(--text-tertiary);font-size:12px">· ${v.duration} · ${v.mode}</span>
+          ${(v.overrides.flow||v.overrides.notes)?'<span class="chip-override" style="margin-left:6px">custom config</span>':'<span class="chip-inherit" style="margin-left:6px">clinic defaults</span>'}</span>
+        <span class="order-btns">
+          <button class="order-btn" ${i===0?'disabled':''} onclick="moveVT('${r.id}',${i},-1)">↑</button>
+          <button class="order-btn" ${i===ordered.length-1?'disabled':''} onclick="moveVT('${r.id}',${i},1)">↓</button>
+        </span>
+        <button class="btn btn-ghost btn-xs" onclick="openType('${id}')">Edit type ›</button>
+      </div>`;}).join('')}
+    ${others.length?`<p class="crumb" style="margin-top:16px;font-weight:600">Not offered in this room</p>`:''}
+    ${others.map(v=>`<div class="curate-row off">
+      <input type="checkbox" onchange="toggleVT('${r.id}','${v.id}')">
+      <span style="flex:1"><strong>${v.name}</strong> <span style="color:var(--text-tertiary);font-size:12px">· ${v.duration} · ${v.mode}</span></span>
+    </div>`).join('')}
+  </div>`;
+}
+
+function clinicPage(){
+  return `<div class="page">
+    <h1 class="page-title">Clinic Settings</h1>
+    <p class="page-sub">Clinic defaults are the base layer every visit type inherits unless it overrides a section.</p>
+    <div class="panel" style="padding:20px 24px">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:8px">Patient types (default set)</p>
+      ${CLINIC_DEFAULTS.patientTypes.map(p=>`<span class="badge badge-grey" style="margin-right:6px">${p}</span>`).join('')}
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin:18px 0 8px">Default intake flow — inherited by ${state.visitTypes.filter(v=>!v.overrides.flow).length} of ${state.visitTypes.length} visit types</p>
+      <div class="steps-box">${CLINIC_DEFAULTS.flowSteps.map(s=>`<div class="step-row"><span class="step-dot"></span>${s}</div>`).join('')}</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:6px">Editing this flow shows: “3 visit types inherit this flow and will get the change.”</p>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin:18px 0 8px">Default notes template — inherited by ${state.visitTypes.filter(v=>!v.overrides.notes).length} of ${state.visitTypes.length} visit types</p>
+      <div class="steps-box"><div class="step-row"><strong>${CLINIC_DEFAULTS.notesName}</strong>&nbsp;— ${CLINIC_DEFAULTS.notesSections}</div></div>
+    </div>
+  </div>`;
+}
+
+/* ══ Actions ══ */
+function go(p){ state.page=p; render(); }
+function openType(id){ state.page='type'; state.vtId=id; state.section='general'; render(); }
+function setSection(s){ state.section=s; render(); }
+function openRoom(id){ state.page='room'; state.roomId=id; render(); }
+function overrideSection(vtId, sec){
+  const v = vt(vtId);
+  v.overrides[sec]=true;
+  if(sec==='flow' && !v.flowSteps){ v.flowName=v.name+' Flow (copy of clinic default)'; v.flowSteps=[...CLINIC_DEFAULTS.flowSteps]; }
+  if(sec==='notes' && !v.notesName){ v.notesName='Progress Note'; }
+  render();
+}
+function resetSection(vtId, sec){
+  const v = vt(vtId);
+  v.overrides[sec]=false;
+  render();
+}
+function toggleVT(roomId, vtId){
+  const r = state.rooms.find(x=>x.id===roomId);
+  if(r.enabled.includes(vtId)) r.enabled = r.enabled.filter(id=>id!==vtId);
+  else { r.enabled.push(vtId); if(!r.order.includes(vtId)) r.order.push(vtId); }
+  render();
+}
+function moveVT(roomId, idx, dir){
+  const r = state.rooms.find(x=>x.id===roomId);
+  const ordered = r.order.filter(id=>r.enabled.includes(id));
+  const to = idx+dir;
+  if(to<0||to>=ordered.length) return;
+  const a=ordered[idx];
+  ordered[idx]=ordered[to]; ordered[to]=a;
+  r.order = ordered.concat(r.order.filter(id=>!r.enabled.includes(id)));
+  render();
+}
+function render(){
+  const pages={types:typesPage, type:typePage, rooms:roomsPage, room:roomPage, clinic:clinicPage};
+  document.getElementById('app').innerHTML = topbar() + (pages[state.page]||typesPage)();
+}
+render();
+</script>
+</body>
+</html>

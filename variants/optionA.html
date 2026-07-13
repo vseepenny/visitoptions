@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant A — Reference-Based Profiles</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7; --brand-light:#D1FAE5;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-300:#D1D5DB; --grey-600:#4B5563; --grey-700:#374151;
+    --warning:#D97706; --warning-light:#FEF3C7; --info:#0284C7; --info-light:#E0F2FE;
+    --success:#059669; --success-light:#D1FAE5; --danger:#DC2626; --danger-light:#FEE2E2;
+    --r-md:6px; --r-lg:8px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  /* topbar */
+  .topbar{display:flex;align-items:center;gap:24px;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .logo-mark{width:28px;height:28px;background:var(--brand);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .nav-btn{background:none;border:none;font-size:14px;font-weight:500;color:var(--text-secondary);padding:8px 4px;border-bottom:2px solid transparent}
+  .nav-btn.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  .variant-tag{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--info);background:var(--info-light);padding:4px 10px;border-radius:var(--r-full)}
+  /* layout */
+  .page{max-width:960px;margin:0 auto;padding:28px 24px 80px}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+  .page-sub{font-size:13.5px;color:var(--text-secondary);margin-bottom:22px;line-height:1.55}
+  .panel{border:1px solid var(--border);border-radius:var(--r-xl);background:#fff}
+  .panel-body{padding:20px 24px}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin:18px 0 8px}
+  /* badges & chips */
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full)}
+  .badge-default{background:var(--success-light);color:#065F46}
+  .badge-info{background:var(--info-light);color:#075985}
+  .badge-warn{background:var(--warning-light);color:#92400E}
+  .badge-grey{background:var(--grey-100);color:var(--grey-600)}
+  .ref-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--r-full);border:1px solid var(--border)}
+  .ref-chip.follows{background:var(--brand-50);border-color:var(--brand-light);color:var(--brand-dark)}
+  .ref-chip.shared{background:var(--info-light);border-color:#BAE6FD;color:#075985}
+  .ref-chip.detached{background:var(--warning-light);border-color:#FDE68A;color:#92400E}
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:13px;font-weight:600;padding:7px 14px;border:1px solid transparent;transition:all .15s}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dark)}
+  .btn-secondary{background:#fff;color:var(--text-primary);border-color:var(--border-strong)}
+  .btn-secondary:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-ghost{background:none;color:var(--text-secondary)}
+  .btn-ghost:hover{background:var(--grey-100);color:var(--text-primary)}
+  .btn-xs{font-size:12px;padding:4px 10px}
+  /* table */
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--grey-50)}
+  td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr.clickable:hover{background:var(--grey-50);cursor:pointer}
+  /* profile cards */
+  .profile-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:8px;background:#fff}
+  .profile-head{display:flex;align-items:center;gap:10px}
+  .profile-name{font-size:14px;font-weight:700}
+  .used-by{font-size:12px;color:var(--text-secondary);background:var(--grey-100);padding:2px 8px;border-radius:var(--r-full);cursor:pointer;border:none}
+  .used-by:hover{background:var(--grey-300)}
+  .usage-list{margin-top:10px;border-top:1px dashed var(--border);padding-top:10px;font-size:12.5px;color:var(--text-secondary)}
+  .usage-list li{margin:3px 0 3px 18px}
+  .flow-mini{font-size:12px;color:var(--text-tertiary);margin-top:4px}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+  .modal{background:#fff;border-radius:var(--r-xl);width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--border)}
+  .modal-title{font-size:16px;font-weight:700}
+  .modal-body{padding:18px 22px;overflow-y:auto}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--border)}
+  .tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid var(--border)}
+  .tab{background:none;border:none;font-size:13.5px;font-weight:500;color:var(--text-secondary);padding:11px 12px;border-bottom:2px solid transparent}
+  .tab.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  /* reference selector */
+  .ref-opt{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--border);border-radius:var(--r-lg);padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+  .ref-opt:hover{border-color:var(--border-strong)}
+  .ref-opt.sel{border-color:var(--brand);background:var(--brand-50)}
+  .ref-opt input{margin-top:3px;accent-color:var(--brand)}
+  .ref-opt-title{font-size:13.5px;font-weight:600}
+  .ref-opt-desc{font-size:12px;color:var(--text-secondary);margin-top:2px;line-height:1.5}
+  select.input{font-family:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:#fff;margin-top:8px}
+  .callout{border-radius:var(--r-lg);padding:11px 14px;font-size:12.5px;line-height:1.55;margin:10px 0}
+  .callout-warn{background:var(--warning-light);border:1px solid #FDE68A;color:#92400E}
+  .callout-info{background:var(--info-light);border:1px solid #BAE6FD;color:#075985}
+  .steps-preview{background:var(--grey-50);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-top:12px}
+  .step-row{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0;color:var(--text-primary)}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--brand);flex-shrink:0}
+  .explain{border:1px dashed var(--border-strong);border-radius:var(--r-lg);background:var(--grey-50);padding:14px 18px;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:22px}
+  .explain strong{color:var(--text-primary)}
+  code{font-size:12px;background:var(--grey-100);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══ Mock data — identical values to the current app ══ */
+const FLOWS = {
+  wf_default: { id:'wf_default', name:'Clinic Default Flow', isClinicDefault:true,
+    steps:['Login','Dependant List','Consultation','Calendar Picker','Intake Form','Branch: By Patient Type','Pharmacy','Emergency Contact','Test Device','Setup Session','Confirmation'] },
+  wf_mh: { id:'wf_mh', name:'Mental Health Initial Assessment', isClinicDefault:false,
+    steps:['Calendar Picker','Intake Form','Mental Health Intake','PHQ-9 Assessment','Emergency Contact','Pharmacy','Payment Options','Test Device','Setup Session','Confirmation'] },
+};
+const NOTES = {
+  nt_1:{id:'nt_1',name:'SOAP Note',isClinicDefault:true,sections:'Subjective · Objective · Assessment · Plan · Follow-up date'},
+  nt_2:{id:'nt_2',name:'Progress Note',isClinicDefault:false,sections:'Interval History · Symptom scale · Exam · Med-review · Impression · Plan'},
+  nt_3:{id:'nt_3',name:'Blank',isClinicDefault:false,sections:'Empty note'},
+};
+/* flowRef / notesRef: {kind:'default'} | {kind:'shared', id} | {kind:'detached', from} */
+const state = {
+  page:'rooms', roomId:null, modal:null, /* {voId, tab} */
+  expandedUsage:{},
+  rooms:[
+    { id:'room_1', name:'General Waiting Room', code:'GHTNC', visibility:'Public',
+      visitOptions:[
+        { id:'vo_1', name:'New Patient Consult', duration:'30 min', mode:'Video', patientTypes:['Self-Pay','Insurance'], price:'$150 / copay',
+          flowRef:{kind:'default'}, notesRef:{kind:'default'} },
+        { id:'vo_2', name:'Urgent Care Visit', duration:'15 min', mode:'Video', patientTypes:['Self-Pay','Group','Insurance'], price:'$75 / copay',
+          flowRef:{kind:'default'}, notesRef:{kind:'shared', id:'nt_2'} },
+      ]},
+    { id:'room_2', name:'Mental Health Room', code:'MHLTH', visibility:'Unlisted',
+      visitOptions:[
+        { id:'vo_3', name:'Initial Assessment', duration:'60 min', mode:'Video', patientTypes:['Self-Pay','Insurance'], price:'—',
+          flowRef:{kind:'shared', id:'wf_mh'}, notesRef:{kind:'default'} },
+        { id:'vo_4', name:'Follow-up Session', duration:'45 min', mode:'Video', patientTypes:['Self-Pay','Insurance'], price:'copay',
+          flowRef:{kind:'default'}, notesRef:{kind:'shared', id:'nt_1'} },
+      ]},
+  ],
+};
+
+const allVOs = () => state.rooms.flatMap(r => r.visitOptions.map(vo => ({...vo, room:r})));
+const findVO = id => allVOs().find(v => v.id === id);
+const rawVO = id => { for(const r of state.rooms){ const v=r.visitOptions.find(v=>v.id===id); if(v) return v; } };
+
+function flowUsage(flowId){
+  return allVOs().filter(v =>
+    (flowId==='wf_default' && v.flowRef.kind==='default') ||
+    (v.flowRef.kind==='shared' && v.flowRef.id===flowId));
+}
+function notesUsage(ntId){
+  return allVOs().filter(v =>
+    (ntId==='nt_1' && v.notesRef.kind==='default') ||
+    (v.notesRef.kind==='shared' && v.notesRef.id===ntId));
+}
+function refChip(ref, lib){
+  if(ref.kind==='default') return `<span class="ref-chip follows">⟳ Clinic default · follows</span>`;
+  if(ref.kind==='shared')  return `<span class="ref-chip shared">◆ ${lib[ref.id].name}</span>`;
+  return `<span class="ref-chip detached">✂ Custom · detached</span>`;
+}
+
+/* ══ Views ══ */
+function topbar(){
+  const nav = (id,label)=>`<button class="nav-btn ${state.page===id||state.page==='room'&&id==='rooms'?'active':''}" onclick="go('${id}')">${label}</button>`;
+  return `<nav class="topbar">
+    <span class="logo"><span class="logo-mark">V</span>VSee Clinic</span>
+    ${nav('rooms','Waiting Rooms')}${nav('library','Flow &amp; Notes Library')}${nav('clinic','Clinic Settings')}
+    <span class="variant-tag">VARIANT A — REFERENCE PROFILES</span>
+  </nav>`;
+}
+
+function explainBox(){
+  return `<div class="explain"><strong>Model:</strong> a visit option never <em>copies</em> configuration — it <strong>points at</strong> a profile.
+  <strong>⟳ Follows clinic default</strong> (live link — future changes apply automatically) ·
+  <strong>◆ Shared profile</strong> (named, reusable, edited in one place) ·
+  <strong>✂ Detached</strong> (independent copy, an explicit escape hatch). Every profile shows exactly which visit types use it.</div>`;
+}
+
+function roomsPage(){
+  return `<div class="page">
+    <h1 class="page-title">Waiting Rooms</h1>
+    <p class="page-sub">Same navigation as today — the change is in what "Intake Flow" and "Notes" mean on each visit option.</p>
+    ${explainBox()}
+    ${state.rooms.map(r=>`
+      <div class="panel" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border)">
+          <strong style="font-size:15px">${r.name}</strong>
+          <code>${r.code}</code>
+          <span class="badge ${r.visibility==='Public'?'badge-default':'badge-grey'}">${r.visibility}</span>
+        </div>
+        <table>
+          <tr><th>Visit Option</th><th>Duration</th><th>Intake flow</th><th>Notes</th><th></th></tr>
+          ${r.visitOptions.map(vo=>`
+            <tr class="clickable" onclick="openModal('${vo.id}','flow')">
+              <td style="font-weight:600">${vo.name}</td>
+              <td>${vo.duration}</td>
+              <td>${refChip(vo.flowRef, FLOWS)}</td>
+              <td>${refChip(vo.notesRef, NOTES)}</td>
+              <td style="text-align:right"><button class="btn btn-ghost btn-xs">Configure ›</button></td>
+            </tr>`).join('')}
+        </table>
+      </div>`).join('')}
+  </div>`;
+}
+
+function profileCard(kind, p){
+  const usage = kind==='flow' ? flowUsage(p.id) : notesUsage(p.id);
+  const key = kind+'_'+p.id;
+  const expanded = state.expandedUsage[key];
+  return `<div class="profile-card">
+    <div class="profile-head">
+      <span class="profile-name">${p.name}</span>
+      ${p.isClinicDefault?`<span class="badge badge-default">Clinic default</span>`:`<span class="badge badge-info">Shared profile</span>`}
+      <button class="used-by" onclick="toggleUsage('${key}')">${usage.length} visit type${usage.length!==1?'s':''} ${expanded?'▴':'▾'}</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-secondary btn-xs" onclick="alert('Editing ${p.name.replace(/'/g,"\\'")} — the editor opens with a banner: “This profile is used by ${usage.length} visit type(s). Changes apply everywhere.”')">Edit</button>
+    </div>
+    <p class="flow-mini">${p.steps ? p.steps.length+' steps — '+p.steps.slice(0,5).join(' → ')+' …' : p.sections}</p>
+    ${expanded?`<ul class="usage-list">${usage.map(v=>`<li><strong>${v.name}</strong> — ${v.room.name} <span style="color:var(--text-tertiary)">(${v.flowRef.kind==='default'&&kind==='flow'||v.notesRef.kind==='default'&&kind==='notes'?'follows default':'direct reference'})</span></li>`).join('')||'<li>Not referenced.</li>'}</ul>`:''}
+  </div>`;
+}
+
+function libraryPage(){
+  return `<div class="page">
+    <h1 class="page-title">Flow &amp; Notes Library</h1>
+    <p class="page-sub">The single home of every reusable configuration. Anything edited here updates all visit types that reference it — and it says so before you edit.</p>
+    ${explainBox()}
+    <div style="display:flex;justify-content:space-between;align-items:center"><p class="section-label">Intake flow profiles</p><button class="btn btn-secondary btn-xs">+ New flow profile</button></div>
+    ${Object.values(FLOWS).map(f=>profileCard('flow',f)).join('')}
+    <div style="display:flex;justify-content:space-between;align-items:center"><p class="section-label">Notes profiles</p><button class="btn btn-secondary btn-xs">+ New notes profile</button></div>
+    ${Object.values(NOTES).map(n=>profileCard('notes',n)).join('')}
+  </div>`;
+}
+
+function clinicPage(){
+  return `<div class="page">
+    <h1 class="page-title">Clinic Settings</h1>
+    <p class="page-sub">Slimmer than today: patient types and payment only. Default flow &amp; notes now live in the Library as ordinary profiles marked "Clinic default".</p>
+    <div class="panel"><div class="panel-body">
+      <p class="section-label" style="margin-top:0">Patient types</p>
+      <span class="badge badge-grey" style="margin-right:6px">Self-Pay</span>
+      <span class="badge badge-grey" style="margin-right:6px">Insurance</span>
+      <span class="badge badge-grey">Group-Covered</span>
+      <p class="section-label">Payment</p>
+      <p style="font-size:13px;color:var(--text-secondary)">Stripe connected · per-visit-type pricing configured on each visit option (unchanged from current design).</p>
+      <p class="section-label">Defaults</p>
+      <p style="font-size:13px;color:var(--text-secondary)">Default intake flow: <strong>Clinic Default Flow</strong> · Default notes: <strong>SOAP Note</strong> — change which profile is the default from the <a href="#" onclick="go('library');return false" style="color:var(--brand)">Library</a>.</p>
+    </div></div>
+  </div>`;
+}
+
+/* ── Visit option modal: the reference selector ── */
+function modalView(){
+  if(!state.modal) return '';
+  const vo = findVO(state.modal.voId);
+  const tab = state.modal.tab;
+  const isFlow = tab==='flow';
+  const ref = isFlow ? vo.flowRef : vo.notesRef;
+  const lib = isFlow ? FLOWS : NOTES;
+  const defaultObj = isFlow ? FLOWS.wf_default : NOTES.nt_1;
+  const shared = Object.values(lib).filter(p=>!p.isClinicDefault);
+  const effective = ref.kind==='default' ? defaultObj : ref.kind==='shared' ? lib[ref.id] : null;
+
+  const opt = (kind, title, desc, extra='') => `
+    <label class="ref-opt ${ref.kind===kind?'sel':''}" onclick="setRef('${vo.id}','${tab}','${kind}')">
+      <input type="radio" name="ref" ${ref.kind===kind?'checked':''}>
+      <span style="flex:1"><span class="ref-opt-title">${title}</span><br><span class="ref-opt-desc">${desc}</span>${extra}</span>
+    </label>`;
+
+  return `<div class="overlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-head"><span class="modal-title">${vo.name} — ${vo.room.name}</span>
+        <button class="btn btn-ghost btn-xs" onclick="closeModal()">✕</button></div>
+      <div class="tabs">
+        <button class="tab" disabled style="opacity:.45">General</button>
+        <button class="tab" disabled style="opacity:.45">Patient Types</button>
+        <button class="tab ${isFlow?'active':''}" onclick="switchTab('flow')">Intake Flow</button>
+        <button class="tab ${!isFlow?'active':''}" onclick="switchTab('notes')">Visit Notes</button>
+      </div>
+      <div class="modal-body">
+        ${opt('default',
+          `⟳ Follow clinic default <span style="font-weight:400;color:var(--text-tertiary)">(${defaultObj.name})</span>`,
+          `A <strong>live link</strong> — when the clinic default ${isFlow?'flow':'notes template'} is improved, this visit type gets the change automatically. Used by ${(isFlow?flowUsage('wf_default'):notesUsage('nt_1')).length} visit types.`)}
+        ${opt('shared',
+          `◆ Use a shared profile`,
+          `Reference a named profile from the Library. Still a live link — edited in one place, updates everywhere it's used.`,
+          ref.kind==='shared'?`<br><select class="input" onclick="event.stopPropagation()" onchange="setSharedId('${vo.id}','${tab}',this.value)">
+            ${shared.map(p=>`<option value="${p.id}" ${ref.id===p.id?'selected':''}>${p.name} — used by ${(isFlow?flowUsage(p.id):notesUsage(p.id)).length}</option>`).join('')}
+          </select>`:'')}
+        ${opt('detached',
+          `✂ Custom (detached)`,
+          `Copies the current configuration and cuts the link. Only this visit type is affected by future edits. You can re-attach later — your customizations are discarded after a confirmation.`)}
+        ${ref.kind==='detached'?`<div class="callout callout-warn"><strong>Detached from “${defaultObj.name}”.</strong> This visit type no longer receives updates. <a href="#" onclick="setRef('${vo.id}','${tab}','default');return false" style="color:#92400E;font-weight:700">Re-attach to clinic default</a></div>`:''}
+        ${effective?`<div class="steps-preview">
+          <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-bottom:6px">Effective ${isFlow?'flow':'notes'} — ${effective.name} (read-only preview)</p>
+          ${isFlow ? effective.steps.map(s=>`<div class="step-row"><span class="step-dot"></span>${s}</div>`).join('')
+                   : `<div class="step-row">${effective.sections}</div>`}
+          <p style="font-size:11.5px;color:var(--text-tertiary);margin-top:8px">To change these steps, edit the profile in the Library — it will warn you how many visit types are affected.</p>
+        </div>`:`<div class="callout callout-info">Custom ${isFlow?'flow':'template'} — an inline editor (identical to today's builder) would appear here, scoped to this visit type only.</div>`}
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="closeModal()">Save</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ══ Actions ══ */
+function go(p){ state.page=p; state.roomId=null; render(); }
+function openModal(voId, tab){ state.modal={voId, tab}; render(); }
+function closeModal(){ state.modal=null; render(); }
+function switchTab(tab){ state.modal.tab=tab; render(); }
+function toggleUsage(key){ state.expandedUsage[key]=!state.expandedUsage[key]; render(); }
+function setRef(voId, tab, kind){
+  const vo = rawVO(voId);
+  const isFlow = tab==='flow';
+  const cur = isFlow?vo.flowRef:vo.notesRef;
+  let ref;
+  if(kind==='default') ref={kind:'default'};
+  else if(kind==='shared') ref={kind:'shared', id: cur.kind==='shared'?cur.id:(isFlow?'wf_mh':'nt_2')};
+  else ref={kind:'detached', from: isFlow?'wf_default':'nt_1'};
+  if(isFlow) vo.flowRef=ref; else vo.notesRef=ref;
+  render();
+}
+function setSharedId(voId, tab, id){
+  const vo = rawVO(voId);
+  if(tab==='flow') vo.flowRef={kind:'shared', id}; else vo.notesRef={kind:'shared', id};
+  render();
+}
+
+function render(){
+  const pages={rooms:roomsPage, library:libraryPage, clinic:clinicPage};
+  document.getElementById('app').innerHTML = topbar() + (pages[state.page]||roomsPage)() + modalView();
+}
+render();
+</script>
+</body>
+</html>

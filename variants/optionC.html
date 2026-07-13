@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant C — Configuration Matrix</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7; --brand-light:#D1FAE5;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-300:#D1D5DB; --grey-600:#4B5563;
+    --warning:#D97706; --warning-light:#FEF3C7; --info:#0284C7; --info-light:#E0F2FE;
+    --success:#059669; --success-light:#D1FAE5;
+    --r-md:6px; --r-lg:8px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  .topbar{display:flex;align-items:center;gap:24px;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .logo-mark{width:28px;height:28px;background:var(--brand);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .nav-btn{background:none;border:none;font-size:14px;font-weight:500;color:var(--text-secondary);padding:8px 4px;border-bottom:2px solid transparent}
+  .nav-btn.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  .variant-tag{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;color:#B45309;background:var(--warning-light);padding:4px 10px;border-radius:var(--r-full)}
+  .page{max-width:1080px;margin:0 auto;padding:28px 24px 80px}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+  .page-sub{font-size:13.5px;color:var(--text-secondary);margin-bottom:20px;line-height:1.55}
+  .explain{border:1px dashed var(--border-strong);border-radius:var(--r-lg);background:var(--grey-50);padding:14px 18px;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px}
+  .explain strong{color:var(--text-primary)}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full)}
+  .badge-grey{background:var(--grey-100);color:var(--grey-600)}
+  .badge-default{background:var(--success-light);color:#065F46}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:13px;font-weight:600;padding:7px 14px;border:1px solid transparent}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{background:var(--brand-dark)}
+  .btn-secondary{background:#fff;color:var(--text-primary);border-color:var(--border-strong)}
+  .btn-secondary:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-ghost{background:none;color:var(--text-secondary)}
+  .btn-ghost:hover{background:var(--grey-100);color:var(--text-primary)}
+  .btn-xs{font-size:12px;padding:4px 10px}
+  /* matrix */
+  .matrix-wrap{border:1px solid var(--border);border-radius:var(--r-xl);overflow:auto}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--grey-50);white-space:nowrap}
+  td{padding:0;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle}
+  .row-label{padding:11px 12px;font-weight:600;white-space:nowrap}
+  .row-sub{display:block;font-size:11px;color:var(--text-tertiary);font-weight:400}
+  .room-band td{background:var(--grey-100);padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--grey-600)}
+  .defaults-row td{background:var(--brand-50)}
+  .cell{display:block;width:100%;text-align:left;background:none;border:none;padding:11px 12px;font-size:12.5px;color:var(--text-primary);border-radius:0;position:relative}
+  .cell:hover{background:var(--info-light);cursor:pointer;box-shadow:inset 0 0 0 1.5px var(--info)}
+  .cell .inh{color:var(--text-tertiary)}
+  .ovr-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warning);margin-right:6px;vertical-align:1px}
+  .legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--text-secondary);margin:10px 2px 14px}
+  /* drawer */
+  .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:90}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:#fff;box-shadow:-12px 0 40px rgba(0,0,0,.15);z-index:100;display:flex;flex-direction:column;animation:slide .18s ease}
+  @keyframes slide{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+  .drawer-head{padding:16px 20px;border-bottom:1px solid var(--border)}
+  .drawer-title{font-size:15px;font-weight:700}
+  .drawer-sub{font-size:12px;color:var(--text-secondary);margin-top:2px}
+  .drawer-body{flex:1;overflow-y:auto;padding:18px 20px}
+  .drawer-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--grey-100);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:14px}
+  .switch{position:relative;width:36px;height:20px;border-radius:999px;background:var(--grey-300);border:none;transition:background .15s}
+  .switch.on{background:var(--brand)}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+  .switch.on::after{left:18px}
+  .input{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:#fff;width:100%}
+  .input:disabled{background:var(--grey-50);color:var(--text-secondary)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:5px}
+  .callout{border-radius:var(--r-lg);padding:10px 13px;font-size:12px;line-height:1.5;margin-top:10px}
+  .callout-info{background:var(--info-light);border:1px solid #BAE6FD;color:#075985}
+  .callout-warn{background:var(--warning-light);border:1px solid #FDE68A;color:#92400E}
+  /* wizard */
+  .stepper{display:flex;gap:0;margin-bottom:24px;border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
+  .step-tab{flex:1;background:#fff;border:none;padding:12px 8px;font-size:12px;font-weight:600;color:var(--text-tertiary);border-right:1px solid var(--border);position:relative}
+  .step-tab:last-child{border-right:none}
+  .step-tab .num{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--grey-100);color:var(--grey-600);align-items:center;justify-content:center;font-size:11px;margin-right:6px}
+  .step-tab.done .num{background:var(--brand);color:#fff}
+  .step-tab.cur{color:var(--text-primary);background:var(--brand-50)}
+  .step-tab.cur .num{background:var(--brand);color:#fff}
+  .wiz-panel{border:1px solid var(--border);border-radius:var(--r-xl);padding:24px 28px;min-height:260px}
+  .wiz-title{font-size:17px;font-weight:700;margin-bottom:6px}
+  .wiz-desc{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+  .steps-box{background:var(--grey-50);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px}
+  code{font-size:12px;background:var(--grey-100);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══ Mock data — identical values to the current app ══ */
+const DEFAULTS = { duration:'30 min', modes:'Video', patientTypes:'Self-Pay · Insurance · Group', price:'—', flow:'Clinic Default Flow (11 steps)', notes:'SOAP Note' };
+const COLS = [
+  {id:'duration', label:'Duration'},
+  {id:'modes', label:'Modes'},
+  {id:'patientTypes', label:'Patient types'},
+  {id:'price', label:'Price'},
+  {id:'flow', label:'Intake flow'},
+  {id:'notes', label:'Notes'},
+];
+/* each cell: {v: display value, ovr: overridden?} — flow/notes support inherit */
+const state = {
+  page:'matrix', drawer:null, wizStep:1,
+  rows:[
+    { room:'General Waiting Room (GHTNC)', items:[
+      { id:'vo_1', name:'New Patient Consult',
+        cells:{ duration:{v:'30 min'}, modes:{v:'Video'}, patientTypes:{v:'Self-Pay · Insurance'}, price:{v:'$150 / $30 copay'},
+                flow:{v:'Clinic Default Flow', ovr:false}, notes:{v:'SOAP Note', ovr:false} } },
+      { id:'vo_2', name:'Urgent Care Visit',
+        cells:{ duration:{v:'15 min'}, modes:{v:'Video'}, patientTypes:{v:'Self-Pay · Group · Insurance'}, price:{v:'$75 / copays'},
+                flow:{v:'Clinic Default Flow', ovr:false}, notes:{v:'Progress Note', ovr:true} } },
+    ]},
+    { room:'Mental Health Room (MHLTH)', items:[
+      { id:'vo_3', name:'Initial Assessment',
+        cells:{ duration:{v:'60 min'}, modes:{v:'Video'}, patientTypes:{v:'Self-Pay · Insurance'}, price:{v:'not set ⚠'},
+                flow:{v:'MH Initial Assessment', ovr:true}, notes:{v:'SOAP Note', ovr:false} } },
+      { id:'vo_4', name:'Follow-up Session',
+        cells:{ duration:{v:'45 min'}, modes:{v:'Video'}, patientTypes:{v:'Self-Pay · Insurance'}, price:{v:'copay only'},
+                flow:{v:'Clinic Default Flow', ovr:false}, notes:{v:'SOAP Note', ovr:true} } },
+    ]},
+  ],
+};
+const findItem = id => state.rows.flatMap(r=>r.items).find(i=>i.id===id);
+const inheritCount = col => state.rows.flatMap(r=>r.items).filter(i=>i.cells[col] && i.cells[col].ovr===false).length;
+
+/* ══ Views ══ */
+function topbar(){
+  return `<nav class="topbar">
+    <span class="logo"><span class="logo-mark">V</span>VSee Clinic</span>
+    <button class="nav-btn ${state.page==='matrix'?'active':''}" onclick="go('matrix')">Configuration Matrix</button>
+    <button class="nav-btn ${state.page==='wizard'?'active':''}" onclick="go('wizard')">Setup Guide</button>
+    <span class="variant-tag">VARIANT C — CONFIG MATRIX</span>
+  </nav>`;
+}
+
+function matrixPage(){
+  return `<div class="page">
+    <h1 class="page-title">Configuration Matrix</h1>
+    <p class="page-sub">Every visit option across every room on one screen, showing <strong>effective</strong> values. The underlying model is unchanged from the current design — this is an x-ray over it.</p>
+    <div class="explain"><strong>Model:</strong> rows are visit options (grouped by room), columns are settings. Grey text = inherited from clinic default, <span class="ovr-dot"></span>amber dot = overridden. Click any cell to edit in a drawer without leaving the overview. The pinned green row is the clinic default itself — editing it tells you how many visit options inherit the change.</div>
+    <div class="legend">
+      <span><span class="ovr-dot"></span>Overridden</span>
+      <span style="color:var(--text-tertiary)">Grey = inherited default</span>
+      <span>⚠ = needs attention</span>
+    </div>
+    <div class="matrix-wrap"><table>
+      <tr><th style="min-width:190px">Visit option</th>${COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr>
+      <tr class="defaults-row">
+        <td class="row-label">Clinic defaults<span class="row-sub">base layer — applies unless overridden</span></td>
+        ${COLS.map(c=>`<td><button class="cell" onclick="openDrawer('__default','${c.id}')"><strong>${DEFAULTS[c.id]}</strong></button></td>`).join('')}
+      </tr>
+      ${state.rows.map(r=>`
+        <tr class="room-band"><td colspan="${COLS.length+1}">${r.room}</td></tr>
+        ${r.items.map(i=>`<tr>
+          <td class="row-label">${i.name}</td>
+          ${COLS.map(c=>{
+            const cell=i.cells[c.id];
+            const inheritable = c.id==='flow'||c.id==='notes';
+            const cls = inheritable && cell.ovr===false ? 'inh' : '';
+            const dot = inheritable && cell.ovr ? '<span class="ovr-dot"></span>' : '';
+            return `<td><button class="cell" onclick="openDrawer('${i.id}','${c.id}')"><span class="${cls}">${dot}${cell.v}</span></button></td>`;
+          }).join('')}
+        </tr>`).join('')}
+      `).join('')}
+    </table></div>
+    <p style="font-size:12px;color:var(--text-secondary);margin-top:12px">Scanning questions this answers instantly: <em>which visit types are customized? where is pricing incomplete? do both rooms use the same intake flow?</em></p>
+  </div>`;
+}
+
+function drawerView(){
+  if(!state.drawer) return '';
+  const {itemId, col} = state.drawer;
+  const colDef = COLS.find(c=>c.id===col);
+  const isDefaultRow = itemId==='__default';
+  const item = isDefaultRow ? null : findItem(itemId);
+  const inheritable = col==='flow'||col==='notes';
+  const cell = item ? item.cells[col] : null;
+  const usingDefault = inheritable && cell && cell.ovr===false;
+
+  let body='';
+  if(isDefaultRow){
+    body = `<div class="field"><label>Clinic default — ${colDef.label}</label>
+      <input class="input" value="${DEFAULTS[col]}"></div>
+      <div class="callout callout-warn"><strong>${inheritCount(col)||state.rows.flatMap(r=>r.items).length} visit option(s) inherit this value.</strong> Saving applies the change to all of them. Overridden visit options are not affected.</div>`;
+  } else if(inheritable){
+    body = `
+      <div class="toggle-row">
+        <span style="font-size:13px;font-weight:600">Use clinic default<br><span style="font-weight:400;font-size:11.5px;color:var(--text-secondary)">${DEFAULTS[col]}</span></span>
+        <button class="switch ${usingDefault?'on':''}" onclick="toggleInherit('${itemId}','${col}')"></button>
+      </div>
+      ${usingDefault
+        ? `<div class="callout callout-info">Following the clinic default — future changes to it apply automatically. Toggle off to customize for <strong>${item.name}</strong> only.</div>`
+        : `<div class="field"><label>${colDef.label} for ${item.name}</label>
+             <input class="input" value="${cell.v}">
+             <p style="font-size:11.5px;color:var(--text-secondary);margin-top:6px">${col==='flow'?'The full flow builder opens here (same editor as today).':'The notes template builder opens here (same editor as today).'}</p>
+           </div>
+           <div class="callout callout-warn">Overridden — this visit option no longer follows the clinic default. <a href="#" onclick="toggleInherit('${itemId}','${col}');return false" style="color:#92400E;font-weight:700">Reset to default</a></div>`}`;
+  } else {
+    body = `<div class="field"><label>${colDef.label}</label>
+      <input class="input" value="${cell.v.replace(' ⚠','')}"></div>
+      <p style="font-size:11.5px;color:var(--text-secondary)">Per-visit-option setting (no clinic default). ${cell.v.includes('⚠')?'<strong style="color:var(--warning)">Currently incomplete — patients cannot be charged.</strong>':''}</p>`;
+  }
+
+  return `<div class="drawer-backdrop" onclick="closeDrawer()"></div>
+  <div class="drawer">
+    <div class="drawer-head">
+      <div class="drawer-title">${isDefaultRow?'Clinic default':item.name} — ${colDef.label}</div>
+      <div class="drawer-sub">${isDefaultRow?'Base layer for all visit options':'Edit in place; the matrix stays behind you'}</div>
+    </div>
+    <div class="drawer-body">${body}</div>
+    <div class="drawer-foot">
+      <button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="closeDrawer()">Save</button>
+    </div>
+  </div>`;
+}
+
+const WIZ = [
+  {t:'Patient types & payment', d:'Which patients can book, and how each type pays. Sets the clinic-wide payment rules that visit options refine later.',
+   c:'<span class="badge badge-grey">Self-Pay</span> <span class="badge badge-grey">Insurance</span> <span class="badge badge-grey">Group-Covered</span> — Stripe connected ✓'},
+  {t:'Default intake flow', d:'The journey every patient takes unless a visit type overrides it. Start from a template; customize with the flow builder.',
+   c:'Login → Dependant List → Consultation → Calendar → Intake Form → Branch by patient type → … → Confirmation <em>(11 steps)</em>'},
+  {t:'Default notes template', d:'What providers see when they open visit notes. SOAP by default.',
+   c:'<strong>SOAP Note</strong> — Subjective · Objective · Assessment · Plan · Follow-up date'},
+  {t:'Visit types', d:'Create the appointment types patients book. Each starts on clinic defaults; override only what differs.',
+   c:'New Patient Consult (30m) · Urgent Care (15m) · Initial Assessment (60m, custom flow) · Follow-up (45m)'},
+  {t:'Rooms', d:'Create waiting rooms and choose which visit types each one offers.',
+   c:'General Waiting Room <code>GHTNC</code> (public) · Mental Health Room <code>MHLTH</code> (unlisted)'},
+];
+function wizardPage(){
+  const s = state.wizStep;
+  return `<div class="page" style="max-width:860px">
+    <h1 class="page-title">Setup Guide</h1>
+    <p class="page-sub">First-run companion to the matrix: configure in dependency order, then manage day-to-day from the Configuration Matrix.</p>
+    <div class="stepper">
+      ${WIZ.map((w,i)=>`<button class="step-tab ${i+1===s?'cur':''} ${i+1<s?'done':''}" onclick="wizGo(${i+1})"><span class="num">${i+1<s?'✓':i+1}</span>${w.t}</button>`).join('')}
+    </div>
+    <div class="wiz-panel">
+      <p class="wiz-title">${s}. ${WIZ[s-1].t}</p>
+      <p class="wiz-desc">${WIZ[s-1].d}</p>
+      <div class="steps-box">${WIZ[s-1].c}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:22px">
+        <button class="btn btn-secondary" ${s===1?'style="visibility:hidden"':''} onclick="wizGo(${s-1})">‹ Back</button>
+        ${s<WIZ.length
+          ? `<button class="btn btn-primary" onclick="wizGo(${s+1})">Continue ›</button>`
+          : `<button class="btn btn-primary" onclick="go('matrix')">Finish — open the Matrix ›</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ══ Actions ══ */
+function go(p){ state.page=p; render(); }
+function wizGo(n){ state.wizStep=n; render(); }
+function openDrawer(itemId, col){ state.drawer={itemId, col}; render(); }
+function closeDrawer(){ state.drawer=null; render(); }
+function toggleInherit(itemId, col){
+  const item = findItem(itemId);
+  const cell = item.cells[col];
+  if(cell.ovr){ cell.ovr=false; cell.v = col==='flow'?'Clinic Default Flow':'SOAP Note'; }
+  else { cell.ovr=true; cell.v = col==='flow'? item.name+' Flow (custom)' : 'Progress Note'; }
+  render();
+}
+function render(){
+  const pages={matrix:matrixPage, wizard:wizardPage};
+  document.getElementById('app').innerHTML = topbar() + (pages[state.page]||matrixPage)() + drawerView();
+}
+render();
+</script>
+</body>
+</html>
