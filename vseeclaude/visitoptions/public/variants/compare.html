@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuration Architecture — Compare</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-600:#4B5563;
+    --warning-light:#FEF3C7; --info-light:#E0F2FE; --success-light:#D1FAE5;
+    --r-md:6px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:var(--grey-50)}
+  button{font-family:inherit;cursor:pointer}
+  header{background:#fff;border-bottom:1px solid var(--border);padding:18px 28px}
+  h1{font-size:19px;font-weight:800;letter-spacing:-.3px}
+  .sub{font-size:13px;color:var(--text-secondary);margin-top:3px;line-height:1.5}
+  .axis{display:inline-block;margin-top:8px;font-size:12px;background:var(--info-light);color:#075985;font-weight:600;padding:4px 12px;border-radius:var(--r-full)}
+  .controls{display:flex;gap:10px;align-items:center;padding:12px 28px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .preset{border:1px solid var(--border-strong);background:#fff;border-radius:var(--r-full);font-size:12px;font-weight:600;padding:5px 14px;color:var(--text-secondary)}
+  .preset:hover{border-color:var(--brand);color:var(--brand)}
+  .preset.active{background:var(--brand);border-color:var(--brand);color:#fff}
+  .panes{display:flex;gap:14px;padding:14px 20px}
+  .pane{flex:1;min-width:0;background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;display:flex;flex-direction:column}
+  .pane-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--grey-50)}
+  .pane-bar select{font-family:inherit;font-size:13px;font-weight:600;padding:5px 8px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:#fff;flex:1}
+  .pane-bar a{font-size:11.5px;color:var(--brand);text-decoration:none;font-weight:600;white-space:nowrap}
+  iframe{width:100%;height:72vh;border:none;background:#fff}
+  section.compare{max-width:1060px;margin:10px auto 60px;padding:0 20px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);padding:22px 26px;margin-top:18px}
+  h2{font-size:16px;font-weight:800;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-tertiary);text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:bottom}
+  td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+  tr:last-child td{border-bottom:none}
+  td:first-child{font-weight:600;white-space:nowrap}
+  .good{background:var(--success-light);border-radius:4px;padding:1px 6px;font-weight:600;color:#065F46;font-size:11.5px;white-space:nowrap}
+  .mid{background:var(--warning-light);border-radius:4px;padding:1px 6px;font-weight:600;color:#92400E;font-size:11.5px;white-space:nowrap}
+  .bad{background:#FEE2E2;border-radius:4px;padding:1px 6px;font-weight:600;color:#991B1B;font-size:11.5px;white-space:nowrap}
+  .rec{border-left:3px solid var(--brand);background:var(--brand-50);padding:14px 18px;border-radius:0 var(--r-xl) var(--r-xl) 0;font-size:13.5px;line-height:1.6;margin-top:18px}
+  .note{font-size:12px;color:var(--text-secondary);margin-top:10px;line-height:1.55}
+  @media (max-width:900px){ .panes{flex-direction:column} iframe{height:60vh} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Visit Options — Configuration Architecture Compare</h1>
+  <p class="sub">Four ways to organize clinic-level defaults + per-visit-type configuration. Same VSee design system, same mock data (2 rooms, 4 visit options, MH flow override, SOAP/Progress notes) in every version.</p>
+  <span class="axis">Axis under test: information architecture &amp; inheritance model — visuals, data and feature scope held constant</span>
+</header>
+
+<div class="controls">
+  <span style="font-size:12px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.5px">Presets:</span>
+  <button class="preset" onclick="setPanes('current','optionA',this)">Current vs A — Profiles</button>
+  <button class="preset active" onclick="setPanes('current','optionB',this)">Current vs B — Catalog</button>
+  <button class="preset" onclick="setPanes('current','optionC',this)">Current vs C — Matrix</button>
+  <button class="preset" onclick="setPanes('optionB','optionA',this)">B vs A</button>
+  <button class="preset" onclick="setPanes('optionB','optionC',this)">B vs C</button>
+</div>
+
+<div class="panes">
+  <div class="pane">
+    <div class="pane-bar">
+      <select id="selL" onchange="load('L')"></select>
+      <a id="openL" href="#" target="_blank">open full ↗</a>
+    </div>
+    <iframe id="frameL"></iframe>
+  </div>
+  <div class="pane">
+    <div class="pane-bar">
+      <select id="selR" onchange="load('R')"></select>
+      <a id="openR" href="#" target="_blank">open full ↗</a>
+    </div>
+    <iframe id="frameR"></iframe>
+  </div>
+</div>
+
+<section class="compare">
+  <div class="card">
+    <h2>Trade-offs</h2>
+    <table>
+      <tr>
+        <th style="width:180px">Criterion</th>
+        <th>Current<br><span style="font-weight:400;text-transform:none">copy-on-override, options live in rooms</span></th>
+        <th>A — Reference profiles<br><span style="font-weight:400;text-transform:none">point, don't copy</span></th>
+        <th>B — Visit type catalog<br><span style="font-weight:400;text-transform:none">catalog + room curation</span></th>
+        <th>C — Config matrix<br><span style="font-weight:400;text-transform:none">same model, x-ray view</span></th>
+      </tr>
+      <tr><td>Reuse across rooms</td>
+        <td><span class="bad">None</span> — visit options rebuilt per room</td>
+        <td><span class="mid">Flows/notes only</span> — visit options still per-room</td>
+        <td><span class="good">Full</span> — one visit type, any room</td>
+        <td><span class="bad">None</span> — visibility only, duplication remains</td></tr>
+      <tr><td>Override visibility</td>
+        <td><span class="bad">Hidden</span> — must open each modal tab</td>
+        <td><span class="good">Chips everywhere</span> + used-by counts</td>
+        <td><span class="good">Per-section chips</span> + dots in catalog list</td>
+        <td><span class="good">Best</span> — whole clinic on one screen</td></tr>
+      <tr><td>Drift management</td>
+        <td><span class="bad">Silent drift</span> — clones never update</td>
+        <td><span class="good">No drift</span> — live references; detaching is explicit</td>
+        <td><span class="good">No drift for inherited</span>; overrides are explicit + resettable</td>
+        <td><span class="mid">Visible but present</span> — model unchanged</td></tr>
+      <tr><td>Blast-radius safety</td>
+        <td><span class="bad">Surprising</span> — shared edits apply silently clinic-wide</td>
+        <td><span class="good">Warned</span> — "used by N" before every edit</td>
+        <td><span class="good">Warned</span> — defaults state inherit counts</td>
+        <td><span class="good">Warned</span> — defaults row shows inherit count</td></tr>
+      <tr><td>Mental-model simplicity</td>
+        <td><span class="mid">Two models</span> — patient types cascade differs from flows</td>
+        <td><span class="mid">Three link states</span> to learn (follow/shared/detached)</td>
+        <td><span class="good">One rule</span> — every section: inherited or overridden</td>
+        <td><span class="good">Familiar</span> — spreadsheet instincts apply</td></tr>
+      <tr><td>Editing ergonomics</td>
+        <td><span class="bad">Cramped</span> — flow builder inside a 4-tab modal</td>
+        <td><span class="mid">Same modal</span>, but editing moves to Library pages</td>
+        <td><span class="good">Full-page editor</span> with section nav</td>
+        <td><span class="mid">Drawer</span> — fine for values, tight for the flow builder</td></tr>
+      <tr><td>Scales to many visit types</td>
+        <td><span class="bad">Poorly</span> — N × rooms copies</td>
+        <td><span class="mid">OK</span> — profile list grows manageably</td>
+        <td><span class="good">Well</span> — catalog is the point</td>
+        <td><span class="good">Well for scanning</span>, columns cap out ~8</td></tr>
+      <tr><td>Migration effort from current</td>
+        <td><span class="good">None</span></td>
+        <td><span class="good">Low</span> — semantics swap, IA intact</td>
+        <td><span class="mid">Medium-high</span> — moves visit options out of rooms</td>
+        <td><span class="good">Low</span> — additive view + wizard</td></tr>
+      <tr><td>First-run onboarding</td>
+        <td><span class="mid">Unguided</span></td>
+        <td><span class="mid">Unguided</span> (library helps discovery)</td>
+        <td><span class="mid">Catalog implies order</span></td>
+        <td><span class="good">Guided wizard</span> in dependency order</td></tr>
+    </table>
+    <p class="note"><strong>Scope note (parity):</strong> all three variants model the same journeys — clinic defaults, per-visit-type flow/notes override, room membership — with the same data. Not ported in any variant: patient preview, operating-hours editor, form library management, and the live flow/notes builders themselves (each variant indicates where today's builder would embed unchanged). The Current pane is the real app.</p>
+    <div class="rec"><strong>Recommendation:</strong> B is the strongest long-term architecture — it is the only option that fixes cross-room duplication, and its per-section inherit/override rule is the easiest model to teach; pair it with A's reference semantics for flows &amp; notes, and add C's matrix later as a reporting view on top. If migration cost dominates, A alone fixes drift and blast-radius today without moving anything. Your call.</div>
+  </div>
+</section>
+
+<script>
+const OPTIONS = [
+  {id:'current', label:'Current — copy-on-override (live app)', url:'../'},
+  {id:'optionA', label:'A — Reference-based profiles', url:'optionA.html'},
+  {id:'optionB', label:'B — Visit type catalog', url:'optionB.html'},
+  {id:'optionC', label:'C — Configuration matrix', url:'optionC.html'},
+];
+function fill(sel){
+  document.getElementById(sel).innerHTML = OPTIONS.map(o=>`<option value="${o.id}">${o.label}</option>`).join('');
+}
+fill('selL'); fill('selR');
+function load(side){
+  const sel = document.getElementById('sel'+side);
+  const o = OPTIONS.find(x=>x.id===sel.value);
+  document.getElementById('frame'+side).src = o.url;
+  document.getElementById('open'+side).href = o.url;
+}
+function setPanes(l, r, btn){
+  document.getElementById('selL').value = l;
+  document.getElementById('selR').value = r;
+  load('L'); load('R');
+  document.querySelectorAll('.preset').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+setPanes('current','optionB', document.querySelector('.preset.active'));
+</script>
+</body>
+</html>
