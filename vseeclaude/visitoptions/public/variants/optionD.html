@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant D — Plain-Language Cards</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7; --brand-light:#D1FAE5;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-300:#D1D5DB; --grey-600:#4B5563;
+    --warning:#D97706; --warning-light:#FEF3C7; --info:#0284C7; --info-light:#E0F2FE;
+    --success:#059669; --success-light:#D1FAE5;
+    --r-md:6px; --r-lg:8px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  .topbar{display:flex;align-items:center;gap:24px;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .logo-mark{width:28px;height:28px;background:var(--brand);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .nav-btn{background:none;border:none;font-size:14px;font-weight:500;color:var(--text-secondary);padding:8px 4px;border-bottom:2px solid transparent}
+  .nav-btn.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  .variant-tag{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;color:#0E7490;background:#CFFAFE;padding:4px 10px;border-radius:var(--r-full)}
+  .page{max-width:840px;margin:0 auto;padding:28px 24px 120px}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+  .page-sub{font-size:13.5px;color:var(--text-secondary);margin-bottom:20px;line-height:1.55}
+  .explain{border:1px dashed var(--border-strong);border-radius:var(--r-lg);background:var(--grey-50);padding:14px 18px;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px}
+  .explain strong{color:var(--text-primary)}
+  .legend{display:flex;gap:18px;font-size:12px;color:var(--text-secondary);margin-bottom:18px;align-items:center}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full)}
+  .badge-grey{background:var(--grey-100);color:var(--grey-600)}
+  .badge-default{background:var(--success-light);color:#065F46}
+  code{font-size:12px;background:var(--grey-100);padding:1px 5px;border-radius:4px}
+  /* room + cards */
+  .room-head{display:flex;align-items:center;gap:10px;margin:26px 0 12px}
+  .room-name{font-size:16px;font-weight:800}
+  .vo-card{border:1px solid var(--border);border-radius:var(--r-xl);padding:18px 22px;margin-bottom:14px;background:#fff}
+  .vo-title{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .vo-title h3{font-size:15px;font-weight:700}
+  .sentence{font-size:14px;line-height:2.15;color:var(--text-primary)}
+  .sentence .sep{color:var(--text-tertiary);margin:0 2px}
+  /* phrases */
+  .phrase{display:inline-block;border-bottom:1.5px dashed;border-radius:4px;padding:0 3px;cursor:pointer;font-weight:600;transition:background .12s}
+  .phrase.def{color:var(--brand-dark);border-color:var(--brand-light);background:transparent}
+  .phrase.def:hover{background:var(--brand-50)}
+  .phrase.ovr{color:#92400E;border-color:#FDE68A;background:var(--warning-light)}
+  .phrase.ovr:hover{background:#FDE68A}
+  .phrase.warn{color:#B91C1C;border-color:#FECACA;background:#FEF2F2}
+  .muted{color:var(--text-tertiary);font-size:12px}
+  /* popover */
+  .pop-backdrop{position:fixed;inset:0;z-index:90}
+  .popover{position:absolute;z-index:100;background:#fff;border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:0 12px 40px rgba(0,0,0,.16);width:340px;padding:16px 18px;animation:pin .14s ease}
+  @keyframes pin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .pop-title{font-size:13px;font-weight:700;margin-bottom:2px}
+  .pop-sub{font-size:11.5px;color:var(--text-secondary);margin-bottom:12px}
+  .pop-opt{display:flex;gap:9px;align-items:flex-start;border:1.5px solid var(--border);border-radius:var(--r-lg);padding:9px 11px;margin-bottom:6px;cursor:pointer;font-size:12.5px}
+  .pop-opt:hover{border-color:var(--border-strong)}
+  .pop-opt.sel{border-color:var(--brand);background:var(--brand-50)}
+  .pop-opt input{margin-top:2px;accent-color:var(--brand)}
+  .pop-note{font-size:11.5px;color:var(--text-tertiary);margin-top:8px;line-height:1.5}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:12.5px;font-weight:600;padding:6px 12px;border:1px solid transparent}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-ghost{background:none;color:var(--text-secondary)}
+  .btn-ghost:hover{background:var(--grey-100)}
+  .pop-foot{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══ Mock data — identical values to the current app ══
+   Every editable value is a "phrase". def = inherited/standard, ovr = customized. */
+const DEFAULTS = { flow:'clinic default flow (11 steps)', notes:'SOAP Note' };
+const state = {
+  pop:null, /* {voId, field, x, y} */
+  rooms:[
+    { id:'room_1', name:'General Waiting Room', code:'GHTNC', visibility:'Public', visList:'New Patient Consult, then Urgent Care Visit',
+      vos:[
+        { id:'vo_1', name:'New Patient Consult',
+          duration:{v:'30-minute'}, mode:{v:'video'},
+          patients:{v:'Self-Pay and Insurance patients'},
+          pay:{v:'self-pay pays $150 at booking; insured patients pay their $30 copay'},
+          flow:{v:DEFAULTS.flow, ovr:false},
+          notes:{v:DEFAULTS.notes, ovr:false} },
+        { id:'vo_2', name:'Urgent Care Visit',
+          duration:{v:'15-minute'}, mode:{v:'video'},
+          patients:{v:'Self-Pay, Group-Covered and Insurance patients'},
+          pay:{v:'self-pay pays $75; covered patients pay their copay'},
+          flow:{v:DEFAULTS.flow, ovr:false},
+          notes:{v:'Progress Note', ovr:true} },
+      ]},
+    { id:'room_2', name:'Mental Health Room', code:'MHLTH', visibility:'Unlisted', visList:'Initial Assessment, then Follow-up Session',
+      vos:[
+        { id:'vo_3', name:'Initial Assessment',
+          duration:{v:'60-minute'}, mode:{v:'video'},
+          patients:{v:'Self-Pay and Insurance patients'},
+          pay:{v:'no pricing set yet', warn:true},
+          flow:{v:'a custom Mental Health flow (10 steps, incl. PHQ-9)', ovr:true},
+          notes:{v:DEFAULTS.notes, ovr:false} },
+        { id:'vo_4', name:'Follow-up Session',
+          duration:{v:'45-minute'}, mode:{v:'video'},
+          patients:{v:'Self-Pay and Insurance patients'},
+          pay:{v:'insured patients pay their copay; self-pay is free'},
+          flow:{v:DEFAULTS.flow, ovr:false},
+          notes:{v:'SOAP Note (pinned)', ovr:true} },
+      ]},
+  ],
+};
+const findVO = id => state.rooms.flatMap(r=>r.vos).find(v=>v.id===id);
+
+const FIELD_META = {
+  duration:{ title:'Visit length', sub:'How long each appointment lasts.', kind:'value', opts:['15-minute','30-minute','45-minute','60-minute'] },
+  mode:{ title:'Visit mode', sub:'How the visit is delivered.', kind:'value', opts:['video','phone','in-person','e-consult'] },
+  patients:{ title:'Who can book', sub:'Patient types accepted for this visit.', kind:'value',
+    opts:['Self-Pay and Insurance patients','Self-Pay, Group-Covered and Insurance patients','Self-Pay patients only'] },
+  pay:{ title:'Payment', sub:'What each patient type pays, in plain words.', kind:'value',
+    opts:['self-pay pays $150 at booking; insured patients pay their $30 copay','self-pay pays $75; covered patients pay their copay','insured patients pay their copay; self-pay is free','no charge at booking'] },
+  flow:{ title:'Intake flow', sub:'The steps a patient completes before the visit.', kind:'inherit', defLabel:DEFAULTS.flow,
+    ovrLabel:'a custom flow for this visit type', ovrValue:'a custom flow (starts as a copy of the default)' },
+  notes:{ title:'Provider notes', sub:'The template providers document with.', kind:'inherit', defLabel:DEFAULTS.notes,
+    ovrLabel:'a specific template', ovrValue:'Progress Note' },
+};
+
+/* ══ Views ══ */
+function topbar(){
+  return `<nav class="topbar">
+    <span class="logo"><span class="logo-mark">V</span>VSee Clinic</span>
+    <button class="nav-btn active">Waiting Rooms</button>
+    <button class="nav-btn" onclick="alert('Clinic Settings — unchanged from the current design: patient types, payment, the default intake flow and default notes template live there. Every green phrase below points at those defaults.')">Clinic Settings</button>
+    <span class="variant-tag">VARIANT D — PLAIN-LANGUAGE CARDS</span>
+  </nav>`;
+}
+function phrase(voId, field){
+  const vo = findVO(voId);
+  const f = vo[field];
+  const cls = f.warn ? 'warn' : (FIELD_META[field].kind==='inherit' ? (f.ovr?'ovr':'def') : 'def');
+  return `<span class="phrase ${cls}" onclick="openPop(event,'${voId}','${field}')">${f.v}</span>`;
+}
+function card(vo){
+  return `<div class="vo-card">
+    <div class="vo-title"><h3>${vo.name}</h3>
+      ${(vo.flow.ovr||vo.notes.ovr)?'<span class="badge" style="background:var(--warning-light);color:#92400E">customized</span>':'<span class="badge badge-grey">all defaults</span>'}
+    </div>
+    <p class="sentence">
+      Patients book a ${phrase(vo.id,'duration')} ${phrase(vo.id,'mode')} visit.<span class="sep">·</span>
+      Open to ${phrase(vo.id,'patients')}<span class="sep">;</span> ${phrase(vo.id,'pay')}.
+    </p>
+    <p class="sentence">
+      Before the visit, patients complete ${phrase(vo.id,'flow')}.<span class="sep">·</span>
+      Providers document with ${phrase(vo.id,'notes')}.
+    </p>
+  </div>`;
+}
+function main(){
+  return `<div class="page">
+    <h1 class="page-title">Waiting Rooms</h1>
+    <p class="page-sub">Every visit option is two sentences. Click any underlined phrase to change it — no tabs, no modal.</p>
+    <div class="explain"><strong>Model:</strong> configuration reads the way you'd explain it to a colleague.
+      <span class="phrase def" style="cursor:default">Green phrases</span> follow the clinic default or a standard value;
+      <span class="phrase ovr" style="cursor:default">amber phrases</span> are customized for this visit type;
+      <span class="phrase warn" style="cursor:default">red phrases</span> need attention. Scanning a room = reading its cards.</div>
+    ${state.rooms.map(r=>`
+      <div class="room-head"><span class="room-name">${r.name}</span><code>${r.code}</code>
+        <span class="badge ${r.visibility==='Public'?'badge-default':'badge-grey'}">${r.visibility}</span>
+        <span class="muted">shows ${r.visList}</span></div>
+      ${r.vos.map(card).join('')}`).join('')}
+  </div>`;
+}
+
+function popView(){
+  if(!state.pop) return '';
+  const {voId, field, x, y} = state.pop;
+  const vo = findVO(voId);
+  const meta = FIELD_META[field];
+  const f = vo[field];
+  let body='';
+  if(meta.kind==='value'){
+    body = meta.opts.map(o=>`
+      <label class="pop-opt ${f.v===o?'sel':''}" onclick="setVal('${voId}','${field}', this.dataset.v)" data-v="${o.replace(/"/g,'&quot;')}">
+        <input type="radio" ${f.v===o?'checked':''}><span>${o}</span>
+      </label>`).join('')
+      + `<p class="pop-note">Per-visit-type setting — no clinic default involved.</p>`;
+  } else {
+    body = `
+      <label class="pop-opt ${!f.ovr?'sel':''}" onclick="setInherit('${voId}','${field}', false)">
+        <input type="radio" ${!f.ovr?'checked':''}>
+        <span><strong>Follow the clinic default</strong><br><span style="color:var(--text-secondary)">${meta.defLabel} — future improvements apply automatically.</span></span>
+      </label>
+      <label class="pop-opt ${f.ovr?'sel':''}" onclick="setInherit('${voId}','${field}', true)">
+        <input type="radio" ${f.ovr?'checked':''}>
+        <span><strong>Use ${meta.ovrLabel}</strong><br><span style="color:var(--text-secondary)">Only ${vo.name} is affected. The full editor opens on save.</span></span>
+      </label>
+      <p class="pop-note">${f.ovr?'Customized — the card shows this phrase in amber so drift is always visible.':'Following the default keeps this phrase green.'}</p>`;
+  }
+  return `<div class="pop-backdrop" onclick="closePop()"></div>
+    <div class="popover" style="left:${x}px;top:${y}px">
+      <p class="pop-title">${meta.title} — ${vo.name}</p>
+      <p class="pop-sub">${meta.sub}</p>
+      ${body}
+      <div class="pop-foot">
+        <button class="btn btn-ghost" onclick="closePop()">Close</button>
+        <button class="btn btn-primary" onclick="closePop()">Done</button>
+      </div>
+    </div>`;
+}
+
+/* ══ Actions ══ */
+function openPop(e, voId, field){
+  e.stopPropagation();
+  const r = e.target.getBoundingClientRect();
+  const x = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - 360);
+  const y = r.bottom + window.scrollY + 6;
+  state.pop = {voId, field, x, y};
+  render();
+}
+function closePop(){ state.pop=null; render(); }
+function setVal(voId, field, v){
+  const f = findVO(voId)[field];
+  f.v = v; delete f.warn;
+  render();
+}
+function setInherit(voId, field, ovr){
+  const vo = findVO(voId);
+  const meta = FIELD_META[field];
+  vo[field].ovr = ovr;
+  vo[field].v = ovr ? (field==='flow' && vo.id==='vo_3' ? 'a custom Mental Health flow (10 steps, incl. PHQ-9)' : meta.ovrValue) : meta.defLabel;
+  render();
+}
+function render(){
+  document.getElementById('app').innerHTML = topbar() + main() + popView();
+}
+render();
+</script>
+</body>
+</html>

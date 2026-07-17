@@ -49,7 +49,7 @@
 <body>
 <header>
   <h1>Visit Options — Configuration Architecture Compare</h1>
-  <p class="sub">Four ways to organize clinic-level defaults + per-visit-type configuration. Same VSee design system, same mock data (2 rooms, 4 visit options, MH flow override, SOAP/Progress notes) in every version.</p>
+  <p class="sub">Six ways to organize clinic-level defaults + per-visit-type configuration. Same VSee design system, same mock data (2 rooms, 4 visit options, MH flow override, SOAP/Progress notes) in every version.</p>
   <span class="axis">Axis under test: information architecture &amp; inheritance model — visuals, data and feature scope held constant</span>
 </header>
 
@@ -58,8 +58,10 @@
   <button class="preset" onclick="setPanes('current','optionA',this)">Current vs A — Profiles</button>
   <button class="preset active" onclick="setPanes('current','optionB',this)">Current vs B — Catalog</button>
   <button class="preset" onclick="setPanes('current','optionC',this)">Current vs C — Matrix</button>
-  <button class="preset" onclick="setPanes('optionB','optionA',this)">B vs A</button>
-  <button class="preset" onclick="setPanes('optionB','optionC',this)">B vs C</button>
+  <button class="preset" onclick="setPanes('current','optionD',this)">Current vs D — Sentences</button>
+  <button class="preset" onclick="setPanes('current','optionE',this)">Current vs E — Journey</button>
+  <button class="preset" onclick="setPanes('optionD','optionE',this)">D vs E</button>
+  <button class="preset" onclick="setPanes('optionB','optionD',this)">B vs D</button>
 </div>
 
 <div class="panes">
@@ -82,62 +84,82 @@
 <section class="compare">
   <div class="card">
     <h2>Trade-offs</h2>
-    <table>
+    <div style="overflow-x:auto"><table style="min-width:1180px">
       <tr>
-        <th style="width:180px">Criterion</th>
+        <th style="width:150px">Criterion</th>
         <th>Current<br><span style="font-weight:400;text-transform:none">copy-on-override, options live in rooms</span></th>
         <th>A — Reference profiles<br><span style="font-weight:400;text-transform:none">point, don't copy</span></th>
         <th>B — Visit type catalog<br><span style="font-weight:400;text-transform:none">catalog + room curation</span></th>
         <th>C — Config matrix<br><span style="font-weight:400;text-transform:none">same model, x-ray view</span></th>
+        <th>D — Plain-language cards<br><span style="font-weight:400;text-transform:none">settings as sentences</span></th>
+        <th>E — Patient journey<br><span style="font-weight:400;text-transform:none">configure by stage</span></th>
       </tr>
+      <tr><td>Intuitiveness / learning curve</td>
+        <td><span class="mid">Moderate</span> — familiar but taxonomy-heavy</td>
+        <td><span class="mid">Three link states</span> to learn</td>
+        <td><span class="good">One rule</span>, teachable in a screenshot</td>
+        <td><span class="bad">Low</span> — dense grid; tested as least intuitive</td>
+        <td><span class="good">Highest</span> — reads like speech, zero training</td>
+        <td><span class="good">High</span> — matches how admins think about visits</td></tr>
       <tr><td>Reuse across rooms</td>
-        <td><span class="bad">None</span> — visit options rebuilt per room</td>
-        <td><span class="mid">Flows/notes only</span> — visit options still per-room</td>
+        <td><span class="bad">None</span> — rebuilt per room</td>
+        <td><span class="mid">Flows/notes only</span></td>
         <td><span class="good">Full</span> — one visit type, any room</td>
-        <td><span class="bad">None</span> — visibility only, duplication remains</td></tr>
+        <td><span class="bad">None</span> — view only</td>
+        <td><span class="bad">None</span> — presentation layer over current model</td>
+        <td><span class="bad">None</span> — journeys still live per room</td></tr>
       <tr><td>Override visibility</td>
-        <td><span class="bad">Hidden</span> — must open each modal tab</td>
-        <td><span class="good">Chips everywhere</span> + used-by counts</td>
-        <td><span class="good">Per-section chips</span> + dots in catalog list</td>
-        <td><span class="good">Best</span> — whole clinic on one screen</td></tr>
-      <tr><td>Drift management</td>
-        <td><span class="bad">Silent drift</span> — clones never update</td>
-        <td><span class="good">No drift</span> — live references; detaching is explicit</td>
-        <td><span class="good">No drift for inherited</span>; overrides are explicit + resettable</td>
-        <td><span class="mid">Visible but present</span> — model unchanged</td></tr>
-      <tr><td>Blast-radius safety</td>
-        <td><span class="bad">Surprising</span> — shared edits apply silently clinic-wide</td>
-        <td><span class="good">Warned</span> — "used by N" before every edit</td>
-        <td><span class="good">Warned</span> — defaults state inherit counts</td>
-        <td><span class="good">Warned</span> — defaults row shows inherit count</td></tr>
-      <tr><td>Mental-model simplicity</td>
-        <td><span class="mid">Two models</span> — patient types cascade differs from flows</td>
-        <td><span class="mid">Three link states</span> to learn (follow/shared/detached)</td>
-        <td><span class="good">One rule</span> — every section: inherited or overridden</td>
-        <td><span class="good">Familiar</span> — spreadsheet instincts apply</td></tr>
+        <td><span class="bad">Hidden</span> — open each modal tab</td>
+        <td><span class="good">Chips</span> + used-by counts</td>
+        <td><span class="good">Per-section chips</span> + dots</td>
+        <td><span class="good">Whole clinic</span> on one screen</td>
+        <td><span class="good">Amber phrases</span> pop while reading</td>
+        <td><span class="good">Stage tags</span> (default / customized / incomplete)</td></tr>
+      <tr><td>Drift &amp; blast-radius</td>
+        <td><span class="bad">Silent drift</span>, surprise edits</td>
+        <td><span class="good">Solved</span> — live refs, warned edits</td>
+        <td><span class="good">Solved</span> — explicit, resettable</td>
+        <td><span class="mid">Visible, not solved</span></td>
+        <td><span class="mid">Visible, not solved</span> — colors expose it</td>
+        <td><span class="mid">Visible, not solved</span> — tags expose it</td></tr>
       <tr><td>Editing ergonomics</td>
-        <td><span class="bad">Cramped</span> — flow builder inside a 4-tab modal</td>
-        <td><span class="mid">Same modal</span>, but editing moves to Library pages</td>
-        <td><span class="good">Full-page editor</span> with section nav</td>
-        <td><span class="mid">Drawer</span> — fine for values, tight for the flow builder</td></tr>
+        <td><span class="bad">Cramped</span> — 4-tab modal</td>
+        <td><span class="mid">Same modal</span>, library pages for shared edits</td>
+        <td><span class="good">Full-page editor</span></td>
+        <td><span class="mid">Drawer</span> — tight for flow builder</td>
+        <td><span class="good">Popover for values</span>; hands off to full editor for flows</td>
+        <td><span class="good">Stage panel</span> — flow builder gets full width</td></tr>
+      <tr><td>Handles deep config (branching, per-status payment)</td>
+        <td><span class="good">Yes</span> — it exists today</td>
+        <td><span class="good">Yes</span> — same editors, better semantics</td>
+        <td><span class="good">Yes</span> — full page helps</td>
+        <td><span class="mid">Strains</span> — cells summarize poorly</td>
+        <td><span class="mid">Strains</span> — sentences summarize, editing punts to sub-editors</td>
+        <td><span class="good">Yes</span> — complexity nests inside the right stage</td></tr>
       <tr><td>Scales to many visit types</td>
-        <td><span class="bad">Poorly</span> — N × rooms copies</td>
-        <td><span class="mid">OK</span> — profile list grows manageably</td>
+        <td><span class="bad">Poorly</span></td>
+        <td><span class="mid">OK</span></td>
         <td><span class="good">Well</span> — catalog is the point</td>
-        <td><span class="good">Well for scanning</span>, columns cap out ~8</td></tr>
+        <td><span class="good">Well for scanning</span></td>
+        <td><span class="mid">OK</span> — cards get long past ~10 types</td>
+        <td><span class="mid">OK</span> — one journey at a time by design</td></tr>
       <tr><td>Migration effort from current</td>
         <td><span class="good">None</span></td>
-        <td><span class="good">Low</span> — semantics swap, IA intact</td>
-        <td><span class="mid">Medium-high</span> — moves visit options out of rooms</td>
-        <td><span class="good">Low</span> — additive view + wizard</td></tr>
+        <td><span class="good">Low</span></td>
+        <td><span class="mid">Medium-high</span></td>
+        <td><span class="good">Low</span> — additive</td>
+        <td><span class="good">Low</span> — additive presentation layer</td>
+        <td><span class="good">Low-medium</span> — reframes existing screens</td></tr>
       <tr><td>First-run onboarding</td>
         <td><span class="mid">Unguided</span></td>
-        <td><span class="mid">Unguided</span> (library helps discovery)</td>
+        <td><span class="mid">Unguided</span></td>
         <td><span class="mid">Catalog implies order</span></td>
-        <td><span class="good">Guided wizard</span> in dependency order</td></tr>
-    </table>
-    <p class="note"><strong>Scope note (parity):</strong> all three variants model the same journeys — clinic defaults, per-visit-type flow/notes override, room membership — with the same data. Not ported in any variant: patient preview, operating-hours editor, form library management, and the live flow/notes builders themselves (each variant indicates where today's builder would embed unchanged). The Current pane is the real app.</p>
-    <div class="rec"><strong>Recommendation:</strong> B is the strongest long-term architecture — it is the only option that fixes cross-room duplication, and its per-section inherit/override rule is the easiest model to teach; pair it with A's reference semantics for flows &amp; notes, and add C's matrix later as a reporting view on top. If migration cost dominates, A alone fixes drift and blast-radius today without moving anything. Your call.</div>
+        <td><span class="good">Wizard</span></td>
+        <td><span class="good">Cards double as review</span> — read them back to verify setup</td>
+        <td><span class="good">Journey IS the checklist</span> — empty stages show what's left</td></tr>
+    </table></div>
+    <p class="note"><strong>Scope note (parity):</strong> all five variants model the same journeys — clinic defaults, per-visit-type flow/notes override, room membership — with the same data (2 rooms, 4 visit options, MH flow override, SOAP/Progress notes). Not ported in any variant: patient preview, operating-hours editor, form library management, and the live flow/notes builders themselves (each variant indicates where today's builder would embed unchanged). The Current pane is the real app.</p>
+    <div class="rec"><strong>Recommendation (updated after team feedback that C reads as unintuitive):</strong> D and E are <em>presentation</em> answers, B and A are <em>structural</em> ones — and they compose. The strongest combination: <strong>B's catalog + inheritance underneath, with D's sentence cards as each visit type's summary view</strong> (click a phrase → the relevant section of B's editor). E is the best fit if the team prioritizes teaching new admins over dense management — it makes configuration self-explanatory at the cost of one-visit-type-at-a-time editing. C works better as a future admin "audit view" than as the primary UI. Your call.</div>
   </div>
 </section>
 
@@ -147,6 +169,8 @@ const OPTIONS = [
   {id:'optionA', label:'A — Reference-based profiles', url:'optionA.html'},
   {id:'optionB', label:'B — Visit type catalog', url:'optionB.html'},
   {id:'optionC', label:'C — Configuration matrix', url:'optionC.html'},
+  {id:'optionD', label:'D — Plain-language cards', url:'optionD.html'},
+  {id:'optionE', label:'E — Patient journey editor', url:'optionE.html'},
 ];
 function fill(sel){
   document.getElementById(sel).innerHTML = OPTIONS.map(o=>`<option value="${o.id}">${o.label}</option>`).join('');
