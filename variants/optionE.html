@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variant E — Patient Journey Editor</title>
+<style>
+  :root{
+    --brand:#0D875C; --brand-dark:#0A6B49; --brand-50:#F0FDF7; --brand-light:#D1FAE5;
+    --text-primary:#111827; --text-secondary:#6B7280; --text-tertiary:#9CA3AF;
+    --border:#E5E7EB; --border-strong:#D1D5DB;
+    --grey-50:#F9FAFB; --grey-100:#F3F4F6; --grey-300:#D1D5DB; --grey-600:#4B5563;
+    --warning:#D97706; --warning-light:#FEF3C7; --info:#0284C7; --info-light:#E0F2FE;
+    --success:#059669; --success-light:#D1FAE5;
+    --r-md:6px; --r-lg:8px; --r-xl:12px; --r-full:999px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text-primary);background:#fff}
+  button{font-family:inherit;cursor:pointer}
+  .topbar{display:flex;align-items:center;gap:24px;padding:0 24px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+  .logo-mark{width:28px;height:28px;background:var(--brand);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  .nav-btn{background:none;border:none;font-size:14px;font-weight:500;color:var(--text-secondary);padding:8px 4px;border-bottom:2px solid transparent}
+  .nav-btn.active{color:var(--brand);font-weight:600;border-bottom-color:var(--brand)}
+  .variant-tag{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.5px;color:#9D174D;background:#FCE7F3;padding:4px 10px;border-radius:var(--r-full)}
+  .page{max-width:1040px;margin:0 auto;padding:28px 24px 100px}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:4px}
+  .page-sub{font-size:13.5px;color:var(--text-secondary);margin-bottom:20px;line-height:1.55}
+  .explain{border:1px dashed var(--border-strong);border-radius:var(--r-lg);background:var(--grey-50);padding:14px 18px;font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px}
+  .explain strong{color:var(--text-primary)}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r-full)}
+  .badge-grey{background:var(--grey-100);color:var(--grey-600)}
+  .badge-default{background:var(--success-light);color:#065F46}
+  code{font-size:12px;background:var(--grey-100);padding:1px 5px;border-radius:4px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-md);font-size:12.5px;font-weight:600;padding:6px 12px;border:1px solid transparent}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-secondary{background:#fff;color:var(--text-primary);border-color:var(--border-strong)}
+  .btn-secondary:hover{border-color:var(--brand);color:var(--brand)}
+  .btn-ghost{background:none;color:var(--text-secondary)}
+  .btn-ghost:hover{background:var(--grey-100)}
+  /* selector row */
+  .selectors{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .sel-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-tertiary);margin-right:2px}
+  .chip{border:1.5px solid var(--border);background:#fff;border-radius:var(--r-full);font-size:12.5px;font-weight:600;padding:6px 14px;color:var(--text-secondary)}
+  .chip:hover{border-color:var(--brand);color:var(--brand)}
+  .chip.active{background:var(--brand);border-color:var(--brand);color:#fff}
+  .chip .mini{font-weight:400;opacity:.8}
+  /* journey */
+  .journey{display:flex;gap:0;align-items:stretch;margin-top:18px;overflow-x:auto;padding-bottom:8px}
+  .stage{flex:1;min-width:172px;display:flex;flex-direction:column}
+  .stage-link{display:flex;align-items:center;margin:0 -1px}
+  .stage-card{border:1.5px solid var(--border);border-radius:var(--r-xl);background:#fff;padding:14px;margin:0 6px;flex:1;cursor:pointer;transition:all .15s;position:relative}
+  .stage-card:hover{border-color:var(--brand);box-shadow:0 3px 12px rgba(0,0,0,.07)}
+  .stage-card.open{border-color:var(--brand);background:var(--brand-50)}
+  .stage-num{width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+  .stage-title{font-size:13.5px;font-weight:700;margin-bottom:2px}
+  .stage-patient{font-size:11px;color:var(--text-tertiary);font-style:italic;margin-bottom:8px;line-height:1.45}
+  .stage-items{font-size:12px;color:var(--text-secondary);line-height:1.7}
+  .stage-tag{position:absolute;top:12px;right:12px}
+  .tag-def{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;color:#065F46;background:var(--success-light);padding:2px 7px;border-radius:var(--r-full)}
+  .tag-ovr{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;color:#92400E;background:var(--warning-light);padding:2px 7px;border-radius:var(--r-full)}
+  .tag-warn{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;color:#B91C1C;background:#FEE2E2;padding:2px 7px;border-radius:var(--r-full)}
+  .arrow{align-self:center;color:var(--grey-300);font-size:18px;flex-shrink:0;user-select:none}
+  /* detail panel */
+  .detail{border:1.5px solid var(--brand);border-radius:var(--r-xl);background:#fff;margin-top:16px;padding:20px 24px;animation:up .16s ease}
+  @keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .detail-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .detail-title{font-size:15px;font-weight:800}
+  .detail-sub{font-size:12.5px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px}
+  .input{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border-strong);border-radius:var(--r-md);background:#fff;max-width:320px;width:100%}
+  .steps-box{background:var(--grey-50);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;font-size:12.5px;max-width:420px}
+  .step-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+  .step-dot{width:7px;height:7px;border-radius:50%;background:var(--brand);flex-shrink:0}
+  .inherit-bar{display:flex;align-items:center;gap:12px;background:var(--grey-100);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:14px;font-size:12.5px}
+  .patient-coach{display:flex;align-items:center;gap:10px;background:var(--info-light);border:1px solid #BAE6FD;border-radius:var(--r-lg);padding:10px 14px;font-size:12.5px;color:#075985;margin-bottom:16px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#0284C7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ══ Mock data — identical values to the current app, framed as the patient's journey ══ */
+const CLINIC_FLOW = ['Login','Dependant List','Consultation','Calendar Picker','Intake Form','Branch: By Patient Type','Pharmacy','Emergency Contact','Test Device','Setup Session','Confirmation'];
+const MH_FLOW = ['Calendar Picker','Intake Form','Mental Health Intake','PHQ-9 Assessment','Emergency Contact','Pharmacy','Payment Options','Test Device','Setup Session','Confirmation'];
+
+const state = {
+  roomId:'room_1', voId:'vo_1', openStage:null,
+  rooms:[
+    { id:'room_1', name:'General Waiting Room', code:'GHTNC', visibility:'Public', hours:'always open',
+      vos:[
+        { id:'vo_1', name:'New Patient Consult', duration:'30 min', mode:'Video', session:'1:1',
+          patients:'Self-Pay · Insurance', pay:'$150 self-pay / $30 copay', payOk:true,
+          flowOvr:false, notesOvr:false, notes:'SOAP Note' },
+        { id:'vo_2', name:'Urgent Care Visit', duration:'15 min', mode:'Video', session:'1:1',
+          patients:'Self-Pay · Group · Insurance', pay:'$75 self-pay / copays', payOk:true,
+          flowOvr:false, notesOvr:true, notes:'Progress Note' },
+      ]},
+    { id:'room_2', name:'Mental Health Room', code:'MHLTH', visibility:'Unlisted', hours:'business hours',
+      vos:[
+        { id:'vo_3', name:'Initial Assessment', duration:'60 min', mode:'Video', session:'1:1',
+          patients:'Self-Pay · Insurance', pay:'not set', payOk:false,
+          flowOvr:true, notesOvr:false, notes:'SOAP Note' },
+        { id:'vo_4', name:'Follow-up Session', duration:'45 min', mode:'Video', session:'1:1',
+          patients:'Self-Pay · Insurance', pay:'copay only', payOk:true,
+          flowOvr:false, notesOvr:true, notes:'SOAP Note (pinned)' },
+      ]},
+  ],
+};
+const room = () => state.rooms.find(r=>r.id===state.roomId);
+const vo = () => room().vos.find(v=>v.id===state.voId);
+
+const STAGES = [
+  { id:'discover', num:1, title:'Discover', patient:'“I found the clinic and opened its room link.”',
+    items: v => [`Room: ${room().name}`, `Visibility: ${room().visibility}`, `Hours: ${room().hours}`],
+    tag: () => ({cls:'tag-def', label:'ROOM-LEVEL'}) },
+  { id:'book', num:2, title:'Book & Pay', patient:'“I picked a visit, told them who I am, and paid.”',
+    items: v => [`Accepts: ${v.patients}`, `Pays: ${v.pay}`],
+    tag: v => v.payOk ? {cls:'tag-def', label:'CONFIGURED'} : {cls:'tag-warn', label:'INCOMPLETE'} },
+  { id:'intake', num:3, title:'Intake', patient:'“I filled in my forms and tested my camera.”',
+    items: v => { const f = v.flowOvr?MH_FLOW:CLINIC_FLOW; return [`${f.length} steps`, f.slice(0,3).join(' → ')+' …']; },
+    tag: v => v.flowOvr ? {cls:'tag-ovr', label:'CUSTOMIZED'} : {cls:'tag-def', label:'CLINIC DEFAULT'} },
+  { id:'visit', num:4, title:'Visit', patient:'“I met my provider.”',
+    items: v => [`${v.duration} · ${v.mode}`, `Session: ${v.session}`],
+    tag: () => ({cls:'tag-def', label:'PER VISIT TYPE'}) },
+  { id:'document', num:5, title:'Document', patient:'“…and my provider wrote it all down.”',
+    items: v => [`Template: ${v.notes}`],
+    tag: v => v.notesOvr ? {cls:'tag-ovr', label:'CUSTOMIZED'} : {cls:'tag-def', label:'CLINIC DEFAULT'} },
+];
+
+/* ══ Views ══ */
+function topbar(){
+  return `<nav class="topbar">
+    <span class="logo"><span class="logo-mark">V</span>VSee Clinic</span>
+    <button class="nav-btn active">Patient Journeys</button>
+    <button class="nav-btn" onclick="alert('Clinic Settings — unchanged: patient types, payment, default intake flow, default notes. The journey stages tagged CLINIC DEFAULT read from here.')">Clinic Settings</button>
+    <span class="variant-tag">VARIANT E — PATIENT JOURNEY EDITOR</span>
+  </nav>`;
+}
+
+function stageDetail(stage){
+  const v = vo();
+  if(stage==='discover') return `
+    <div class="detail-head"><span class="detail-title">1 · Discover — room settings</span><span class="tag-def">ROOM-LEVEL</span></div>
+    <p class="detail-sub">These apply to every visit type in ${room().name}. Same fields as today's room settings page.</p>
+    <div class="field"><label>Room name</label><input class="input" value="${room().name}"></div>
+    <div class="field"><label>Visibility</label><input class="input" value="${room().visibility}" style="max-width:160px"></div>
+    <div class="field"><label>Hours</label><input class="input" value="${room().hours}" style="max-width:200px"></div>`;
+  if(stage==='book') return `
+    <div class="detail-head"><span class="detail-title">2 · Book &amp; Pay — ${v.name}</span>${v.payOk?'<span class="tag-def">CONFIGURED</span>':'<span class="tag-warn">INCOMPLETE</span>'}</div>
+    <p class="detail-sub">Who can book this visit and what they pay. ${v.payOk?'':'<strong style="color:#B91C1C">Pricing is not set — patients cannot be charged.</strong>'}</p>
+    <div class="field"><label>Accepted patient types</label><input class="input" value="${v.patients}"></div>
+    <div class="field"><label>Payment rules</label><input class="input" value="${v.pay}"></div>
+    <p style="font-size:11.5px;color:var(--text-tertiary)">The per-type payment editor (copay / specific amount / none per eligibility status) opens here — unchanged from today.</p>`;
+  if(stage==='intake'){
+    const steps = v.flowOvr?MH_FLOW:CLINIC_FLOW;
+    return `
+    <div class="detail-head"><span class="detail-title">3 · Intake — what ${v.name} patients complete</span>${v.flowOvr?'<span class="tag-ovr">CUSTOMIZED</span>':'<span class="tag-def">CLINIC DEFAULT</span>'}</div>
+    <div class="inherit-bar">
+      <span style="flex:1">${v.flowOvr
+        ? `This visit type walks patients through <strong>its own flow</strong>. The clinic default is not used.`
+        : `Patients get the <strong>clinic default flow</strong>. Improve it once in Clinic Settings; every inheriting visit type updates.`}</span>
+      ${v.flowOvr
+        ? `<button class="btn btn-secondary" onclick="setOvr('flowOvr',false)">↺ Use clinic default</button>`
+        : `<button class="btn btn-secondary" onclick="setOvr('flowOvr',true)">⚡ Customize for this visit type</button>`}
+    </div>
+    <div class="steps-box">${steps.map(s=>`<div class="step-row"><span class="step-dot"></span>${s}</div>`).join('')}</div>
+    <p style="font-size:11.5px;color:var(--text-tertiary);margin-top:8px">${v.flowOvr?'Editable here — the full flow builder embeds in this panel.':'Read-only while inherited.'}</p>`;
+  }
+  if(stage==='visit') return `
+    <div class="detail-head"><span class="detail-title">4 · Visit — ${v.name}</span><span class="tag-def">PER VISIT TYPE</span></div>
+    <p class="detail-sub">The appointment itself.</p>
+    <div class="field"><label>Duration</label><input class="input" value="${v.duration}" style="max-width:120px"></div>
+    <div class="field"><label>Mode</label><input class="input" value="${v.mode}" style="max-width:160px"></div>
+    <div class="field"><label>Session type</label><input class="input" value="${v.session}" style="max-width:120px"></div>`;
+  if(stage==='document') return `
+    <div class="detail-head"><span class="detail-title">5 · Document — provider notes for ${v.name}</span>${v.notesOvr?'<span class="tag-ovr">CUSTOMIZED</span>':'<span class="tag-def">CLINIC DEFAULT</span>'}</div>
+    <div class="inherit-bar">
+      <span style="flex:1">${v.notesOvr
+        ? `Providers document with <strong>${v.notes}</strong> for this visit type.`
+        : `Providers get the <strong>clinic default template</strong> (${v.notes}).`}</span>
+      ${v.notesOvr
+        ? `<button class="btn btn-secondary" onclick="setOvr('notesOvr',false)">↺ Use clinic default</button>`
+        : `<button class="btn btn-secondary" onclick="setOvr('notesOvr',true)">⚡ Customize for this visit type</button>`}
+    </div>
+    <div class="steps-box"><div class="step-row"><strong>${v.notes}</strong>&nbsp;— ${v.notes.startsWith('Progress')?'Interval History · Symptom scale · Exam · Med-review · Impression · Plan':'Subjective · Objective · Assessment · Plan · Follow-up date'}</div></div>
+    <p style="font-size:11.5px;color:var(--text-tertiary);margin-top:8px">${v.notesOvr?'The notes template builder embeds here.':'Read-only while inherited.'}</p>`;
+}
+
+function main(){
+  const v = vo();
+  return `<div class="page">
+    <h1 class="page-title">Patient Journeys</h1>
+    <p class="page-sub">Configure a visit type by walking the journey its patients take — left to right, exactly in the order they experience it.</p>
+    <div class="explain"><strong>Model:</strong> the five stages of every visit — Discover, Book &amp; Pay, Intake, Visit, Document — replace the settings taxonomy.
+      Each stage is tagged <span class="tag-def">CLINIC DEFAULT</span> (inherited, edited once in Clinic Settings) or <span class="tag-ovr">CUSTOMIZED</span> (this visit type only).
+      Click a stage to open its settings; nothing is more than one click from the journey.</div>
+    <div class="selectors">
+      <span class="sel-label">Room</span>
+      ${state.rooms.map(r=>`<button class="chip ${state.roomId===r.id?'active':''}" onclick="pickRoom('${r.id}')">${r.name}</button>`).join('')}
+    </div>
+    <div class="selectors">
+      <span class="sel-label">Visit type</span>
+      ${room().vos.map(x=>`<button class="chip ${state.voId===x.id?'active':''}" onclick="pickVO('${x.id}')">${x.name} <span class="mini">· ${x.duration}</span></button>`).join('')}
+    </div>
+    <div class="patient-coach"><span class="avatar">P</span>
+      <span>Follow the patient: <strong>${v.name}</strong>, ${room().name} — every setting lives on the stage where the patient feels it.</span></div>
+    <div class="journey">
+      ${STAGES.map((s,i)=>{
+        const tag = s.tag(v);
+        return `${i>0?'<span class="arrow">›</span>':''}
+        <div class="stage">
+          <div class="stage-card ${state.openStage===s.id?'open':''}" onclick="toggleStage('${s.id}')">
+            <span class="stage-tag ${''}"><span class="${tag.cls}">${tag.label}</span></span>
+            <div class="stage-num">${s.num}</div>
+            <div class="stage-title">${s.title}</div>
+            <div class="stage-patient">${s.patient}</div>
+            <div class="stage-items">${s.items(v).map(t=>`<div>${t}</div>`).join('')}</div>
+          </div>
+        </div>`;}).join('')}
+    </div>
+    ${state.openStage?`<div class="detail">${stageDetail(state.openStage)}</div>`:'<p style="text-align:center;color:var(--text-tertiary);font-size:12.5px;margin-top:18px">Click a stage to configure it.</p>'}
+  </div>`;
+}
+
+/* ══ Actions ══ */
+function pickRoom(id){ state.roomId=id; state.voId=room().vos[0].id; state.openStage=null; render(); }
+function pickVO(id){ state.voId=id; render(); }
+function toggleStage(id){ state.openStage = state.openStage===id?null:id; render(); }
+function setOvr(key, val){ vo()[key]=val; render(); }
+function render(){ document.getElementById('app').innerHTML = topbar() + main(); }
+render();
+</script>
+</body>
+</html>
