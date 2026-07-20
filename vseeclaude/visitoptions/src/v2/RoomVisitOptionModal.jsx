@@ -3,7 +3,7 @@ import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
-import { NotesTemplateEditor, NotesTemplatePreview } from './TemplateEditors';
+import { NotesTemplatePreview } from './TemplateEditors';
 
 /* ── Pricing constants ───────────────────────────────────── */
 
@@ -231,7 +231,7 @@ function VisitModePicker({ modes, onChange, error }) {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onUpdateNotesTemplate }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     notesTemplateId:  existing.notesTemplateId  ?? null,
@@ -240,7 +240,6 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
   const [errors, setErrors]     = useState({});
   const [activeTab, setActiveTab] = useState(initialTab ?? 'general');
   const [pricingTab, setPricingTab] = useState(null);
-  const [editingNotesTemplate, setEditingNotesTemplate] = useState(null);
 
   const { setOverlayPage } = useAnnotationPage();
   const modalPage = `modal:${existing ? existing.id : 'new'}:${activeTab}`;
@@ -652,9 +651,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   </button>
                 </div>
 
-                {form.notesTemplateId !== null && !editingNotesTemplate && (
+                {form.notesTemplateId !== null && (
                   <div className="form-group">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <div style={{ marginBottom: 8 }}>
                       <select
                         value={form.notesTemplateId ?? ''}
                         onChange={e => set('notesTemplateId', e.target.value || null)}
@@ -664,19 +663,6 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                         <option value="">— None —</option>
                         {clinic.notesTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                       </select>
-                      {form.notesTemplateId && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => {
-                            const tmpl = clinic.notesTemplates.find(t => t.id === form.notesTemplateId);
-                            if (tmpl) setEditingNotesTemplate({ ...tmpl });
-                          }}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                          &nbsp;Edit
-                        </button>
-                      )}
                     </div>
 
                     {form.notesTemplateId && (() => {
@@ -684,23 +670,14 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                       if (!preview) return null;
                       return <NotesTemplatePreview tmpl={preview} />;
                     })()}
+
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+                      Templates are managed in <strong>Clinic Settings → Notes Templates</strong> — edits there apply everywhere a template is used.
+                    </p>
                   </div>
                 )}
 
-                {/* Inline notes template editor */}
-                {editingNotesTemplate && (
-                  <NotesTemplateEditor
-                    tmpl={editingNotesTemplate}
-                    onSave={(saved) => {
-                      onUpdateNotesTemplate?.(saved);
-                      setEditingNotesTemplate(null);
-                      set('notesTemplateId', saved.id);
-                    }}
-                    onCancel={() => setEditingNotesTemplate(null)}
-                  />
-                )}
-
-                {form.notesTemplateId === null && !editingNotesTemplate && resolvedNotesId && (() => {
+                {form.notesTemplateId === null && resolvedNotesId && (() => {
                   const preview = clinic.notesTemplates.find(t => t.id === resolvedNotesId);
                   if (!preview) return null;
                   return (

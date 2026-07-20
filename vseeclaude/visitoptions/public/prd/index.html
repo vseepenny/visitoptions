@@ -190,7 +190,7 @@
     <tr><td>Author</td><td>Penny (penny@vsee.com)</td></tr>
     <tr><td>Date</td><td>April 2, 2026</td></tr>
     <tr><td>Status</td><td>Draft</td></tr>
-    <tr><td>Version</td><td>2.7 (V2 architecture)</td></tr>
+    <tr><td>Version</td><td>2.8 (V2 architecture)</td></tr>
     <tr><td>Stack</td><td>React 19 · Vite 7 · Tailwind CSS 4</td></tr>
   </table>
 </div>
@@ -832,12 +832,13 @@
   <li>Includes a <strong>Patient Preview</strong> panel that simulates the workflow in a mobile phone frame.</li>
 </ul>
 
-<h4>Visit Notes Tab</h4>
+<h4>Visit Notes Tab — Select from Library, Edit in One Place</h4>
 <ul>
   <li>Same inheritance model as Intake Flow: clinic default toggle + override dropdown.</li>
-  <li>When a specific template is selected, an <strong>Edit</strong> button opens the <code>NotesTemplateEditor</code> inline within the modal — the same form-editor-style builder used in Clinic Settings (see §6.3), with the full 8-type section palette.</li>
-  <li>Edits save back to <code>clinic.notesTemplates[]</code> via the <code>onUpdateNotesTemplate</code> callback, so templates edited from a visit option are updated clinic-wide.</li>
-  <li>When not editing, the template renders as a <strong>structured read-only preview</strong> of the provider note (see §6.3 Structured Notes Preview) — both for the selected override and the dimmed clinic-default preview.</li>
+  <li>Turning off "Use clinic default" reveals a <strong>dropdown of the clinic's notes template library</strong> — the visit option <em>references</em> a template; there is no per-visit-option template editing.</li>
+  <li>The selected template (or the dimmed clinic default) renders as a <strong>structured read-only preview</strong> of the provider note (see §6.3 Structured Notes Preview).</li>
+  <li>A hint under the preview points to <strong>Clinic Settings → Notes Templates</strong>, the single place templates are created and edited — an edit there applies everywhere the template is referenced.</li>
+  <li><em>Rationale:</em> selection-only in the modal prevents the "I edited it for this visit but changed it clinic-wide" trap, and keeps visit options as lightweight references to the shared library (same principle as workflow templates).</li>
 </ul>
 
 <h3>10.3 Delete Visit Option</h3>

@@ -76,7 +76,7 @@ function isPaymentIncomplete(item, clinic) {
 
 const ORDER_VARIANT = 'pills'; // kept A2: side-by-side pills
 
-function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onUpdateNotesTemplate }) {
+function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const moveItem = (from, to) => {
@@ -279,7 +279,6 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
           onSaveTemplate={onSaveTemplate}
           onUpdateTemplate={onUpdateTemplate}
           onDeleteTemplate={onDeleteTemplate}
-          onUpdateNotesTemplate={onUpdateNotesTemplate}
         />
       )}
 
@@ -298,7 +297,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onUpdateNotesTemplate }) {
+export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
   const { state, setState, isDirty, save } = useDirty(room);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -414,7 +413,6 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
             onSaveTemplate={onSaveTemplate}
             onUpdateTemplate={onUpdateTemplate}
             onDeleteTemplate={onDeleteTemplate}
-            onUpdateNotesTemplate={onUpdateNotesTemplate}
           />
 
         </div>

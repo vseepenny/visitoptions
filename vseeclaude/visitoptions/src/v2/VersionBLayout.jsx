@@ -153,7 +153,6 @@ export default function VersionBLayout() {
           onSaveTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: [...(c.workflowTemplates || []), tpl] }))}
           onUpdateTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).map(t => t.id === tpl.id ? tpl : t) }))}
           onDeleteTemplate={id => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).filter(t => t.id !== id) }))}
-          onUpdateNotesTemplate={tmpl => setClinic(c => ({ ...c, notesTemplates: (c.notesTemplates || []).map(t => t.id === tmpl.id ? tmpl : t) }))}
         />
       )}
 
