@@ -1,5 +1,7 @@
 /* Landing page editors — clinic-level branding/welcome + per-room overrides,
-   each with a live patient-view preview. */
+   each with a live patient-view preview (web + mobile app, expandable). */
+
+import { useState, useEffect } from 'react';
 
 export const DEFAULT_CLINIC_LANDING = {
   displayName: 'VSee Health Clinic',
@@ -69,37 +71,27 @@ function ColorSwatches({ value, onChange }) {
 }
 
 /* ── Patient-view preview ─────────────────────────────────── */
-/* Renders inside a small browser-chrome card. `room` switches it from the
-   clinic front door to a specific room's landing page. */
+/* `room` switches from the clinic front door to a room landing page.
+   `device` renders it in browser chrome ('web') or a phone shell ('mobile'). */
 
-export function LandingPreview({ clinic, room, rooms = [] }) {
+function resolveLanding(clinic, room) {
   const lp = clinicLanding(clinic);
   const rlp = room?.landingPage || null;
-  const heading = room ? (rlp?.heading || room.roomName) : lp.displayName;
-  const message = room ? (rlp?.message || lp.welcome) : lp.welcome;
-  const showHours = room ? (rlp ? rlp.showHours !== false : lp.showHours) : lp.showHours;
-  const showVisitOptions = room ? (rlp ? rlp.showVisitOptions !== false : true) : false;
-  const url = room ? `vsee.me/${(room.roomCode || 'ROOM').toLowerCase()}` : 'vsee.me/clinic';
-  const initial = (lp.displayName || 'V').trim().charAt(0).toUpperCase();
+  return {
+    lp,
+    heading: room ? (rlp?.heading || room.roomName) : lp.displayName,
+    message: room ? (rlp?.message || lp.welcome) : lp.welcome,
+    showHours: room ? (rlp ? rlp.showHours !== false : lp.showHours) : lp.showHours,
+    showVisitOptions: room ? (rlp ? rlp.showVisitOptions !== false : true) : false,
+    url: room ? `vsee.me/${(room.roomCode || 'ROOM').toLowerCase()}` : 'vsee.me/clinic',
+    initial: (lp.displayName || 'V').trim().charAt(0).toUpperCase(),
+  };
+}
 
+function LandingBody({ clinic, room, rooms }) {
+  const { lp, heading, message, showHours, showVisitOptions } = resolveLanding(clinic, room);
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-xl)', overflow: 'hidden', background: 'white', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
-      {/* Browser chrome */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'var(--grey-100)', borderBottom: '1px solid var(--border)' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
-        <span style={{ flex: 1, marginLeft: 8, background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--r-full)', fontSize: 10.5, color: 'var(--text-secondary)', padding: '3px 12px' }}>{url}</span>
-      </div>
-
-      {/* Header bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', background: lp.brandColor, color: 'white' }}>
-        <span style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{initial}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 700 }}>{lp.displayName}</span>
-        {lp.tagline && <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 'auto' }}>{lp.tagline}</span>}
-      </div>
-
-      {/* Body */}
+    <>
       <div style={{ padding: '20px 18px 16px' }}>
         <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>{heading}</p>
         <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.55, margin: '6px 0 14px' }}>{message}</p>
@@ -148,6 +140,131 @@ export function LandingPreview({ clinic, room, rooms = [] }) {
         {lp.supportEmail && <span>{lp.supportEmail}</span>}
         <span style={{ marginLeft: 'auto' }}>Powered by VSee</span>
       </div>
+    </>
+  );
+}
+
+export function LandingPreview({ clinic, room, rooms = [], device = 'web' }) {
+  const { lp, url, initial } = resolveLanding(clinic, room);
+
+  if (device === 'mobile') {
+    return (
+      <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', border: '10px solid #1F2937', borderRadius: 36, overflow: 'hidden', background: 'white', boxShadow: '0 8px 28px rgba(0,0,0,0.16)' }}>
+        {/* Status bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 16px 5px', background: lp.brandColor, color: 'white', fontSize: 10, fontWeight: 600 }}>
+          <span>9:41</span>
+          <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20V2z" opacity=".4"/><path d="M14 22h8V10z"/></svg>
+            <svg width="14" height="10" viewBox="0 0 28 14" fill="none" stroke="currentColor"><rect x="1" y="1" width="22" height="12" rx="3"/><rect x="3.5" y="3.5" width="14" height="7" rx="1.5" fill="currentColor" stroke="none"/><path d="M25 5v4" strokeLinecap="round"/></svg>
+          </span>
+        </div>
+        {/* App bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 12px', background: lp.brandColor, color: 'white' }}>
+          {room && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>}
+          <span style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{initial}</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{lp.displayName}</span>
+        </div>
+        <LandingBody clinic={clinic} room={room} rooms={rooms} />
+        {/* Home indicator */}
+        <div style={{ padding: '6px 0 8px', display: 'flex', justifyContent: 'center', background: 'var(--grey-50)' }}>
+          <span style={{ width: 90, height: 4, borderRadius: 4, background: 'var(--grey-300)' }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-xl)', overflow: 'hidden', background: 'white', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+      {/* Browser chrome */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'var(--grey-100)', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--grey-300)' }} />
+        <span style={{ flex: 1, marginLeft: 8, background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--r-full)', fontSize: 10.5, color: 'var(--text-secondary)', padding: '3px 12px' }}>{url}</span>
+      </div>
+      {/* Header bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', background: lp.brandColor, color: 'white' }}>
+        <span style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{initial}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700 }}>{lp.displayName}</span>
+        {lp.tagline && <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 'auto' }}>{lp.tagline}</span>}
+      </div>
+      <LandingBody clinic={clinic} room={room} rooms={rooms} />
+    </div>
+  );
+}
+
+/* ── Preview panel: device toggle + expand-to-modal ───────── */
+
+export function PreviewPanel({ clinic, room, rooms = [], label }) {
+  const [device, setDevice] = useState('web');
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
+  const deviceToggle = (
+    <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+      {[{ id: 'web', label: 'Web' }, { id: 'mobile', label: 'Mobile app' }].map(d => (
+        <button
+          key={d.id}
+          type="button"
+          onClick={() => setDevice(d.id)}
+          style={{
+            border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, padding: '5px 12px',
+            background: device === d.id ? 'var(--brand)' : 'white',
+            color: device === d.id ? 'white' : 'var(--text-secondary)',
+          }}
+        >{d.label}</button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', flex: 1, minWidth: 120 }}>{label}</p>
+        {deviceToggle}
+        <button
+          type="button"
+          className="btn-icon"
+          title="Expand preview"
+          aria-label="Expand preview"
+          style={{ width: 26, height: 26 }}
+          onClick={() => setExpanded(true)}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+      </div>
+      <LandingPreview clinic={clinic} room={room} rooms={rooms} device={device} />
+
+      {expanded && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setExpanded(false)}
+        >
+          <div
+            style={{ background: 'white', borderRadius: 'var(--r-xl)', width: device === 'web' ? 'min(720px, 94vw)' : 'auto', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.25)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>{label}</p>
+              {deviceToggle}
+              <button className="btn-icon" style={{ width: 30, height: 30 }} onClick={() => setExpanded(false)} aria-label="Close preview">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: 24, background: 'var(--grey-100)' }}>
+              <div style={{ width: device === 'web' ? '100%' : 400, maxWidth: '100%', margin: '0 auto' }}>
+                <LandingPreview clinic={clinic} room={room} rooms={rooms} device={device} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -187,8 +304,7 @@ export function ClinicLandingEditor({ clinic, rooms = [], onChange }) {
         </div>
       </div>
       <div style={{ position: 'sticky', top: 80 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>Patient view — clinic front door</p>
-        <LandingPreview clinic={{ ...clinic, landingPage: lp }} rooms={rooms} />
+        <PreviewPanel clinic={{ ...clinic, landingPage: lp }} rooms={rooms} label="Patient view — clinic front door" />
       </div>
     </div>
   );
@@ -252,10 +368,7 @@ export function RoomLandingEditor({ clinic, room, onChange }) {
         )}
       </div>
       <div>
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)', marginBottom: 8 }}>
-          Patient view — this room {inheriting ? '(inherited welcome)' : '(custom welcome)'}
-        </p>
-        <LandingPreview clinic={clinic} room={room} />
+        <PreviewPanel clinic={clinic} room={room} label={`Patient view — this room ${inheriting ? '(inherited welcome)' : '(custom welcome)'}`} />
       </div>
     </div>
   );
