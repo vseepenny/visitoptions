@@ -8,6 +8,18 @@ export const initialClinic = {
 
   patientTypes: ['self-pay', 'group-covered', 'insurance'],
 
+  // ── Patient-facing landing page (clinic front door) ──
+  landingPage: {
+    displayName: 'VSee Health Clinic',
+    tagline: 'Care from anywhere',
+    welcome: 'Welcome! Choose a waiting room below to see a provider. Most visits start within minutes.',
+    brandColor: '#0D875C',
+    supportEmail: 'support@vseehealth.com',
+    supportPhone: '(650) 555-0142',
+    showHours: true,
+    showRooms: true,
+  },
+
   specialties: [
     { id: 'sp_1', name: 'General Practice' },
     { id: 'sp_2', name: 'Mental Health' },
@@ -159,6 +171,7 @@ export const initialRooms = [
       closureMessage: 'Service currently not available. Please check back later.',
     },
     visibility: 'public',
+    landingPage: null, // inherits the clinic welcome
     visitOptions: [
       {
         id: 'vo_1',
@@ -223,6 +236,12 @@ export const initialRooms = [
       closureMessage: 'Our mental health team is currently unavailable. Please try again during business hours.',
     },
     visibility: 'unlisted',
+    landingPage: {
+      heading: 'Mental Health & Wellness',
+      message: 'You are in a private, confidential space. Choose the session type that fits — your provider will meet you shortly.',
+      showVisitOptions: true,
+      showHours: true,
+    },
     visitOptions: [
       {
         id: 'vo_3',

@@ -4,6 +4,7 @@ import OperatingHours from '../components/OperatingHours';
 import RoomVisitOptionModal from './RoomVisitOptionModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PatientPreview from './PatientPreview';
+import { RoomLandingEditor } from './LandingPageEditor';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -400,6 +401,21 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
                 </label>
               ))}
             </div>
+          </section>
+
+          <div className="divider" style={{ margin: 0 }} />
+
+          {/* Landing Page */}
+          <section>
+            <p className="section-title">Landing Page</p>
+            <p className="section-desc" style={{ marginBottom: 16 }}>
+              What patients see when they open this room's link. Clinic branding applies automatically; the welcome content can be room-specific.
+            </p>
+            <RoomLandingEditor
+              clinic={clinic}
+              room={state}
+              onChange={val => update('landingPage', val)}
+            />
           </section>
 
           <div className="divider" style={{ margin: 0 }} />

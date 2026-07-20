@@ -6,6 +6,7 @@ import { NOTES_PRESETS } from '../data/initialData';
 import WorkflowCustomizer from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
 import { FormLibraryEditor, NotesTemplateEditor } from './TemplateEditors';
+import { ClinicLandingEditor } from './LandingPageEditor';
 
 /* ── Dirty tracking hook ─────────────────────────────────── */
 
@@ -76,7 +77,7 @@ function TemplateList({ items, editingId, defaultId, onEdit, onDelete, onSetDefa
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
+export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSave }) {
   const { state, setState, isDirty, markSaved } = useDirty(clinic);
   const [activeTab, setActiveTab] = useState('patientTypes');
   const [editingId, setEditingId] = useState(null);
@@ -131,6 +132,7 @@ export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
     { id: 'workflow',      label: 'Intake Flow'       },
     { id: 'forms',         label: 'Form Library'     },
     { id: 'notes',         label: 'Notes Templates'  },
+    { id: 'landing',       label: 'Landing Page'     },
   ];
 
   return (
@@ -265,6 +267,21 @@ export default function ClinicTemplatesPage({ clinic, onChange, onSave }) {
                 )}
               />
             </>
+          )}
+
+          {/* ── Landing Page tab ── */}
+          {activeTab === 'landing' && (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                The clinic front door — what patients see when they open your clinic link, before choosing a waiting room.
+                Branding here (name, color, support contact) also applies to every room's landing page.
+              </p>
+              <ClinicLandingEditor
+                clinic={state}
+                rooms={rooms}
+                onChange={lp => update({ landingPage: lp })}
+              />
+            </div>
           )}
 
         </div>
