@@ -17,6 +17,7 @@ export function normalizeSteps(steps) {
         type: 'pharmacy',
         label: 'Pharmacy Picker',
         allowSearch: true,
+        showMap: true,
         allowMailOrder: true,
         allowSkip: true,
       };

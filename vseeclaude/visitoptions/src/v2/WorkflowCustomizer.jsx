@@ -588,6 +588,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
             {[
               { key: 'allowSearch',  label: 'Directory search', def: true,  hint: 'Let patients search all pharmacies' },
+              { key: 'showMap',      label: 'Show map',         def: true,  hint: 'Show nearby pharmacies on a map with distances' },
               { key: 'allowMailOrder', label: 'Mail-order option', def: true, hint: 'Offer mail-order delivery' },
               { key: 'allowSkip',    label: 'Allow skip',       def: true,  hint: 'Patient can decide later' },
             ].map(opt => {
@@ -1003,7 +1004,7 @@ function createStep(type, clinic) {
     case 'form':
       return { ...base, label: 'Form', formId: null };
     case 'pharmacy':
-      return { ...base, label, allowSearch: true, allowMailOrder: true, allowSkip: true };
+      return { ...base, label, allowSearch: true, showMap: true, allowMailOrder: true, allowSkip: true };
     case 'conditional':
       return {
         ...base,

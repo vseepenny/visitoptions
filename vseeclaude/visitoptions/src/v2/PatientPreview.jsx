@@ -903,15 +903,58 @@ function GuarantorStep({ onContinue, onBack }) {
 
 /* ── Step: Pharmacy ──────────────────────────────────────── */
 
+// Stylised neighbourhood map — no external tiles, so the prototype stays
+// self-contained. Pins are selectable and stay in sync with the list.
+function PharmacyMap({ pharmacies, selected, onSelect }) {
+  const ROADS_H = [34, 74, 114];
+  const ROADS_V = [58, 126, 194, 246];
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 12, position: 'relative' }}>
+      <svg viewBox="0 0 300 148" style={{ display: 'block', width: '100%', background: '#EEF1F4' }}>
+        {/* blocks */}
+        {[[8,8],[68,8],[136,8],[204,8],[8,48],[68,48],[136,48],[204,48],[8,88],[68,88],[136,88],[204,88]].map(([x,y],i)=>(
+          <rect key={i} x={x} y={y} width={46} height={28} rx="2" fill="#E2E7EC" />
+        ))}
+        {/* roads */}
+        {ROADS_H.map(y => <line key={`h${y}`} x1="0" y1={y} x2="300" y2={y} stroke="#FFFFFF" strokeWidth="7" />)}
+        {ROADS_V.map(x => <line key={`v${x}`} x1={x} y1="0" x2={x} y2="148" stroke="#FFFFFF" strokeWidth="7" />)}
+        {/* patient location */}
+        <circle cx="150" cy="112" r="9" fill="#0284C7" opacity="0.18" />
+        <circle cx="150" cy="112" r="4" fill="#0284C7" stroke="white" strokeWidth="1.5" />
+        <text x="150" y="132" textAnchor="middle" fontSize="8" fill="#475569" fontWeight="600">You</text>
+        {/* pharmacy pins */}
+        {pharmacies.filter(p => p.pos).map(p => {
+          const sel = selected === p.id;
+          return (
+            <g key={p.id} onClick={() => onSelect(p.id)} style={{ cursor: 'pointer' }}>
+              <path
+                d={`M${p.pos[0]} ${p.pos[1]} c-6.6 0-12 5.4-12 12 0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z`}
+                transform={`translate(0,-32) scale(1)`}
+                fill={sel ? 'var(--brand)' : '#94A3B8'}
+                stroke="white"
+                strokeWidth="1.5"
+              />
+              <circle cx={p.pos[0]} cy={p.pos[1] - 20} r="4.2" fill="white" />
+              {sel && <circle cx={p.pos[0]} cy={p.pos[1] - 20} r="2" fill="var(--brand)" />}
+            </g>
+          );
+        })}
+      </svg>
+      <span style={{ position: 'absolute', right: 6, bottom: 4, fontSize: 8.5, color: '#94A3B8' }}>Map data — sample</span>
+    </div>
+  );
+}
+
 function PharmacyStep({ step = {}, onContinue, onBack }) {
   const [selected, setSelected] = useState(null);
   const allowSearch = step.allowSearch ?? true;
+  const showMap = step.showMap ?? true;
   const allowMailOrder = step.allowMailOrder ?? true;
   const allowSkip = step.allowSkip ?? true;
   const pharmacies = [
-    { id: 'p1', name: 'CVS Pharmacy', address: '123 Main St, San Francisco, CA' },
-    { id: 'p2', name: 'Walgreens', address: '456 Market St, San Francisco, CA' },
-    { id: 'p3', name: 'Rite Aid', address: '789 Mission St, San Francisco, CA' },
+    { id: 'p1', name: 'CVS Pharmacy', address: '123 Main St, San Francisco, CA', distance: '0.3 mi', pos: [92, 60] },
+    { id: 'p2', name: 'Walgreens', address: '456 Market St, San Francisco, CA', distance: '0.8 mi', pos: [214, 44] },
+    { id: 'p3', name: 'Rite Aid', address: '789 Mission St, San Francisco, CA', distance: '1.2 mi', pos: [40, 104] },
     ...(allowMailOrder ? [{ id: 'p4', name: 'VSee Mail Order', address: 'Delivered in 2–3 days', mailOrder: true }] : []),
   ];
   return (
@@ -927,6 +970,10 @@ function PharmacyStep({ step = {}, onContinue, onBack }) {
           </div>
         </div>
       )}
+      {showMap && (
+        <PharmacyMap pharmacies={pharmacies} selected={selected} onSelect={setSelected} />
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         {pharmacies.map(p => {
           const sel = selected === p.id;
@@ -939,8 +986,13 @@ function PharmacyStep({ step = {}, onContinue, onBack }) {
               <div style={{ width: 32, height: 32, borderRadius: 8, background: '#ECFDF5', border: '1px solid #0D875C30', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D875C" strokeWidth="2"><path d="M3 3h18v4H3z"/><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
               </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</p>
+                  {showMap && p.distance && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{p.distance}</span>
+                  )}
+                </div>
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{p.address}</p>
               </div>
               {sel && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>}
