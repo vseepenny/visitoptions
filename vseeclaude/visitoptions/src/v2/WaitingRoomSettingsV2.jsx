@@ -77,9 +77,71 @@ function isPaymentIncomplete(item, clinic) {
 
 const ORDER_VARIANT = 'pills'; // kept A2: side-by-side pills
 
-function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
+/* ── Copy a visit option into other rooms ─────────────────── */
+
+function CopyToRoomsModal({ item, rooms, onCopy, onCancel }) {
+  const [selected, setSelected] = useState([]);
+  const toggle = (id) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onCancel}>
+      <div style={{ background: 'white', borderRadius: 'var(--r-xl)', width: 'min(460px, 94vw)', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 16, fontWeight: 700 }}>Copy “{item.name}”</p>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 3 }}>
+            Choose which rooms should also offer this visit option.
+          </p>
+        </div>
+        <div style={{ padding: '16px 22px' }}>
+          {rooms.map(r => {
+            const clash = (r.visitOptions || []).some(v => v.name === item.name);
+            return (
+              <label key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '9px 0', cursor: 'pointer' }}>
+                <input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} style={{ accentColor: 'var(--brand)', marginTop: 3 }} />
+                <span>
+                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{r.roomName}</span>
+                  <span style={{ display: 'block', fontSize: 11.5, color: clash ? '#92400E' : 'var(--text-tertiary)' }}>
+                    {clash ? 'Already has a visit option with this name — the copy will be renamed' : `${(r.visitOptions || []).length} visit options`}
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+          <div style={{ marginTop: 12, padding: '10px 13px', background: 'var(--warning-light)', border: '1px solid #FDE68A', borderRadius: 'var(--r-md)', fontSize: 11.5, color: '#92400E', lineHeight: 1.5 }}>
+            Copies are independent — editing one later will not change the others.
+          </div>
+        </div>
+        <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary btn-sm" disabled={!selected.length} onClick={() => onCopy(selected)}>
+            Copy to {selected.length || 0} room{selected.length !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, roomId, allRooms = [], onCopyToRooms }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
+  const [copyItem, setCopyItem] = useState(null);
+
+  const otherRooms = allRooms.filter(r => r.id !== roomId);
+  // Which other rooms already offer a visit option with this name
+  const alsoIn = (name) =>
+    otherRooms.filter(r => (r.visitOptions || []).some(v => v.name === name));
+
+  const duplicateItem = (item) => {
+    const base = item.name.replace(/ \(copy( \d+)?\)$/, '');
+    let name = `${base} (copy)`;
+    let n = 2;
+    while (items.some(i => i.name === name)) name = `${base} (copy ${n++})`;
+    const idx = items.findIndex(i => i.id === item.id);
+    const next = [...items];
+    next.splice(idx + 1, 0, { ...structuredClone(item), id: `vo_${Date.now()}`, name });
+    onChange(next);
+  };
   const moveItem = (from, to) => {
     if (to < 0 || to >= items.length) return;
     const next = [...items];
@@ -199,7 +261,18 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
                       </div>
                     </td>
                     <td style={{ fontWeight: 500 }}>
-                      <div>{item.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                        <span>{item.name}</span>
+                        {alsoIn(item.name).length > 0 && (
+                          <span
+                            className="badge badge-neutral"
+                            style={{ fontSize: 10.5, fontWeight: 600, cursor: 'help' }}
+                            title={`Also offered in: ${alsoIn(item.name).map(r => r.roomName).join(', ')}. These are independent copies — editing one does not change the other.`}
+                          >
+                            also in {alsoIn(item.name).length} room{alsoIn(item.name).length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                       {incomplete && (
                         <button
                           onClick={() => setModal({ mode: 'edit', item, initialTab: 'payment' })}
@@ -251,6 +324,18 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                           </svg>
                         </button>
+                        <button onClick={() => duplicateItem(item)} className="btn-icon" title="Duplicate in this room" aria-label={`Duplicate ${item.name}`}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        </button>
+                        {otherRooms.length > 0 && (
+                          <button onClick={() => setCopyItem(item)} className="btn-icon" title="Copy to another room" aria-label={`Copy ${item.name} to another room`}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+                            </svg>
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(item.id)} className="btn-icon danger" title="Delete" aria-label={`Delete ${item.name}`}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points="3 6 5 6 21 6" />
@@ -292,13 +377,22 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
           onCancel={() => setConfirmId(null)}
         />
       )}
+
+      {copyItem && (
+        <CopyToRoomsModal
+          item={copyItem}
+          rooms={otherRooms}
+          onCopy={targetIds => { onCopyToRooms?.(copyItem, targetIds); setCopyItem(null); }}
+          onCancel={() => setCopyItem(null)}
+        />
+      )}
     </section>
   );
 }
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
+export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, allRooms = [], onCopyToRooms }) {
   const { state, setState, isDirty, save } = useDirty(room);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -429,6 +523,9 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
             onSaveTemplate={onSaveTemplate}
             onUpdateTemplate={onUpdateTemplate}
             onDeleteTemplate={onDeleteTemplate}
+            roomId={state.id ?? room.id}
+            allRooms={allRooms}
+            onCopyToRooms={onCopyToRooms}
           />
 
         </div>

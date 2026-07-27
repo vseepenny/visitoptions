@@ -34,6 +34,7 @@ export default function VersionBLayout() {
   );
   const [showSaved, setShowSaved]   = useState(false);
   const [bookings, setBookings]     = useState(initialBookings);
+  const [copyToast, setCopyToast]   = useState('');
   const [patientAppOpen, setPatientAppOpen] = useState(false);
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null;
@@ -75,6 +76,47 @@ export default function VersionBLayout() {
 
   const handleDeleteRoom = useCallback((id) => {
     setRooms(rs => rs.filter(r => r.id !== id));
+  }, []);
+
+  // Duplicate a whole room, including its visit options, with fresh ids
+  const handleDuplicateRoom = useCallback((id) => {
+    setRooms(rs => {
+      const src = rs.find(r => r.id === id);
+      if (!src) return rs;
+      const base = src.roomName.replace(/ \(copy( \d+)?\)$/, '');
+      let name = `${base} (copy)`;
+      let n = 2;
+      while (rs.some(r => r.roomName === name)) name = `${base} (copy ${n++})`;
+      const stamp = Date.now();
+      const copy = {
+        ...structuredClone(src),
+        id: `room_${stamp}`,
+        roomName: name,
+        roomCode: Math.random().toString(36).slice(2, 7).toUpperCase(),
+        visitOptions: (src.visitOptions || []).map((v, i) => ({ ...structuredClone(v), id: `vo_${stamp}_${i}` })),
+      };
+      const idx = rs.findIndex(r => r.id === id);
+      const next = [...rs];
+      next.splice(idx + 1, 0, copy);
+      return next;
+    });
+  }, []);
+
+  // Copy one visit option into other rooms; renames on collision
+  const handleCopyToRooms = useCallback((item, targetRoomIds) => {
+    setRooms(rs => rs.map(r => {
+      if (!targetRoomIds.includes(r.id)) return r;
+      const existing = r.visitOptions || [];
+      let name = item.name;
+      let n = 2;
+      while (existing.some(v => v.name === name)) name = `${item.name} (${n++})`;
+      return {
+        ...r,
+        visitOptions: [...existing, { ...structuredClone(item), id: `vo_${Date.now()}_${r.id}`, name }],
+      };
+    }));
+    setCopyToast(`Copied “${item.name}” to ${targetRoomIds.length} room${targetRoomIds.length !== 1 ? 's' : ''}`);
+    setTimeout(() => setCopyToast(''), 2600);
   }, []);
 
   const handleRoomChange = useCallback((updated) => {
@@ -176,6 +218,7 @@ export default function VersionBLayout() {
           onSelect={handleSelectRoom}
           onAdd={handleAddRoom}
           onDelete={handleDeleteRoom}
+          onDuplicate={handleDuplicateRoom}
         />
       )}
 
@@ -188,6 +231,8 @@ export default function VersionBLayout() {
           onSave={handleSave}
           onBack={handleBackToRooms}
           onSaveTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: [...(c.workflowTemplates || []), tpl] }))}
+          allRooms={rooms}
+          onCopyToRooms={handleCopyToRooms}
           onUpdateTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).map(t => t.id === tpl.id ? tpl : t) }))}
           onDeleteTemplate={id => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).filter(t => t.id !== id) }))}
         />
@@ -200,6 +245,18 @@ export default function VersionBLayout() {
           onBooked={booking => setBookings(bs => [booking, ...bs])}
           onClose={() => setPatientAppOpen(false)}
         />
+      )}
+
+      {copyToast && (
+        <div className="toast toast-success" role="status" aria-live="polite">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <div className="toast-body">
+            <p className="toast-title">Copied</p>
+            <p className="toast-msg">{copyToast}</p>
+          </div>
+        </div>
       )}
 
       <Toast show={showSaved} onDone={() => setShowSaved(false)} />
