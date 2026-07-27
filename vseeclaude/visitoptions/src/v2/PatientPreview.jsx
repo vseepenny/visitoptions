@@ -1357,13 +1357,15 @@ function BookedStep({ visit, ptId, onReset }) {
 // Takes a workflow's steps and a selectedPt (patient type), and
 // returns a flat array of { key, type, step } entries the preview walks through.
 
-function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchChoices = {}) {
+function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchChoices = {}, skipVisitSelection = false) {
   const flat = [];
   if (!steps) return flat;
 
   for (const step of steps) {
     if (step.type === 'visit_selection') {
-      // Pause here if no visit selected yet
+      // The patient app picks the visit on the room landing page, so the
+      // in-flow chooser is redundant there.
+      if (skipVisitSelection && selectedVisitId) continue;
       flat.push({ key: step.id, type: 'visit_selection', step });
       if (!selectedVisitId) break; // Can't flatten further until they choose
     } else if (step.type === 'conditional') {
@@ -1378,7 +1380,7 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchCh
           b.condition === selectedPt || b.label?.toLowerCase().replace(/[^a-z]/g, '').includes(selectedPt.replace('-', ''))
         );
         if (branch?.steps?.length) {
-          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices));
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection));
         }
         continue;
       }
@@ -1392,7 +1394,7 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchCh
       }
       const branch = step.branches?.find(b => b.condition === chosen);
       if (branch?.steps?.length) {
-        flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices));
+        flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection));
       }
     } else {
       flat.push({ key: step.id, type: step.type, step });
@@ -1404,12 +1406,13 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchCh
 
 /* ── Main Component ──────────────────────────────────────── */
 
-export default function PatientPreview({ room, clinic }) {
-  const [selectedVisitId, setSelectedVisitId] = useState(null);
+export default function PatientPreview({ room, clinic, initialVisitId = null, embedded = false, onBooked }) {
+  const [selectedVisitId, setSelectedVisitId] = useState(initialVisitId);
   const [selectedPt, setSelectedPt] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [booked, setBooked] = useState(false);
   const [branchChoices, setBranchChoices] = useState({}); // stepId → branch condition
+  const bookedRef = useRef(false);
 
   const visibleVisits = room.visitOptions.filter(v => v.visible);
   const selectedVisit = visibleVisits.find(v => v.id === selectedVisitId);
@@ -1419,8 +1422,8 @@ export default function PatientPreview({ room, clinic }) {
   const flatSteps = useMemo(() => {
     const workflow = clinic.defaultWorkflow;
     if (!workflow?.steps) return [];
-    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts, branchChoices);
-  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices]);
+    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, !!initialVisitId);
+  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices, initialVisitId]);
 
   const totalSteps = flatSteps.length;
   const currentStep = flatSteps[currentIndex] || null;
@@ -1436,7 +1439,8 @@ export default function PatientPreview({ room, clinic }) {
   }, [room.visitOptions]);
 
   const reset = () => {
-    setSelectedVisitId(null);
+    bookedRef.current = false;
+    setSelectedVisitId(initialVisitId);
     setSelectedPt(null);
     setCurrentIndex(0);
     setBooked(false);
@@ -1454,10 +1458,19 @@ export default function PatientPreview({ room, clinic }) {
     setCurrentIndex(i => i + 1);
   };
 
+  // Single place a booking is finalised, so the patient app always hears about
+  // it. The ref guards against double-submit — state updates are async, so a
+  // fast second click would otherwise create duplicate bookings.
+  const completeBooking = () => {
+    if (bookedRef.current) return;
+    bookedRef.current = true;
+    setBooked(true);
+    onBooked?.();
+  };
+
   const handleNext = () => {
     if (currentIndex >= totalSteps) {
-      // At confirm → book
-      setBooked(true);
+      completeBooking();
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -1527,31 +1540,37 @@ export default function PatientPreview({ room, clinic }) {
   const stepLabel = currentStep?.step?.label || STEP_LABELS[currentStep?.type] || '';
 
   return (
-    <div style={{ position: 'sticky', top: 80 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Patient Preview</span>
+    <div style={embedded ? undefined : { position: 'sticky', top: 80 }}>
+      {/* Header — hidden when embedded in the patient app's own frame */}
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Patient Preview</span>
+          </div>
+          {(currentIndex > 0 || booked) && (
+            <button onClick={reset} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4" /></svg>
+              Reset
+            </button>
+          )}
         </div>
-        {(currentIndex > 0 || booked) && (
-          <button onClick={reset} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4" /></svg>
-            Reset
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Device shell */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
-        {/* App bar */}
-        <div style={{ background: 'white', padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{room.roomName}</p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>Powered by VSee</p>
+      <div style={embedded
+        ? { borderRadius: 0, overflow: 'hidden' }
+        : { border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+        {/* App bar — the patient app supplies its own */}
+        {!embedded && (
+          <div style={{ background: 'white', padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{room.roomName}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>Powered by VSee</p>
+            </div>
+            <div style={{ width: 28, height: 28, background: 'var(--brand)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>V</div>
           </div>
-          <div style={{ width: 28, height: 28, background: 'var(--brand)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 13 }}>V</div>
-        </div>
+        )}
 
         {/* Progress bar */}
         {!booked && (
@@ -1688,11 +1707,11 @@ export default function PatientPreview({ room, clinic }) {
           )}
 
           {currentView === 'confirmation' && (
-            <ConfirmationStep visit={selectedVisit} ptId={selectedPt} onContinue={() => setBooked(true)} onBack={handleBack} />
+            <ConfirmationStep visit={selectedVisit} ptId={selectedPt} onContinue={completeBooking} onBack={handleBack} />
           )}
 
           {currentView === 'walkin_confirmation' && (
-            <WalkinConfirmationStep visit={selectedVisit} onContinue={() => setBooked(true)} onBack={handleBack} />
+            <WalkinConfirmationStep visit={selectedVisit} onContinue={completeBooking} onBack={handleBack} />
           )}
 
           {currentView === 'confirm' && selectedVisit && (

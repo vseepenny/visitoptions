@@ -3,7 +3,9 @@ import ClinicTemplatesPage from './ClinicTemplatesPage';
 import WaitingRoomsListPage from './WaitingRoomsListPage';
 import WaitingRoomSettingsV2 from './WaitingRoomSettingsV2';
 import { useAnnotationPage } from './Annotations';
-import { initialClinic, initialRooms } from '../data/initialDataV2';
+import DashboardPage from './DashboardPage';
+import PatientApp from './PatientApp';
+import { initialClinic, initialRooms, initialBookings } from '../data/initialDataV2';
 
 function Toast({ show, onDone }) {
   if (!show) return null;
@@ -31,6 +33,8 @@ export default function VersionBLayout() {
     initialRooms.length === 1 ? 'room' : 'rooms'
   );
   const [showSaved, setShowSaved]   = useState(false);
+  const [bookings, setBookings]     = useState(initialBookings);
+  const [patientAppOpen, setPatientAppOpen] = useState(false);
 
   const selectedRoom = rooms.find(r => r.id === selectedRoomId) ?? null;
   const { setPage: setAnnotationPage, setNavigate } = useAnnotationPage();
@@ -97,6 +101,19 @@ export default function VersionBLayout() {
         </div>
         <div className="navbar-links">
           <button
+            onClick={() => setPage('dashboard')}
+            className={`navbar-link${page === 'dashboard' ? ' active' : ''}`}
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            Dashboard
+            {bookings.filter(b => b.status === 'waiting').length > 0 && (
+              <span style={{
+                marginLeft: 6, background: 'var(--warning)', color: 'white', fontSize: 10,
+                fontWeight: 800, borderRadius: 999, padding: '1px 6px',
+              }}>{bookings.filter(b => b.status === 'waiting').length}</span>
+            )}
+          </button>
+          <button
             onClick={() => {
             if (rooms.length === 1) {
               setSelectedRoomId(rooms[0].id);
@@ -120,6 +137,16 @@ export default function VersionBLayout() {
           </button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => setPatientAppOpen(true)}
+            className="btn btn-secondary btn-sm"
+            title="Open the patient-facing app"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" />
+            </svg>
+            Patient App
+          </button>
           <div style={{
             width: 32, height: 32, background: 'var(--grey-300)', borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -128,6 +155,16 @@ export default function VersionBLayout() {
           <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Dr. Provider</span>
         </div>
       </nav>
+
+      {page === 'dashboard' && (
+        <DashboardPage
+          bookings={bookings}
+          clinic={clinic}
+          rooms={rooms}
+          onChange={setBookings}
+          onOpenRoom={id => { setSelectedRoomId(id); setPage('room'); }}
+        />
+      )}
 
       {page === 'clinic' && (
         <ClinicTemplatesPage clinic={clinic} rooms={rooms} onChange={setClinic} onSave={handleSave} />
@@ -153,6 +190,15 @@ export default function VersionBLayout() {
           onSaveTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: [...(c.workflowTemplates || []), tpl] }))}
           onUpdateTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).map(t => t.id === tpl.id ? tpl : t) }))}
           onDeleteTemplate={id => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).filter(t => t.id !== id) }))}
+        />
+      )}
+
+      {patientAppOpen && (
+        <PatientApp
+          clinic={clinic}
+          rooms={rooms}
+          onBooked={booking => setBookings(bs => [booking, ...bs])}
+          onClose={() => setPatientAppOpen(false)}
         />
       )}
 

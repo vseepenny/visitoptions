@@ -205,6 +205,49 @@ export const initialClinic = {
   },
 };
 
+// ── Bookings (provider queue) ──────────────────────────────
+// status: 'waiting' | 'in_visit' | 'scheduled' | 'completed'
+// waitingSince is minutes ago, resolved to a clock time at render.
+
+export const initialBookings = [
+  {
+    id: 'bk_1', patientName: 'Sarah Mitchell', patientAge: 34, mrn: 'MRN-48213',
+    roomId: 'room_1', visitOptionId: 'vo_2', visitName: 'Urgent Care Visit',
+    providerName: 'Marcus Bell, NP', patientType: 'self-pay',
+    mode: 'Video', status: 'waiting', waitingMinutes: 12, intakeComplete: true, paid: true,
+    reason: 'Sore throat and fever since Sunday',
+  },
+  {
+    id: 'bk_2', patientName: 'James Okonkwo', patientAge: 51, mrn: 'MRN-71640',
+    roomId: 'room_1', visitOptionId: 'vo_1', visitName: 'New Patient Consult',
+    providerName: 'Amara Osei, MD', patientType: 'insurance',
+    mode: 'Video', status: 'waiting', waitingMinutes: 4, intakeComplete: true, paid: true,
+    reason: 'Annual physical, medication review',
+  },
+  {
+    id: 'bk_3', patientName: 'Priya Raman', patientAge: 28, mrn: 'MRN-33925',
+    roomId: 'room_2', visitOptionId: 'vo_3', visitName: 'Initial Assessment',
+    providerName: 'Lena Fischer, PsyD', patientType: 'insurance',
+    mode: 'Video', status: 'in_visit', waitingMinutes: 0, intakeComplete: true, paid: true,
+    reason: 'Anxiety, difficulty sleeping',
+  },
+  {
+    id: 'bk_4', patientName: 'Daniel Whitfield', patientAge: 45, mrn: 'MRN-20518',
+    roomId: 'room_1', visitOptionId: 'vo_1', visitName: 'New Patient Consult',
+    providerName: 'Amara Osei, MD', patientType: 'self-pay',
+    mode: 'Video', status: 'waiting', waitingMinutes: 23, intakeComplete: false, paid: false,
+    reason: 'Lower back pain',
+  },
+  {
+    id: 'bk_5', patientName: 'Grace Lindqvist', patientAge: 62, mrn: 'MRN-90312',
+    roomId: 'room_2', visitOptionId: 'vo_4', visitName: 'Follow-up Session',
+    providerName: 'Daniel Okafor, LCSW', patientType: 'insurance',
+    mode: 'Video', status: 'scheduled', waitingMinutes: 0, scheduledFor: 'Today, 3:30 PM',
+    intakeComplete: true, paid: true,
+    reason: 'Follow-up — coping strategies',
+  },
+];
+
 // ── Rooms ──────────────────────────────────────────────────
 
 export const initialRooms = [
