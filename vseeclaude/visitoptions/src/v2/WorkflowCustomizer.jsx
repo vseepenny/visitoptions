@@ -77,22 +77,58 @@ const STEP_TYPES = [
 
 
 const CONDITION_TYPES = [
-  { id: 'patient_type', label: 'Patient Type' },
-  { id: 'insurance_status', label: 'Insurance Status' },
+  { id: 'patient_type',     label: 'Patient Type',        hint: 'Clinic Patient Types' },
+  { id: 'insurance_status', label: 'Insurance Status',    hint: 'eligibility verification results' },
+  { id: 'visit_mode',       label: 'Visit Mode',          hint: 'how the visit is delivered' },
+  { id: 'patient_status',   label: 'New vs Returning',    hint: 'whether the patient has visited before' },
+  { id: 'visit_for',        label: 'Who the Visit Is For', hint: 'the patient or a dependant' },
+  { id: 'age_group',        label: 'Age Group',           hint: 'age bands' },
+  { id: 'clinic_hours',     label: 'Clinic Hours',        hint: "the room's operating hours" },
+  { id: 'form_answer',      label: 'Answer to a Form Question', hint: 'the selected form field' },
 ];
+
+// Fixed branch sets per condition type (patient_type is derived from the clinic).
+const STATIC_BRANCHES = {
+  insurance_status: [
+    { id: 'eligible',     label: 'Eligible' },
+    { id: 'not_eligible', label: 'Not Eligible' },
+    { id: 'pending',      label: 'Pending' },
+    { id: 'error',        label: 'Error' },
+  ],
+  visit_mode: [
+    { id: 'video',      label: 'Video' },
+    { id: 'phone',      label: 'Phone' },
+    { id: 'in_person',  label: 'In-person' },
+    { id: 'e_consult',  label: 'E-Consult' },
+  ],
+  patient_status: [
+    { id: 'new',       label: 'New Patient' },
+    { id: 'returning', label: 'Returning Patient' },
+  ],
+  visit_for: [
+    { id: 'self',      label: 'Themselves' },
+    { id: 'dependant', label: 'A Dependant' },
+  ],
+  age_group: [
+    { id: 'adult', label: 'Adult (18+)' },
+    { id: 'minor', label: 'Minor (under 18)' },
+  ],
+  clinic_hours: [
+    { id: 'open_hours',  label: 'During Open Hours' },
+    { id: 'after_hours', label: 'After Hours' },
+  ],
+  form_answer: [
+    { id: 'yes',          label: 'Answered Yes' },
+    { id: 'no',           label: 'Answered No' },
+    { id: 'not_answered', label: 'Not Answered' },
+  ],
+};
 
 const PT_LABELS = {
   'self-pay': 'Self-Pay',
   'insurance': 'Insurance',
   'group-covered': 'Group-Covered',
 };
-
-const INSURANCE_STATUSES = [
-  { id: 'eligible', label: 'Eligible' },
-  { id: 'not_eligible', label: 'Not Eligible' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'error', label: 'Error' },
-];
 
 function branchesForCondition(conditionType, clinic) {
   if (conditionType === 'patient_type') {
@@ -103,13 +139,9 @@ function branchesForCondition(conditionType, clinic) {
       steps: [],
     }));
   }
-  if (conditionType === 'insurance_status') {
-    return INSURANCE_STATUSES.map(s => ({
-      id: uid(),
-      condition: s.id,
-      label: s.label,
-      steps: [],
-    }));
+  const set = STATIC_BRANCHES[conditionType];
+  if (set) {
+    return set.map(s => ({ id: uid(), condition: s.id, label: s.label, steps: [] }));
   }
   return [];
 }
@@ -684,7 +716,15 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
     for (const b of newBranches) {
       if (oldMap[b.condition]) b.steps = oldMap[b.condition];
     }
-    onUpdate({ ...step, conditionType: newType, branches: newBranches });
+    // Keep the step name in sync while it is still auto-generated; a name the
+    // admin typed themselves is left alone.
+    const autoLabels = CONDITION_TYPES.map(ct => `By ${ct.label}`);
+    const label = (!step.label || step.label === 'Conditional Branch' || autoLabels.includes(step.label))
+      ? `By ${CONDITION_TYPES.find(ct => ct.id === newType)?.label || 'Condition'}`
+      : step.label;
+    const next = { ...step, conditionType: newType, branches: newBranches, label };
+    if (newType !== 'form_answer') { delete next.conditionFormId; delete next.conditionFieldId; }
+    onUpdate(next);
   };
 
   const addStepToBranch = (branchIdx, insertIdx, stepType) => {
@@ -795,17 +835,61 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
   return (
     <div style={{ padding: '14px' }}>
       {/* Condition selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Branch on:</label>
         <select
           value={step.conditionType || 'patient_type'}
           onChange={e => handleConditionTypeChange(e.target.value)}
           className="input"
-          style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', maxWidth: 200 }}
+          style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', maxWidth: 220 }}
         >
           {CONDITION_TYPES.map(ct => <option key={ct.id} value={ct.id}>{ct.label}</option>)}
         </select>
+
+        {/* Form-answer needs a specific form + field to test */}
+        {step.conditionType === 'form_answer' && (() => {
+          const forms = [...BUILTIN_FORMS, ...((clinic?.formLibrary) || [])];
+          const selForm = forms.find(f => f.id === step.conditionFormId);
+          const fields = (selForm?.fields || []).filter(f => f.enabled !== false);
+          return (
+            <>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>from</span>
+              <select
+                value={step.conditionFormId || ''}
+                onChange={e => onUpdate({ ...step, conditionFormId: e.target.value || null, conditionFieldId: null })}
+                className="input"
+                style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', maxWidth: 190 }}
+              >
+                <option value="">— Select a form —</option>
+                {forms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+              {selForm && (
+                <select
+                  value={step.conditionFieldId || ''}
+                  onChange={e => onUpdate({ ...step, conditionFieldId: e.target.value || null })}
+                  className="input"
+                  style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', maxWidth: 200 }}
+                >
+                  <option value="">— Select a question —</option>
+                  {fields.length === 0 && <option disabled>No fields on this form</option>}
+                  {fields.map(f => <option key={f.id} value={f.id}>{f.label || f.id}</option>)}
+                </select>
+              )}
+            </>
+          );
+        })()}
       </div>
+
+      {step.conditionType === 'form_answer' && !step.conditionFieldId && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 12,
+          background: 'var(--warning-light)', border: '1px solid #FDE68A', borderRadius: 'var(--r-md)',
+          fontSize: 11.5, color: '#92400E',
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Pick the form question this branch tests — until then every patient follows the “Not Answered” path.
+        </div>
+      )}
 
       {/* Branch tabs */}
       <div style={{
@@ -871,7 +955,7 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
 
       {/* Hint */}
       <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-        Branches are auto-populated from {step.conditionType === 'patient_type' ? 'Clinic Patient Types' : 'known statuses'}.
+        Branches are auto-populated from {CONDITION_TYPES.find(ct => ct.id === (step.conditionType || 'patient_type'))?.hint || 'known values'}.
       </p>
     </div>
   );

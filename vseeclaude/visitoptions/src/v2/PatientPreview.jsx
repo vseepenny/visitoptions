@@ -217,6 +217,61 @@ function PatientTypeStep({ patientTypes, onSelect, onBack }) {
   );
 }
 
+/* ── Step: Branch chooser (simulates non-payment conditions) ─ */
+// Conditions like visit mode or a form answer would be resolved from real
+// patient data. In the preview the admin picks the path so every configured
+// branch can be walked in a demo.
+
+const CONDITION_LABELS = {
+  visit_mode:     'Visit mode',
+  patient_status: 'New vs returning patient',
+  visit_for:      'Who the visit is for',
+  age_group:      'Age group',
+  clinic_hours:   'Clinic hours',
+  form_answer:    'Answer to a form question',
+  insurance_status: 'Insurance status',
+};
+
+function BranchChoiceStep({ step, onSelect, onBack }) {
+  const branches = step.branches || [];
+  const label = CONDITION_LABELS[step.conditionType] || 'Condition';
+  return (
+    <div>
+      <BackButton onClick={onBack} />
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warning-light)', color: '#92400E', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        PREVIEW BRANCH
+      </div>
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{step.label || 'Conditional Branch'}</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
+        Branching on <strong>{label}</strong>. In a real visit this is resolved automatically — pick a path to preview it.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {branches.length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>No branches configured on this step.</p>
+        )}
+        {branches.map(b => (
+          <button
+            key={b.id || b.condition}
+            onClick={() => onSelect(b.condition)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', transition: 'all 120ms' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'white'; }}
+          >
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{b.label}</p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                {b.steps?.length ? `${b.steps.length} step${b.steps.length !== 1 ? 's' : ''} on this path` : 'No extra steps — continues the main flow'}
+              </p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--grey-400)" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Step: Form (driven by form library) ─────────────────── */
 
 function FormStep({ step, clinic, onContinue, onBack }) {
@@ -1271,7 +1326,7 @@ function BookedStep({ visit, ptId, onReset }) {
 // Takes a workflow's steps and a selectedPt (patient type), and
 // returns a flat array of { key, type, step } entries the preview walks through.
 
-function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts) {
+function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchChoices = {}) {
   const flat = [];
   if (!steps) return flat;
 
@@ -1281,22 +1336,32 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts) {
       flat.push({ key: step.id, type: 'visit_selection', step });
       if (!selectedVisitId) break; // Can't flatten further until they choose
     } else if (step.type === 'conditional') {
-      if (step.conditionType === 'patient_type' && !selectedPt) {
-        flat.push({ key: step.id, type: 'choose_patient_type', step, availableTypes: clinicPts });
-        break;
-      }
-      if (step.conditionType === 'patient_type' && selectedPt) {
+      const ctype = step.conditionType || 'patient_type';
+
+      if (ctype === 'patient_type') {
+        if (!selectedPt) {
+          flat.push({ key: step.id, type: 'choose_patient_type', step, availableTypes: clinicPts });
+          break;
+        }
         const branch = step.branches?.find(b =>
           b.condition === selectedPt || b.label?.toLowerCase().replace(/[^a-z]/g, '').includes(selectedPt.replace('-', ''))
         );
         if (branch?.steps?.length) {
-          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts));
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices));
         }
-      } else {
-        const branch = step.branches?.[0];
-        if (branch?.steps?.length) {
-          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts));
-        }
+        continue;
+      }
+
+      // Every other condition type: the preview asks which path to simulate,
+      // so all configured branches are walkable in a demo.
+      const chosen = branchChoices[step.id];
+      if (chosen === undefined) {
+        flat.push({ key: step.id, type: 'choose_branch', step });
+        break;
+      }
+      const branch = step.branches?.find(b => b.condition === chosen);
+      if (branch?.steps?.length) {
+        flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices));
       }
     } else {
       flat.push({ key: step.id, type: step.type, step });
@@ -1313,6 +1378,7 @@ export default function PatientPreview({ room, clinic }) {
   const [selectedPt, setSelectedPt] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [booked, setBooked] = useState(false);
+  const [branchChoices, setBranchChoices] = useState({}); // stepId → branch condition
 
   const visibleVisits = room.visitOptions.filter(v => v.visible);
   const selectedVisit = visibleVisits.find(v => v.id === selectedVisitId);
@@ -1322,8 +1388,8 @@ export default function PatientPreview({ room, clinic }) {
   const flatSteps = useMemo(() => {
     const workflow = clinic.defaultWorkflow;
     if (!workflow?.steps) return [];
-    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts);
-  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts]);
+    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts, branchChoices);
+  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices]);
 
   const totalSteps = flatSteps.length;
   const currentStep = flatSteps[currentIndex] || null;
@@ -1343,6 +1409,12 @@ export default function PatientPreview({ room, clinic }) {
     setSelectedPt(null);
     setCurrentIndex(0);
     setBooked(false);
+    setBranchChoices({});
+  };
+
+  const handleSelectBranch = (stepId, condition) => {
+    setBranchChoices(c => ({ ...c, [stepId]: condition }));
+    setCurrentIndex(i => i + 1);
   };
 
   const handleSelectVisit = (id) => {
@@ -1364,9 +1436,17 @@ export default function PatientPreview({ room, clinic }) {
     if (currentIndex > 0) {
       const prevStep = flatSteps[currentIndex - 1];
       if (prevStep?.type === 'choose_patient_type') setSelectedPt(null);
+      if (prevStep?.type === 'choose_branch') {
+        setBranchChoices(c => {
+          const next = { ...c };
+          delete next[prevStep.step.id];
+          return next;
+        });
+      }
       if (prevStep?.type === 'visit_selection') {
         setSelectedVisitId(null);
         setSelectedPt(null);
+        setBranchChoices({});
       }
       setCurrentIndex(i => i - 1);
     }
@@ -1406,6 +1486,7 @@ export default function PatientPreview({ room, clinic }) {
     walkin_confirmation: 'Waiting Room',
     cancel_survey: 'Cancel Survey',
     choose_patient_type: 'Patient Type',
+    choose_branch: 'Branch',
     confirm: 'Confirm',
   };
 
@@ -1494,6 +1575,14 @@ export default function PatientPreview({ room, clinic }) {
             <PatientTypeStep
               patientTypes={currentStep?.availableTypes || clinicPts}
               onSelect={handleSelectPt}
+              onBack={handleBack}
+            />
+          )}
+
+          {currentView === 'choose_branch' && currentStep?.step && (
+            <BranchChoiceStep
+              step={currentStep.step}
+              onSelect={cond => handleSelectBranch(currentStep.step.id, cond)}
               onBack={handleBack}
             />
           )}
