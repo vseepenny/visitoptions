@@ -7,6 +7,7 @@ import WorkflowCustomizer from './WorkflowCustomizer';
 import { useAnnotationPage } from './Annotations';
 import { FormLibraryEditor, NotesTemplateEditor } from './TemplateEditors';
 import { ClinicLandingEditor } from './LandingPageEditor';
+import ProvidersEditor from './ProvidersEditor';
 
 /* ── Dirty tracking hook ─────────────────────────────────── */
 
@@ -132,6 +133,7 @@ export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSa
     { id: 'workflow',      label: 'Intake Flow'       },
     { id: 'forms',         label: 'Form Library'     },
     { id: 'notes',         label: 'Notes Templates'  },
+    { id: 'providers',     label: 'Providers'        },
     { id: 'landing',       label: 'Landing Page'     },
   ];
 
@@ -267,6 +269,15 @@ export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSa
                 )}
               />
             </>
+          )}
+
+          {/* ── Providers tab ── */}
+          {activeTab === 'providers' && (
+            <ProvidersEditor
+              clinic={state}
+              rooms={rooms}
+              onChange={providers => update({ providers })}
+            />
           )}
 
           {/* ── Landing Page tab ── */}

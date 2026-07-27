@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { slotsForDate, providersForVisit } from './scheduling';
 
 /* ── Constants ───────────────────────────────────────────── */
 
@@ -91,18 +92,25 @@ function VisitStep({ visits, onSelect, onBack }) {
 
 /* ── Step: Scheduling (mock calendar) ────────────────────── */
 
-function SchedulingStep({ visit, onContinue, onBack }) {
+function SchedulingStep({ visit, clinic, room, onContinue, onBack }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
 
-  const today = new Date();
-  const dates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i + 1);
-    return d;
-  });
+  // Next 7 days + their real slots, from provider availability and duration
+  const { dates, slotsByDate } = useMemo(() => {
+    const today = new Date();
+    const ds = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i + 1);
+      return d;
+    });
+    return { dates: ds, slotsByDate: ds.map(d => slotsForDate({ clinic, room, visit, date: d })) };
+  }, [clinic, room, visit]);
 
-  const times = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '1:00 PM', '1:30 PM', '2:00 PM', '3:00 PM', '3:30 PM'];
+  const slots = selectedDate !== null ? slotsByDate[selectedDate] : [];
+  const times = slots.map(s => s.time);
+  const slotAt = (t) => slots.find(s => s.time === t);
+  const eligibleProviders = providersForVisit(clinic, room, visit);
 
   const dayName = (d) => d.toLocaleDateString('en-US', { weekday: 'short' });
   const dateNum = (d) => d.getDate();
@@ -112,27 +120,38 @@ function SchedulingStep({ visit, onContinue, onBack }) {
     <div>
       <BackButton onClick={onBack} />
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Pick a time</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
         {visit.name} · {visit.duration}
       </p>
+      <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginBottom: 16 }}>
+        {eligibleProviders.length
+          ? `${eligibleProviders.length} provider${eligibleProviders.length !== 1 ? 's' : ''} available: ${eligibleProviders.map(p => p.name).join(', ')}`
+          : 'No providers assigned — add availability in Clinic Settings → Providers.'}
+      </p>
 
-      {/* Date picker */}
+      {/* Date picker — days with no availability are disabled */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
         {dates.map((d, i) => {
           const sel = selectedDate === i;
+          const count = slotsByDate[i]?.length || 0;
+          const off = count === 0;
           return (
             <button
               key={i}
+              disabled={off}
               onClick={() => { setSelectedDate(i); setSelectedTime(null); }}
+              title={off ? 'No availability' : `${count} times`}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                 padding: '8px 10px', borderRadius: 10, border: `1.5px solid ${sel ? 'var(--brand)' : 'var(--border)'}`,
-                background: sel ? 'var(--brand-50)' : 'white', cursor: 'pointer', minWidth: 44,
+                background: sel ? 'var(--brand-50)' : off ? 'var(--grey-50)' : 'white',
+                cursor: off ? 'not-allowed' : 'pointer', minWidth: 44, opacity: off ? 0.45 : 1,
                 transition: 'all 100ms',
               }}
             >
               <span style={{ fontSize: 10, fontWeight: 600, color: sel ? 'var(--brand)' : 'var(--text-tertiary)', textTransform: 'uppercase' }}>{dayName(d)}</span>
               <span style={{ fontSize: 16, fontWeight: 700, color: sel ? 'var(--brand)' : 'var(--text-primary)' }}>{dateNum(d)}</span>
+              <span style={{ fontSize: 9, color: off ? 'var(--text-tertiary)' : 'var(--brand)', fontWeight: 600 }}>{off ? '—' : count}</span>
             </button>
           );
         })}
@@ -144,7 +163,12 @@ function SchedulingStep({ visit, onContinue, onBack }) {
           <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
             Available times for {monthDay(dates[selectedDate])}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 20 }}>
+          {times.length === 0 && (
+            <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', fontStyle: 'italic', marginBottom: 20 }}>
+              No provider availability on this day.
+            </p>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 12 }}>
             {times.map(t => {
               const sel = selectedTime === t;
               return (
@@ -162,11 +186,18 @@ function SchedulingStep({ visit, onContinue, onBack }) {
               );
             })}
           </div>
+          {selectedTime && slotAt(selectedTime) && (
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              with <strong>{slotAt(selectedTime).providerNames[0]}</strong>
+              {slotAt(selectedTime).providerNames.length > 1 && ` (+${slotAt(selectedTime).providerNames.length - 1} more free)`}
+            </p>
+          )}
         </>
       )}
 
       <button
-        onClick={onContinue}
+        onClick={() => onContinue(selectedTime ? { time: selectedTime, date: dates[selectedDate], provider: slotAt(selectedTime)?.providerNames[0] } : undefined)}
         disabled={selectedTime === null}
         className="btn btn-primary btn-sm"
         style={{ width: '100%', justifyContent: 'center', opacity: selectedTime ? 1 : 0.4 }}
@@ -1568,7 +1599,13 @@ export default function PatientPreview({ room, clinic }) {
           )}
 
           {currentView === 'scheduling' && (
-            <SchedulingStep visit={selectedVisit || { name: 'Appointment', duration: '' }} onContinue={handleNext} onBack={handleBack} />
+            <SchedulingStep
+              visit={selectedVisit || { name: 'Appointment', duration: '30 min' }}
+              clinic={clinic}
+              room={room}
+              onContinue={handleNext}
+              onBack={handleBack}
+            />
           )}
 
           {currentView === 'choose_patient_type' && (

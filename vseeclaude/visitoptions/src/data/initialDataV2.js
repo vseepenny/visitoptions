@@ -30,6 +30,54 @@ export const initialClinic = {
 
   paymentConfig: defaultPaymentConfig,
 
+  // ── Providers & availability ──
+  // availability: weekday → [{ start, end }] in 24h local time.
+  // roomIds: [] means the provider works across every room.
+  providers: [
+    {
+      id: 'prv_1', name: 'Amara Osei', credential: 'MD', specialty: 'sp_1',
+      roomIds: ['room_1'],
+      availability: {
+        Monday:    [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }],
+        Tuesday:   [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }],
+        Wednesday: [{ start: '09:00', end: '12:00' }],
+        Thursday:  [{ start: '09:00', end: '12:00' }, { start: '13:00', end: '17:00' }],
+        Friday:    [{ start: '09:00', end: '15:00' }],
+      },
+    },
+    {
+      id: 'prv_2', name: 'Marcus Bell', credential: 'NP', specialty: 'sp_1',
+      roomIds: ['room_1'],
+      availability: {
+        Monday:    [{ start: '08:00', end: '16:00' }],
+        Tuesday:   [{ start: '08:00', end: '16:00' }],
+        Wednesday: [{ start: '08:00', end: '16:00' }],
+        Thursday:  [{ start: '08:00', end: '16:00' }],
+        Friday:    [{ start: '08:00', end: '16:00' }],
+        Saturday:  [{ start: '10:00', end: '14:00' }],
+      },
+    },
+    {
+      id: 'prv_3', name: 'Lena Fischer', credential: 'PsyD', specialty: 'sp_2',
+      roomIds: ['room_2'],
+      availability: {
+        Monday:    [{ start: '10:00', end: '18:00' }],
+        Tuesday:   [{ start: '10:00', end: '18:00' }],
+        Wednesday: [{ start: '12:00', end: '18:00' }],
+        Thursday:  [{ start: '10:00', end: '18:00' }],
+      },
+    },
+    {
+      id: 'prv_4', name: 'Daniel Okafor', credential: 'LCSW', specialty: 'sp_2',
+      roomIds: ['room_2'],
+      availability: {
+        Tuesday:   [{ start: '09:00', end: '13:00' }],
+        Wednesday: [{ start: '09:00', end: '17:00' }],
+        Friday:    [{ start: '09:00', end: '13:00' }],
+      },
+    },
+  ],
+
   defaultNotesTemplateId: 'nt_1',
 
   // ── Form library (reusable across workflows) ──
