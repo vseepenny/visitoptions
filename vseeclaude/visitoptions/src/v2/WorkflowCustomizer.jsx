@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { normalizeSteps } from './workflowUtils';
 
 /* ── SVG icon helpers ─────────────────────────────────────── */
 
@@ -50,6 +51,10 @@ const STEP_TYPES = [
   { id: 'test_device', category: 'Steps', label: 'Test Device', color: 'var(--info)', bgColor: 'var(--info-light)',
     desc: 'Tests the patient\'s camera and microphone to ensure they work before the video visit.',
     icon: I(<><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></>),
+  },
+  { id: 'pharmacy', category: 'Steps', label: 'Pharmacy Picker', color: '#0891B2', bgColor: '#ECFEFF',
+    desc: 'Patient searches a pharmacy directory and selects where prescriptions are sent. A selector module, not a form.',
+    icon: I(<><path d="M3 3h18v4H3z"/><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></>),
   },
   { id: 'emr', category: 'Steps', label: 'EMR', color: '#6366F1', bgColor: '#EEF2FF',
     desc: 'Pulls and verifies patient info from the electronic medical record system.',
@@ -151,7 +156,6 @@ const BUILTIN_FORMS = [
   { id: '_guest_intake',      name: 'Guest Intake',      desc: 'Simplified intake for walk-in guests — health concern and optional file attachments.' },
   { id: '_insurance_form',    name: 'Insurance Form',    desc: 'Insurance carrier, subscriber ID, group number, guarantor, and card photo uploads.' },
   { id: '_guarantor',         name: 'Guarantor',         desc: 'Billing/responsible party details — name, relationship, contact info, and address.' },
-  { id: '_pharmacy',          name: 'Pharmacy',          desc: 'Patient\'s preferred pharmacy for prescriptions.' },
   { id: '_emergency_contact', name: 'Emergency Contact', desc: 'Emergency contact person\'s name, relationship, phone, and address.' },
   { id: '_create_dependant',  name: 'Create Dependant',  desc: 'Register a new family member/dependant under the patient\'s account.' },
   { id: '_cancel_survey',     name: 'Cancel Intake Survey', desc: 'Asks the patient why they\'re cancelling the intake.' },
@@ -193,7 +197,7 @@ const WORKFLOW_TEMPLATES = [
         ]},
         { label: 'Group-Covered', condition: 'group-covered', steps: [] },
       ]},
-      { type: 'form', label: 'Pharmacy', formId: '_pharmacy' },
+      { type: 'pharmacy', label: 'Pharmacy Picker' },
       { type: 'form', label: 'Emergency Contact', formId: '_emergency_contact' },
       { type: 'test_device', label: 'Test Device' },
       { type: 'setup_session', label: 'Setup Session' },
@@ -577,7 +581,34 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
         </div>
       )}
 
-      {step.type !== 'form' && step.type !== 'conditional' && typeDef?.desc && (
+      {/* Pharmacy picker — its own module settings, no form library involved */}
+      {step.type === 'pharmacy' && (
+        <div style={{ padding: '10px 14px' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>{typeDef?.desc}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
+            {[
+              { key: 'allowSearch',  label: 'Directory search', def: true,  hint: 'Let patients search all pharmacies' },
+              { key: 'allowMailOrder', label: 'Mail-order option', def: true, hint: 'Offer mail-order delivery' },
+              { key: 'allowSkip',    label: 'Allow skip',       def: true,  hint: 'Patient can decide later' },
+            ].map(opt => {
+              const on = step[opt.key] ?? opt.def;
+              return (
+                <label key={opt.key} title={opt.hint} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={e => onUpdate({ ...step, [opt.key]: e.target.checked })}
+                    style={{ accentColor: 'var(--brand)' }}
+                  />
+                  {opt.label}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {step.type !== 'form' && step.type !== 'conditional' && step.type !== 'pharmacy' && typeDef?.desc && (
         <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>
           {typeDef.desc}
         </div>
@@ -971,6 +1002,8 @@ function createStep(type, clinic) {
   switch (type) {
     case 'form':
       return { ...base, label: 'Form', formId: null };
+    case 'pharmacy':
+      return { ...base, label, allowSearch: true, allowMailOrder: true, allowSkip: true };
     case 'conditional':
       return {
         ...base,
@@ -1422,7 +1455,7 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic, customT
   const [addingAtIndex, setAddingAtIndex] = useState(null);
   const [dragFrom, setDragFrom] = useState(null);
   const [showTplModal, setShowTplModal] = useState(false);
-  const steps = workflow?.steps || [];
+  const steps = normalizeSteps(workflow?.steps || []);
 
   const updateStep = (index, updated) => {
     const newSteps = steps.map((s, i) => i === index ? updated : s);

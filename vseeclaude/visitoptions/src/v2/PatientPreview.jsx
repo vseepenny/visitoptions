@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { slotsForDate, providersForVisit } from './scheduling';
+import { normalizeSteps } from './workflowUtils';
 
 /* ── Constants ───────────────────────────────────────────── */
 
@@ -902,24 +903,30 @@ function GuarantorStep({ onContinue, onBack }) {
 
 /* ── Step: Pharmacy ──────────────────────────────────────── */
 
-function PharmacyStep({ onContinue, onBack }) {
+function PharmacyStep({ step = {}, onContinue, onBack }) {
   const [selected, setSelected] = useState(null);
+  const allowSearch = step.allowSearch ?? true;
+  const allowMailOrder = step.allowMailOrder ?? true;
+  const allowSkip = step.allowSkip ?? true;
   const pharmacies = [
     { id: 'p1', name: 'CVS Pharmacy', address: '123 Main St, San Francisco, CA' },
     { id: 'p2', name: 'Walgreens', address: '456 Market St, San Francisco, CA' },
     { id: 'p3', name: 'Rite Aid', address: '789 Mission St, San Francisco, CA' },
+    ...(allowMailOrder ? [{ id: 'p4', name: 'VSee Mail Order', address: 'Delivered in 2–3 days', mailOrder: true }] : []),
   ];
   return (
     <div>
       <BackButton onClick={onBack} />
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Preferred Pharmacy</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Select where you'd like prescriptions sent.</p>
-      <div className="form-group" style={{ marginBottom: 16 }}>
-        <div style={{ position: 'relative' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ position: 'absolute', left: 10, top: 9 }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Search pharmacies…" className="input" style={{ fontSize: 13, paddingLeft: 32 }} />
+      {allowSearch && (
+        <div className="form-group" style={{ marginBottom: 16 }}>
+          <div style={{ position: 'relative' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" style={{ position: 'absolute', left: 10, top: 9 }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search pharmacies…" className="input" style={{ fontSize: 13, paddingLeft: 32 }} />
+          </div>
         </div>
-      </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         {pharmacies.map(p => {
           const sel = selected === p.id;
@@ -941,8 +948,15 @@ function PharmacyStep({ onContinue, onBack }) {
           );
         })}
       </div>
-      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>Continue</button>
-      <button style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', textAlign: 'center' }}>Skip for now</button>
+      <button
+        className="btn btn-primary btn-sm"
+        style={{ width: '100%', justifyContent: 'center', opacity: selected ? 1 : 0.45 }}
+        disabled={!selected}
+        onClick={onContinue}
+      >Continue</button>
+      {allowSkip && (
+        <button onClick={onContinue} style={{ width: '100%', marginTop: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', textAlign: 'center' }}>Skip for now</button>
+      )}
     </div>
   );
 }
@@ -1422,7 +1436,7 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
   const flatSteps = useMemo(() => {
     const workflow = clinic.defaultWorkflow;
     if (!workflow?.steps) return [];
-    return flattenWorkflow(workflow.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, !!initialVisitId);
+    return flattenWorkflow(normalizeSteps(workflow.steps), selectedPt, selectedVisitId, clinicPts, branchChoices, !!initialVisitId);
   }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices, initialVisitId]);
 
   const totalSteps = flatSteps.length;
@@ -1669,7 +1683,7 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
           )}
 
           {currentView === 'pharmacy' && (
-            <PharmacyStep onContinue={handleNext} onBack={handleBack} />
+            <PharmacyStep step={currentStep?.step} onContinue={handleNext} onBack={handleBack} />
           )}
 
           {currentView === 'emergency_contact' && (
