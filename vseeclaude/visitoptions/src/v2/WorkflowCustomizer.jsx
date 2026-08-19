@@ -1,167 +1,11 @@
 import { useState } from 'react';
 import { normalizeSteps } from './workflowUtils';
+import { accessConfig, accessSummary, guestBlockReason } from './patientAccess';
+import { BUILTIN_FORMS, allForms, formFields } from './forms';
+import { scopeForStep, conditionIssue } from './flowScope';
+import { parseRule, unparseRule, formatRule, ruleVariables } from './ruleExpr';
 
-/* ── SVG icon helpers ─────────────────────────────────────── */
-
-const I = (d, sw = '2') => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw}>{d}</svg>;
-
-/* ── Step type definitions ────────────────────────────────── */
-// Categories match the VSee API: account, forms, steps, logic
-
-const STEP_TYPES = [
-  // ── Account / Auth ──
-  { id: 'signup', category: 'Account', label: 'Signup', color: '#0D875C', bgColor: '#ECFDF5',
-    desc: 'Full account registration — collects name, DOB, gender, email, address, phone, and password.',
-    autoPair: 'signup_verification',
-    icon: I(<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></>),
-  },
-  { id: 'signup_verification', category: 'Account', label: 'Signup Verification', color: '#0D875C', bgColor: '#ECFDF5',
-    desc: 'Verifies the patient\'s email after registration — they enter a code sent to their inbox.',
-    icon: I(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>),
-  },
-  { id: 'login', category: 'Account', label: 'Login', color: '#0D875C', bgColor: '#ECFDF5',
-    desc: 'Handles user sign-in for existing patient accounts.',
-    icon: I(<><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></>),
-  },
-
-  // ── Forms ──
-  { id: 'form', category: 'Forms', label: 'Form', color: '#7C3AED', bgColor: '#F5F3FF',
-    desc: 'A form from the clinic form library — includes intake forms, custom forms, and more.',
-    icon: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></>),
-  },
-
-  // ── Steps ──
-  { id: 'visit_selection', category: 'Steps', label: 'Consultation', color: '#0D875C', bgColor: '#ECFDF5',
-    desc: 'Patient selects a visit type from available options.',
-    singleton: true,
-    icon: I(<><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></>),
-  },
-  { id: 'dependant_list', category: 'Steps', label: 'Dependant List', color: 'var(--info)', bgColor: 'var(--info-light)',
-    desc: 'Lets the patient choose who the visit is for — themselves or a family member/dependant.',
-    icon: I(<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>),
-  },
-  { id: 'scheduling', category: 'Steps', label: 'Calendar Picker', color: 'var(--info)', bgColor: 'var(--info-light)',
-    desc: 'Displays appointment availability for scheduling.',
-    icon: I(<><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>),
-  },
-  { id: 'payment', category: 'Steps', label: 'Payment Options', color: 'var(--success)', bgColor: 'var(--success-light)',
-    desc: 'Handles payment — patient selects or adds a credit/debit card to pay for the visit.',
-    icon: I(<><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></>),
-  },
-  { id: 'test_device', category: 'Steps', label: 'Test Device', color: 'var(--info)', bgColor: 'var(--info-light)',
-    desc: 'Tests the patient\'s camera and microphone to ensure they work before the video visit.',
-    icon: I(<><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></>),
-  },
-  { id: 'pharmacy', category: 'Steps', label: 'Pharmacy Picker', color: '#0891B2', bgColor: '#ECFEFF',
-    desc: 'Patient searches a pharmacy directory and selects where prescriptions are sent. A selector module, not a form.',
-    icon: I(<><path d="M3 3h18v4H3z"/><path d="M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></>),
-  },
-  { id: 'emr', category: 'Steps', label: 'EMR', color: '#6366F1', bgColor: '#EEF2FF',
-    desc: 'Pulls and verifies patient info from the electronic medical record system.',
-    icon: I(<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>),
-  },
-  { id: 'setup_session', category: 'Steps', label: 'Setup Session', color: 'var(--grey-600)', bgColor: 'var(--grey-100)',
-    desc: 'Creates the visit session on the backend — required before patient enters the waiting room.',
-    icon: I(<><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></>),
-  },
-  { id: 'confirmation', category: 'Steps', label: 'Confirmation', color: 'var(--success)', bgColor: 'var(--success-light)',
-    desc: 'Final step — shows a summary of the scheduled appointment with provider and time details.',
-    icon: I(<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>),
-  },
-  { id: 'walkin_confirmation', category: 'Steps', label: 'Walk-in Confirmation', color: 'var(--success)', bgColor: 'var(--success-light)',
-    desc: 'Final step for walk-ins — confirms the patient has been placed in the waiting room.',
-    icon: I(<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>),
-  },
-
-  // ── Logic ──
-  { id: 'conditional', category: 'Logic', label: 'Conditional Branch', color: '#D97706', bgColor: 'var(--warning-light)',
-    desc: 'Branch the workflow based on patient type or insurance status.',
-    icon: I(<><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></>),
-  },
-];
-
-
-const CONDITION_TYPES = [
-  { id: 'patient_type',     label: 'Patient Type',        hint: 'Clinic Patient Types' },
-  { id: 'insurance_status', label: 'Insurance Status',    hint: 'eligibility verification results' },
-  { id: 'visit_mode',       label: 'Visit Mode',          hint: 'how the visit is delivered' },
-  { id: 'patient_status',   label: 'New vs Returning',    hint: 'whether the patient has visited before' },
-  { id: 'visit_for',        label: 'Who the Visit Is For', hint: 'the patient or a dependant' },
-  { id: 'age_group',        label: 'Age Group',           hint: 'age bands' },
-  { id: 'clinic_hours',     label: 'Clinic Hours',        hint: "the room's operating hours" },
-  { id: 'form_answer',      label: 'Answer to a Form Question', hint: 'the selected form field' },
-];
-
-// Fixed branch sets per condition type (patient_type is derived from the clinic).
-const STATIC_BRANCHES = {
-  insurance_status: [
-    { id: 'eligible',     label: 'Eligible' },
-    { id: 'not_eligible', label: 'Not Eligible' },
-    { id: 'pending',      label: 'Pending' },
-    { id: 'error',        label: 'Error' },
-  ],
-  visit_mode: [
-    { id: 'video',      label: 'Video' },
-    { id: 'phone',      label: 'Phone' },
-    { id: 'in_person',  label: 'In-person' },
-    { id: 'e_consult',  label: 'E-Consult' },
-  ],
-  patient_status: [
-    { id: 'new',       label: 'New Patient' },
-    { id: 'returning', label: 'Returning Patient' },
-  ],
-  visit_for: [
-    { id: 'self',      label: 'Themselves' },
-    { id: 'dependant', label: 'A Dependant' },
-  ],
-  age_group: [
-    { id: 'adult', label: 'Adult (18+)' },
-    { id: 'minor', label: 'Minor (under 18)' },
-  ],
-  clinic_hours: [
-    { id: 'open_hours',  label: 'During Open Hours' },
-    { id: 'after_hours', label: 'After Hours' },
-  ],
-  form_answer: [
-    { id: 'yes',          label: 'Answered Yes' },
-    { id: 'no',           label: 'Answered No' },
-    { id: 'not_answered', label: 'Not Answered' },
-  ],
-};
-
-const PT_LABELS = {
-  'self-pay': 'Self-Pay',
-  'insurance': 'Insurance',
-  'group-covered': 'Group-Covered',
-};
-
-function branchesForCondition(conditionType, clinic) {
-  if (conditionType === 'patient_type') {
-    return (clinic?.patientTypes || []).map(pt => ({
-      id: uid(),
-      condition: pt,
-      label: PT_LABELS[pt] || pt,
-      steps: [],
-    }));
-  }
-  const set = STATIC_BRANCHES[conditionType];
-  if (set) {
-    return set.map(s => ({ id: uid(), condition: s.id, label: s.label, steps: [] }));
-  }
-  return [];
-}
-
-const BUILTIN_FORMS = [
-  { id: '_intake_form',       name: 'Intake Form',       desc: 'Basic patient intake — demographics, contact info, reason for visit, and file attachments.' },
-  { id: '_guest_intake',      name: 'Guest Intake',      desc: 'Simplified intake for walk-in guests — health concern and optional file attachments.' },
-  { id: '_insurance_form',    name: 'Insurance Form',    desc: 'Insurance carrier, subscriber ID, group number, guarantor, and card photo uploads.' },
-  { id: '_guarantor',         name: 'Guarantor',         desc: 'Billing/responsible party details — name, relationship, contact info, and address.' },
-  { id: '_emergency_contact', name: 'Emergency Contact', desc: 'Emergency contact person\'s name, relationship, phone, and address.' },
-  { id: '_create_dependant',  name: 'Create Dependant',  desc: 'Register a new family member/dependant under the patient\'s account.' },
-  { id: '_cancel_survey',     name: 'Cancel Intake Survey', desc: 'Asks the patient why they\'re cancelling the intake.' },
-];
-
-const uid = () => `step_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+import { STEP_TYPES, CONDITION_TYPES, branchesForCondition, createStep, uid } from './stepTypes';
 
 /* ── Workflow Templates (preset library) ─────────────────── */
 
@@ -179,10 +23,9 @@ const WORKFLOW_TEMPLATES = [
   {
     id: 'tpl_standard',
     name: 'Standard Telehealth',
-    desc: 'Full intake with login, scheduling, intake form, payment branching, device test, and confirmation.',
+    desc: 'Full intake with dependants, scheduling, intake form, payment branching, device test, and confirmation.',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
     steps: [
-      { type: 'login', label: 'Login' },
       { type: 'dependant_list', label: 'Dependant List' },
       { type: 'visit_selection', label: 'Consultation' },
       { type: 'scheduling', label: 'Calendar Picker' },
@@ -207,11 +50,9 @@ const WORKFLOW_TEMPLATES = [
   {
     id: 'tpl_quick_walkin',
     name: 'Quick Walk-in',
-    desc: 'Minimal steps for walk-in urgent care — signup, guest intake, device test, straight to waiting room.',
+    desc: 'Minimal steps for walk-in urgent care — quick intake, device test, straight to waiting room.',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
     steps: [
-      { type: 'signup', label: 'Signup' },
-      { type: 'signup_verification', label: 'Signup Verification' },
       { type: 'form', label: 'Guest Intake', formId: '_guest_intake' },
       { type: 'test_device', label: 'Test Device' },
       { type: 'setup_session', label: 'Setup Session' },
@@ -221,10 +62,9 @@ const WORKFLOW_TEMPLATES = [
   {
     id: 'tpl_scheduled',
     name: 'Scheduled Visit',
-    desc: 'Login, pick a visit, schedule, intake form, payment, and confirmation. No walk-in path.',
+    desc: 'Pick a visit, schedule, intake form, payment, and confirmation. No walk-in path.',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
     steps: [
-      { type: 'login', label: 'Login' },
       { type: 'visit_selection', label: 'Consultation' },
       { type: 'scheduling', label: 'Calendar Picker' },
       { type: 'form', label: 'Intake Form', formId: '_intake_form' },
@@ -240,7 +80,6 @@ const WORKFLOW_TEMPLATES = [
     desc: 'Insurance verification upfront before scheduling. Includes eligibility branching and guarantor form.',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
     steps: [
-      { type: 'login', label: 'Login' },
       { type: 'form', label: 'Insurance Form', formId: '_insurance_form' },
       { type: 'form', label: 'Guarantor', formId: '_guarantor' },
       { type: 'conditional', label: 'By Insurance Status', conditionType: 'insurance_status', branches: [
@@ -274,7 +113,6 @@ const WORKFLOW_TEMPLATES = [
     desc: 'Streamlined flow for cash-pay clinics — no insurance forms, just intake, payment, and go.',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     steps: [
-      { type: 'login', label: 'Login' },
       { type: 'visit_selection', label: 'Consultation' },
       { type: 'scheduling', label: 'Calendar Picker' },
       { type: 'form', label: 'Intake Form', formId: '_intake_form' },
@@ -384,8 +222,17 @@ function Connector({ onAdd, dropTarget }) {
 const CATEGORY_ORDER = ['Steps', 'Forms', 'Account', 'Logic'];
 
 function AddStepPicker({ onSelect, onCancel, existingSteps = [] }) {
-  const existingTypes = existingSteps.map(s => s.type);
-  const available = STEP_TYPES.filter(st => !st.singleton || !existingTypes.includes(st.id));
+  // A singleton is used up wherever it sits — including inside a branch — so
+  // the check walks the whole tree, not just this level.
+  const usedTypes = new Set();
+  const walk = (steps) => {
+    for (const s of steps || []) {
+      usedTypes.add(s.type);
+      if (s.branches) s.branches.forEach(b => walk(b.steps));
+    }
+  };
+  walk(existingSteps);
+  const available = STEP_TYPES.filter(st => !st.legacy && (!st.singleton || !usedTypes.has(st.id)));
 
   // Group by category
   const grouped = {};
@@ -440,13 +287,18 @@ function AddStepPicker({ onSelect, onCancel, existingSteps = [] }) {
 
 /* ── Step Card ────────────────────────────────────────────── */
 
-function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown, clinic, depth = 0, dragHandlers }) {
+function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown, clinic, depth = 0, dragHandlers, allSteps = [], guestAllowed = false, access }) {
+  const collapsible = step.type === 'conditional';
   const [expanded, setExpanded] = useState(step.type === 'conditional');
   const typeDef = STEP_TYPES.find(t => t.id === step.type);
+  // Guests have no account, so some steps simply can't complete for them.
+  const guestBlock = guestAllowed ? guestBlockReason(step) : null;
 
   return (
     <div style={{
       border: `1px solid ${step.type === 'conditional' ? 'var(--warning)' : 'var(--border)'}`,
+      // A nested conditional gets a heavier left edge so depth reads in the canvas
+      borderLeftWidth: step.type === 'conditional' && depth > 0 ? 3 : 1,
       borderRadius: 'var(--r-lg)',
       background: 'white',
       overflow: 'hidden',
@@ -457,7 +309,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
         background: typeDef?.bgColor ?? 'var(--grey-100)',
-        borderBottom: expanded && step.type === 'conditional' ? '1px solid var(--border)' : 'none',
+        borderBottom: expanded && collapsible ? '1px solid var(--border)' : 'none',
       }}>
         {/* Drag handle */}
         <span
@@ -522,13 +374,24 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
             </span>
             {step.type === 'form' && step.formId && (
               <span className="badge badge-info" style={{ fontSize: 10 }}>
-                {[...BUILTIN_FORMS, ...(clinic?.formLibrary || [])].find(f => f.id === step.formId)?.name || step.formId}
+                {allForms(clinic).find(f => f.id === step.formId)?.name || step.formId}
               </span>
             )}
             {step.type === 'conditional' && (
               <span className="badge badge-warning" style={{ fontSize: 10 }}>
-                {CONDITION_TYPES.find(ct => ct.id === step.conditionType)?.label || step.conditionType} · {step.branches?.length || 0} branches
+                {CONDITION_TYPES.find(ct => ct.id === step.conditionType)?.label || step.conditionType} · {(() => {
+                  const isRule = step.conditionType === 'rule';
+                  const n = (isRule ? (step.branches || []).filter(b => b.kind === 'rule').length : step.branches?.length) || 0;
+                  const noun = isRule ? 'rule' : 'branch';
+                  return `${n} ${n === 1 ? noun : isRule ? 'rules' : 'branches'}`;
+                })()}
               </span>
+            )}
+            {step.type === 'conditional' && depth > 0 && (
+              <span
+                title={`Nested ${depth} level${depth !== 1 ? 's' : ''} deep`}
+                style={{ fontSize: 10, fontWeight: 700, color: 'var(--warning)', background: 'var(--warning-light)', border: '1px solid #FDE68A', padding: '0 6px', borderRadius: 'var(--r-full)' }}
+              >L{depth + 1}</span>
             )}
             {typeDef?.category && typeDef.category !== 'Logic' && (
               <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 500 }}>{typeDef.category}</span>
@@ -538,7 +401,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
 
         {/* Actions: expand + delete on right */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          {step.type === 'conditional' && (
+          {collapsible && (
             <button className="btn-icon" style={{ width: 26, height: 26 }} onClick={() => setExpanded(!expanded)} title={expanded ? 'Collapse' : 'Expand'}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 {expanded ? <line x1="5" y1="12" x2="19" y2="12"/> : <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
@@ -560,8 +423,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
               value={step.formId || ''}
               onChange={e => {
                 const formId = e.target.value || null;
-                const allForms = [...BUILTIN_FORMS, ...(clinic?.formLibrary || [])];
-                const form = allForms.find(f => f.id === formId);
+                const form = allForms(clinic).find(f => f.id === formId);
                 onUpdate({ ...step, formId, label: form?.name || step.label });
               }}
               className="input"
@@ -615,6 +477,21 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
         </div>
       )}
 
+      {/* This step can't complete for a guest — warn rather than silently skip */}
+      {guestBlock && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 8, margin: '0 14px 12px',
+          padding: '8px 12px', background: 'var(--warning-light)',
+          border: '1px solid #FDE68A', borderRadius: 'var(--r-md)',
+          fontSize: 11.5, color: '#92400E', lineHeight: 1.45,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>
+            <strong>Guests can't complete this step.</strong> {guestBlock} Branch on <em>How the Patient Signed In</em> to give guests a different path, or turn off guest access for this room.
+          </span>
+        </div>
+      )}
+
       {/* Conditional branches */}
       {step.type === 'conditional' && expanded && (
         <ConditionalBranches
@@ -622,6 +499,9 @@ function StepCard({ step, index, total, onUpdate, onDelete, onMoveUp, onMoveDown
           onUpdate={onUpdate}
           clinic={clinic}
           depth={depth}
+          allSteps={allSteps}
+          guestAllowed={guestAllowed}
+          access={access}
         />
       )}
     </div>
@@ -700,9 +580,168 @@ function BranchConnector({ canDrop, onDrop, showAdd, onAdd }) {
   );
 }
 
+
+/* ── Lo-code rule editor ──────────────────────────────────── */
+// The expression is what the admin authors; the JSON tree beside it is what
+// gets stored and exported. Both stay in sync, and JSON can be pasted back in.
+
+function VariablePalette({ variables, onPick }) {
+  const [open, setOpen] = useState(false);
+  if (!variables.length) return null;
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 600, color: 'var(--brand)', cursor: 'pointer' }}
+      >
+        {open ? 'Hide' : 'Show'} available variables ({variables.length})
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {variables.map(v => (
+            <button
+              key={v.path}
+              title={`${v.label}${v.values ? ` — ${v.values.join(', ')}` : ` (${v.kind})`}`}
+              onClick={() => onPick(v)}
+              style={{
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 10.5, padding: '2px 7px', borderRadius: 'var(--r-full)',
+                border: '1px solid var(--border)', background: 'white',
+                color: 'var(--text-secondary)', cursor: 'pointer',
+              }}
+            >{v.path}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RuleEditor({ branch, variables, onChange }) {
+  const [showJson, setShowJson] = useState(false);
+  const [pasting, setPasting] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteError, setPasteError] = useState(null);
+
+  const parsed = parseRule(branch.expr || '');
+  const known = new Set(variables.map(v => v.path));
+  const used = parsed.ok ? [...ruleVariables(parsed.rule)] : [];
+  const unknownVars = used.filter(v => !known.has(v));
+
+  const setExpr = (expr) => {
+    const r = parseRule(expr);
+    onChange({ ...branch, expr, rule: r.ok ? r.rule : null });
+  };
+
+  const applyPaste = () => {
+    try {
+      const json = JSON.parse(pasteText);
+      const expr = unparseRule(json);
+      const check = parseRule(expr);
+      if (!check.ok) throw new Error('That JSON does not describe a rule this editor can read.');
+      onChange({ ...branch, expr, rule: check.rule });
+      setPasting(false); setPasteText(''); setPasteError(null);
+    } catch (e) {
+      setPasteError(e.message || 'Not valid JSON');
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>Run this branch when</label>
+        <span style={{ flex: 1 }} />
+        <button
+          onClick={() => setShowJson(j => !j)}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 600, color: 'var(--brand)', cursor: 'pointer' }}
+        >{showJson ? 'Hide JSON' : 'View JSON'}</button>
+        <span style={{ color: 'var(--grey-300)' }}>·</span>
+        <button
+          onClick={() => { setPasting(p => !p); setPasteError(null); }}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, fontWeight: 600, color: 'var(--brand)', cursor: 'pointer' }}
+        >Paste JSON</button>
+      </div>
+
+      <textarea
+        value={branch.expr || ''}
+        onChange={e => setExpr(e.target.value)}
+        rows={2}
+        spellCheck={false}
+        placeholder={'e.g. form.intake_form.pain_level >= 7 and patient.type != "insurance"'}
+        className="input"
+        style={{
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 12, lineHeight: 1.5, padding: '8px 10px', height: 'auto', resize: 'vertical',
+          borderColor: parsed.error ? 'var(--danger, #DC2626)' : undefined,
+        }}
+      />
+
+      {parsed.error && (
+        <p style={{ fontSize: 11, color: '#B91C1C', margin: 0 }}>
+          {parsed.error.message} — at character {parsed.error.at + 1}
+        </p>
+      )}
+      {parsed.empty && (
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>
+          No rule yet, so this branch never runs. Everyone falls through to the next one.
+        </p>
+      )}
+      {parsed.ok && unknownVars.length > 0 && (
+        <p style={{ fontSize: 11, color: '#92400E', margin: 0 }}>
+          Not available at this point in the flow: <strong>{unknownVars.join(', ')}</strong>. This branch will never match.
+        </p>
+      )}
+      {parsed.ok && unknownVars.length === 0 && (
+        <p style={{ fontSize: 11, color: 'var(--success)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+          Valid{used.length ? ` — tests ${used.length} variable${used.length !== 1 ? 's' : ''}` : ''}
+        </p>
+      )}
+
+      <VariablePalette
+        variables={variables}
+        onPick={v => setExpr(`${branch.expr || ''}${branch.expr && !/\s$/.test(branch.expr) ? ' ' : ''}${v.path}`)}
+      />
+
+      {showJson && (
+        <pre style={{
+          margin: 0, padding: '10px 12px', background: 'var(--grey-900, #111827)', color: '#E5E7EB',
+          borderRadius: 'var(--r-md)', fontSize: 11, lineHeight: 1.5, overflowX: 'auto',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        }}>{parsed.ok ? formatRule(parsed.rule) : '// fix the expression above to see its JSON'}</pre>
+      )}
+
+      {pasting && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <textarea
+            value={pasteText}
+            onChange={e => setPasteText(e.target.value)}
+            rows={4}
+            spellCheck={false}
+            placeholder={'{"and":[{">=":[{"var":"patient.age"},18]}]}'}
+            className="input"
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, height: 'auto', resize: 'vertical' }}
+          />
+          {pasteError && <p style={{ fontSize: 11, color: '#B91C1C', margin: 0 }}>{pasteError}</p>}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn btn-primary btn-xs" onClick={applyPaste} disabled={!pasteText.trim()}>Replace rule</button>
+            <button className="btn btn-ghost btn-xs" onClick={() => { setPasting(false); setPasteError(null); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Conditional Branches Editor ──────────────────────────── */
 
-function ConditionalBranches({ step, onUpdate, clinic, depth }) {
+function ConditionalBranches({ step, onUpdate, clinic, depth, allSteps = [], guestAllowed = false, access }) {
+  const [activeTab, setActiveTab] = useState(0);
+  /* What the patient has actually produced by the time they reach this
+     conditional. Drives the form list, the prerequisite warnings and the
+     variables a lo-code rule may reference. */
+  const scope = scopeForStep(allSteps, step.id, clinic, access);
+  const issue = conditionIssue(step, scope, clinic);
   const [addingAt, setAddingAt] = useState(null); // { branchIndex, insertIndex }
   const [branchDrag, setBranchDrag] = useState(null); // { branchIndex, stepIndex }
 
@@ -735,6 +774,37 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
   const updateBranch = (branchIdx, patch) => {
     const branches = step.branches.map((b, i) => i === branchIdx ? { ...b, ...patch } : b);
     onUpdate({ ...step, branches });
+  };
+
+  const isRuleType = (step.conditionType || 'patient_type') === 'rule';
+
+  /* Rule branches are ordered, so they can be added, removed and resequenced.
+     Otherwise is pinned last and can never be removed — it's what catches
+     patients who match no rule. */
+  const addRuleBranch = () => {
+    const branches = [...(step.branches || [])];
+    const otherwiseAt = branches.findIndex(b => b.kind === 'otherwise');
+    const at = otherwiseAt === -1 ? branches.length : otherwiseAt;
+    const n = branches.filter(b => b.kind === 'rule').length + 1;
+    branches.splice(at, 0, { id: uid(), kind: 'rule', label: `Rule ${n}`, expr: '', rule: null, steps: [] });
+    onUpdate({ ...step, branches });
+    setActiveTab(at);
+  };
+
+  const deleteRuleBranch = (branchIdx) => {
+    const branches = step.branches.filter((_, i) => i !== branchIdx);
+    onUpdate({ ...step, branches });
+    setActiveTab(t => Math.max(0, Math.min(t, branches.length - 1)));
+  };
+
+  const moveRuleBranch = (from, dir) => {
+    const branches = [...step.branches];
+    const to = from + dir;
+    if (to < 0 || to >= branches.length) return;
+    if (branches[to].kind === 'otherwise' || branches[from].kind === 'otherwise') return;
+    [branches[from], branches[to]] = [branches[to], branches[from]];
+    onUpdate({ ...step, branches });
+    setActiveTab(to);
   };
 
   // When condition type changes, rebuild branches from known values,
@@ -787,7 +857,6 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
     updateBranch(branchIdx, { steps: newSteps });
   };
 
-  const [activeTab, setActiveTab] = useState(0);
   const branches = step.branches || [];
   const safeBi = Math.min(activeTab, branches.length - 1);
 
@@ -795,6 +864,37 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
 
   const renderBranchContent = (branch, bi) => (
     <>
+      {/* Rule branches carry their own condition; Otherwise is the catch-all */}
+      {isRuleType && branch.kind === 'rule' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-tertiary)' }}>
+              Checked {bi === 0 ? 'first' : `${bi + 1}${bi === 1 ? 'nd' : bi === 2 ? 'rd' : 'th'}`}
+            </span>
+            <span style={{ flex: 1 }} />
+            <button className="btn-icon" style={{ width: 24, height: 24 }} title="Check this rule earlier" disabled={bi === 0} onClick={() => moveRuleBranch(bi, -1)}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button className="btn-icon" style={{ width: 24, height: 24 }} title="Check this rule later" disabled={branches[bi + 1]?.kind !== 'rule'} onClick={() => moveRuleBranch(bi, 1)}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <button className="btn-icon danger" style={{ width: 24, height: 24 }} title="Remove this rule" disabled={branches.filter(b => b.kind === 'rule').length <= 1} onClick={() => deleteRuleBranch(bi)}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <RuleEditor
+            branch={branch}
+            variables={scope.variables}
+            onChange={b => updateBranch(bi, b)}
+          />
+        </>
+      )}
+      {isRuleType && branch.kind === 'otherwise' && (
+        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
+          Runs for patients who matched none of the rules above. Leave it empty to send them straight on.
+        </p>
+      )}
+
       {branch.steps.length === 0 && !(addingAt?.branchIndex === bi) && (
         <EmptyBranchDrop
           onAdd={() => setAddingAt({ branchIndex: bi, insertIndex: 0 })}
@@ -824,6 +924,9 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
             onMoveDown={() => moveBranchStep(bi, si, si + 1)}
             clinic={clinic}
             depth={depth + 1}
+            allSteps={allSteps}
+            guestAllowed={guestAllowed}
+            access={access}
             dragHandlers={{
               isDragging: isBranchDragSrc,
               onDragStart: (e) => {
@@ -839,6 +942,7 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
               <AddStepPicker
                 onSelect={type => addStepToBranch(bi, si + 1, type)}
                 onCancel={() => setAddingAt(null)}
+                existingSteps={allSteps}
               />
             </div>
           ) : (
@@ -858,6 +962,7 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
           <AddStepPicker
             onSelect={type => addStepToBranch(bi, 0, type)}
             onCancel={() => setAddingAt(null)}
+            existingSteps={allSteps}
           />
         </div>
       )}
@@ -878,11 +983,13 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
           {CONDITION_TYPES.map(ct => <option key={ct.id} value={ct.id}>{ct.label}</option>)}
         </select>
 
-        {/* Form-answer needs a specific form + field to test */}
+        {/* Form-answer can only test a form the patient has already filled in,
+            so the list is the forms in scope at this position — not every form
+            in the library. */}
         {step.conditionType === 'form_answer' && (() => {
-          const forms = [...BUILTIN_FORMS, ...((clinic?.formLibrary) || [])];
+          const forms = scope.forms;
           const selForm = forms.find(f => f.id === step.conditionFormId);
-          const fields = (selForm?.fields || []).filter(f => f.enabled !== false);
+          const fields = formFields(selForm);
           return (
             <>
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>from</span>
@@ -892,7 +999,7 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
                 className="input"
                 style={{ height: 32, fontSize: 12, padding: '0 28px 0 8px', maxWidth: 190 }}
               >
-                <option value="">— Select a form —</option>
+                <option value="">{forms.length ? '— Select a form —' : '— No forms run before this —'}</option>
                 {forms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
               {selForm && (
@@ -912,7 +1019,25 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
         })()}
       </div>
 
-      {step.conditionType === 'form_answer' && !step.conditionFieldId && (
+      {/* This condition tests something no earlier step has produced */}
+      {issue && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', marginBottom: 12,
+          background: 'var(--warning-light)', border: '1px solid #FDE68A', borderRadius: 'var(--r-md)',
+          fontSize: 11.5, color: '#92400E', lineHeight: 1.45,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>
+            {issue.kind === 'missing_step' && <><strong>Nothing to branch on yet.</strong> Add a <strong>{issue.step}</strong> step above this branch. </>}
+            {issue.kind === 'stale_form' && <><strong>Form is no longer in scope.</strong> </>}
+            {issue.kind === 'no_forms' && <><strong>No form to test.</strong> </>}
+            {issue.kind === 'no_dob' && <><strong>No date of birth collected.</strong> </>}
+            {issue.why}
+          </span>
+        </div>
+      )}
+
+      {step.conditionType === 'form_answer' && !issue && !step.conditionFieldId && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 12,
           background: 'var(--warning-light)', border: '1px solid #FDE68A', borderRadius: 'var(--r-md)',
@@ -929,12 +1054,16 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
         marginBottom: 0, overflowX: 'auto',
       }}>
         {branches.map((branch, bi) => {
-          const color = BRANCH_COLORS[bi % BRANCH_COLORS.length];
+          const isOtherwise = branch.kind === 'otherwise';
+          const color = isOtherwise ? 'var(--grey-600)' : BRANCH_COLORS[bi % BRANCH_COLORS.length];
           const isActive = safeBi === bi;
           const stepCount = branch.steps.length;
+          // A rule tab shows its expression so the order reads at a glance.
+          const ruleHint = branch.kind === 'rule' ? (branch.expr || '').trim() : '';
           return (
             <button
               key={branch.id}
+              title={ruleHint || undefined}
               onClick={() => setActiveTab(bi)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -958,6 +1087,13 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
               }}>
                 {branch.label || branch.condition || `Branch ${bi + 1}`}
               </span>
+              {ruleHint && (
+                <span style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 10, color: 'var(--text-tertiary)', maxWidth: 130,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{ruleHint}</span>
+              )}
               <span style={{
                 fontSize: 10, fontWeight: 600,
                 color: isActive ? color : 'var(--text-tertiary)',
@@ -969,6 +1105,21 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
             </button>
           );
         })}
+        {isRuleType && (
+          <button
+            onClick={addRuleBranch}
+            title="Add another rule"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '8px 12px',
+              background: 'none', border: 'none', borderBottom: '2px solid transparent',
+              marginBottom: -2, cursor: 'pointer', color: 'var(--brand)',
+              fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+            }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add rule
+          </button>
+        )}
       </div>
 
       {/* Active branch content */}
@@ -987,35 +1138,14 @@ function ConditionalBranches({ step, onUpdate, clinic, depth }) {
 
       {/* Hint */}
       <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-        Branches are auto-populated from {CONDITION_TYPES.find(ct => ct.id === (step.conditionType || 'patient_type'))?.hint || 'known values'}.
+        {isRuleType
+          ? 'Rules are checked in order, top to bottom. The first one that matches runs; anyone left over takes Otherwise.'
+          : `Branches are auto-populated from ${CONDITION_TYPES.find(ct => ct.id === (step.conditionType || 'patient_type'))?.hint || 'known values'}.`}
       </p>
     </div>
   );
 }
 
-/* ── Create step helper ───────────────────────────────────── */
-
-function createStep(type, clinic) {
-  const base = { id: uid(), type };
-  const typeDef = STEP_TYPES.find(t => t.id === type);
-  const label = typeDef?.label || type;
-
-  switch (type) {
-    case 'form':
-      return { ...base, label: 'Form', formId: null };
-    case 'pharmacy':
-      return { ...base, label, allowSearch: true, showMap: true, allowMailOrder: true, allowSkip: true };
-    case 'conditional':
-      return {
-        ...base,
-        label: 'Conditional Branch',
-        conditionType: 'patient_type',
-        branches: branchesForCondition('patient_type', clinic),
-      };
-    default:
-      return { ...base, label };
-  }
-}
 
 /* ── Start / End nodes ────────────────────────────────────── */
 
@@ -1032,11 +1162,63 @@ function FlowTerminal({ label, color }) {
   );
 }
 
+/* ── Entry gate ───────────────────────────────────────────── */
+// The flow's start terminal, showing how patients get in. Auth is configured in
+// Patient Access, not here, so this node is fixed — it can't be moved, removed
+// or edited inline. It exists so the flow still reads as "patient signs in,
+// then this happens".
+
+function FlowGate({ access, onConfigure, scopeLabel }) {
+  const chips = accessSummary(access);
+  const cfg = accessConfig(access);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', padding: '0 20px' }}>
+      <FlowTerminal label="Patient Enters" color="start" />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center',
+        maxWidth: 560, width: '100%',
+        padding: '8px 14px', background: 'white',
+        border: '1px dashed var(--border-strong)', borderRadius: 'var(--r-md)',
+      }}>
+        <span style={{ color: 'var(--brand)', display: 'flex', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          {chips.length > 0 ? 'Patients identify themselves first:' : 'No way in is configured:'}
+        </span>
+        {chips.length > 0 ? (
+          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+            {chips.map(c => <span key={c} className="badge badge-success" style={{ fontSize: 10 }}>{c}</span>)}
+          </span>
+        ) : (
+          <span className="badge badge-warning" style={{ fontSize: 10 }}>No way in</span>
+        )}
+        {cfg.allowGuest && (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>· guests have no chart</span>
+        )}
+        <span style={{ flex: 1 }} />
+        {onConfigure && (
+          <button
+            onClick={onConfigure}
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 600, color: 'var(--brand)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            {scopeLabel || 'Patient Access'}
+          </button>
+        )}
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>
+        The flow below starts once the patient is identified.
+      </p>
+    </div>
+  );
+}
+
 /* ── Template preview mini-flow ───────────────────────────── */
 
 function MiniStepRow({ step }) {
   const meta = STEP_TYPES.find(t => t.id === step.type) || {};
-  const formName = step.type === 'form' && step.formId
+  const caption = step.type === 'form' && step.formId
     ? (BUILTIN_FORMS.find(f => f.id === step.formId)?.name || 'Custom form')
     : null;
   return (
@@ -1052,8 +1234,8 @@ function MiniStepRow({ step }) {
         color: meta.color || 'var(--text-secondary)', background: meta.bgColor || 'var(--grey-100)',
       }}>{meta.icon || null}</span>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>{step.label || meta.label}</span>
-      {formName && formName !== step.label && (
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto', flexShrink: 0 }}>{formName}</span>
+      {caption && caption !== step.label && (
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto', flexShrink: 0 }}>{caption}</span>
       )}
     </div>
   );
@@ -1452,11 +1634,12 @@ function WorkflowTemplateModal({ builtinTemplates, customTemplates, currentTplId
 
 /* ── Main Workflow Customizer ─────────────────────────────── */
 
-export default function WorkflowCustomizer({ workflow, onChange, clinic, customTemplates = [], onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
+export default function WorkflowCustomizer({ workflow, onChange, clinic, customTemplates = [], onSaveTemplate, onUpdateTemplate, onDeleteTemplate, access, onConfigureAccess, accessScopeLabel }) {
   const [addingAtIndex, setAddingAtIndex] = useState(null);
   const [dragFrom, setDragFrom] = useState(null);
   const [showTplModal, setShowTplModal] = useState(false);
   const steps = normalizeSteps(workflow?.steps || []);
+  const guestAllowed = accessConfig(access).allowGuest;
 
   const updateStep = (index, updated) => {
     const newSteps = steps.map((s, i) => i === index ? updated : s);
@@ -1580,7 +1763,7 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic, customT
         border: '1px solid var(--border)',
         minHeight: 200,
       }}>
-        <FlowTerminal label="Patient Enters" color="start" />
+        <FlowGate access={access} onConfigure={onConfigureAccess} scopeLabel={accessScopeLabel} />
 
         {steps.length === 0 && addingAtIndex === null && (
           <>
@@ -1631,6 +1814,9 @@ export default function WorkflowCustomizer({ workflow, onChange, clinic, customT
                 onMoveUp={() => moveStep(i, i - 1)}
                 onMoveDown={() => moveStep(i, i + 1)}
                 clinic={clinic}
+                allSteps={steps}
+                guestAllowed={guestAllowed}
+                access={access}
                 dragHandlers={{
                   isDragging: dragFrom === i,
                   onDragStart: (e) => {

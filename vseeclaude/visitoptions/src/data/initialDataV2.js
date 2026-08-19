@@ -172,6 +172,27 @@ export const initialClinic = {
     { id: 'nt_3', name: 'Blank', content: '' },
   ],
 
+  // ── Patient Access ──
+  // How patients identify themselves before a visit. Not part of the intake
+  // flow: the flow starts once the patient is known. Rooms may narrow this.
+  patientAccess: {
+    allowLogin: true,
+    rememberMe: true,
+    allowSignup: true,
+    signupAccess: 'open',
+    eligibilitySource: 'member_list',
+    verifyEmail: true,
+    verifyPhone: false,
+    allowSSO: false,
+    ssoProviders: [],
+    ssoAutoRedirect: false,
+    allowMagicLink: false,
+    allowGuest: false,
+    guestFields: ['name', 'email'],
+    guestUpgrade: false,
+    defaultMethod: 'signin',
+  },
+
   // ── Default patient workflow ──
   // visit_selection step marks where the patient picks a visit option.
   // Steps before it are pre-visit; steps after follow the selected visit.
@@ -179,7 +200,6 @@ export const initialClinic = {
     id: 'wf_default',
     name: 'Default Intake Flow',
     steps: [
-      { id: 'ws_login', type: 'login', label: 'Login' },
       { id: 'ws_dep',   type: 'dependant_list', label: 'Dependant List' },
       { id: 'ws_0',     type: 'visit_selection', label: 'Consultation' },
       { id: 'ws_1',     type: 'scheduling', label: 'Calendar Picker' },

@@ -5,6 +5,7 @@ import WaitingRoomSettingsV2 from './WaitingRoomSettingsV2';
 import { useAnnotationPage } from './Annotations';
 import DashboardPage from './DashboardPage';
 import PatientApp from './PatientApp';
+import WorkflowPlayground from './WorkflowPlayground';
 import { initialClinic, initialRooms, initialBookings } from '../data/initialDataV2';
 
 function Toast({ show, onDone }) {
@@ -177,6 +178,14 @@ export default function VersionBLayout() {
           >
             Clinic Settings
           </button>
+          <button
+            onClick={() => setPage('lab')}
+            className={`navbar-link${page === 'lab' ? ' active' : ''}`}
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+            title="Design sandbox for the workflow editor"
+          >
+            Flow Lab
+          </button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
@@ -212,6 +221,8 @@ export default function VersionBLayout() {
         <ClinicTemplatesPage clinic={clinic} rooms={rooms} onChange={setClinic} onSave={handleSave} />
       )}
 
+      {page === 'lab' && <WorkflowPlayground />}
+
       {page === 'rooms' && (
         <WaitingRoomsListPage
           rooms={rooms}
@@ -235,6 +246,7 @@ export default function VersionBLayout() {
           onCopyToRooms={handleCopyToRooms}
           onUpdateTemplate={tpl => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).map(t => t.id === tpl.id ? tpl : t) }))}
           onDeleteTemplate={id => setClinic(c => ({ ...c, workflowTemplates: (c.workflowTemplates || []).filter(t => t.id !== id) }))}
+          onConfigureClinic={() => setPage('clinic')}
         />
       )}
 

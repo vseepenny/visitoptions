@@ -4,6 +4,8 @@ import PatientTypes from '../components/PatientTypes';
 import ConfirmModal from '../components/ConfirmModal';
 import { NOTES_PRESETS } from '../data/initialData';
 import WorkflowCustomizer from './WorkflowCustomizer';
+import { PatientAccessEditor } from './PatientAccessEditor';
+import { resolvePatientAccess } from './patientAccess';
 import { useAnnotationPage } from './Annotations';
 import { FormLibraryEditor, NotesTemplateEditor } from './TemplateEditors';
 import { ClinicLandingEditor } from './LandingPageEditor';
@@ -130,6 +132,7 @@ export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSa
 
   const TABS = [
     { id: 'patientTypes',  label: 'Patient Types'    },
+    { id: 'access',        label: 'Patient Access'   },
     { id: 'workflow',      label: 'Intake Flow'       },
     { id: 'forms',         label: 'Form Library'     },
     { id: 'notes',         label: 'Notes Templates'  },
@@ -183,6 +186,21 @@ export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSa
             </div>
           )}
 
+          {/* ── Patient Access tab ── */}
+          {activeTab === 'access' && (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                How patients identify themselves before a visit begins. This is a precondition of booking, not a step in the
+                intake flow — the flow starts once you know who the patient is. Each waiting room can narrow this list, but
+                only to methods you set up here.
+              </p>
+              <PatientAccessEditor
+                access={state.patientAccess}
+                onChange={pa => update({ patientAccess: pa })}
+              />
+            </div>
+          )}
+
           {/* ── Workflow tab ── */}
           {activeTab === 'workflow' && (
             <div>
@@ -195,6 +213,9 @@ export default function ClinicTemplatesPage({ clinic, rooms = [], onChange, onSa
                 workflow={state.defaultWorkflow}
                 onChange={wf => update({ defaultWorkflow: wf })}
                 clinic={state}
+                access={resolvePatientAccess(state, null)}
+                onConfigureAccess={() => setActiveTab('access')}
+                accessScopeLabel="Clinic Patient Access"
                 customTemplates={state.workflowTemplates || []}
                 onSaveTemplate={tpl => update({ workflowTemplates: [...(state.workflowTemplates || []), tpl] })}
                 onUpdateTemplate={tpl => update({ workflowTemplates: (state.workflowTemplates || []).map(t => t.id === tpl.id ? tpl : t) })}

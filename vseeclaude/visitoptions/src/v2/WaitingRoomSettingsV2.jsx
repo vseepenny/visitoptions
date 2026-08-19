@@ -5,6 +5,7 @@ import RoomVisitOptionModal from './RoomVisitOptionModal';
 import ConfirmModal from '../components/ConfirmModal';
 import PatientPreview from './PatientPreview';
 import { RoomLandingEditor } from './LandingPageEditor';
+import { RoomAccessOverride } from './PatientAccessEditor';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -122,7 +123,7 @@ function CopyToRoomsModal({ item, rooms, onCopy, onCancel }) {
   );
 }
 
-function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, roomId, allRooms = [], onCopyToRooms }) {
+function VisitOptionsTableV2({ items, clinic, room, allowedPatientTypes, onChange, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, roomId, allRooms = [], onCopyToRooms, onConfigureClinic }) {
   const [modal, setModal] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [copyItem, setCopyItem] = useState(null);
@@ -359,6 +360,8 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
           existing={modal.mode === 'edit' ? modal.item : null}
           allowedPatientTypes={allowedPatientTypes}
           clinic={clinic}
+          room={room}
+          onConfigureClinic={onConfigureClinic}
           initialTab={modal.initialTab}
           onSave={handleSave}
           onClose={() => setModal(null)}
@@ -392,7 +395,7 @@ function VisitOptionsTableV2({ items, clinic, allowedPatientTypes, onChange, onS
 
 /* ── Main Page ────────────────────────────────────────────── */
 
-export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, allRooms = [], onCopyToRooms }) {
+export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, onBack, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, allRooms = [], onCopyToRooms, onConfigureClinic }) {
   const { state, setState, isDirty, save } = useDirty(room);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -499,6 +502,23 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
 
           <div className="divider" style={{ margin: 0 }} />
 
+          {/* Patient Access */}
+          <section>
+            <p className="section-title">Patient Access</p>
+            <p className="section-desc" style={{ marginBottom: 16 }}>
+              How patients identify themselves before they enter this room. The clinic decides which methods exist;
+              this room chooses which of them to offer.
+            </p>
+            <RoomAccessOverride
+              clinic={clinic}
+              room={state}
+              onChange={val => update('accessOverride', val)}
+              onConfigureClinic={onConfigureClinic}
+            />
+          </section>
+
+          <div className="divider" style={{ margin: 0 }} />
+
           {/* Landing Page */}
           <section>
             <p className="section-title">Landing Page</p>
@@ -518,6 +538,7 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
           <VisitOptionsTableV2
             items={state.visitOptions}
             clinic={clinic}
+            room={state}
             allowedPatientTypes={clinic.patientTypes || []}
             onChange={val => update('visitOptions', val)}
             onSaveTemplate={onSaveTemplate}
@@ -526,6 +547,7 @@ export default function WaitingRoomSettingsV2({ room, clinic, onChange, onSave, 
             roomId={state.id ?? room.id}
             allRooms={allRooms}
             onCopyToRooms={onCopyToRooms}
+            onConfigureClinic={onConfigureClinic}
           />
 
         </div>

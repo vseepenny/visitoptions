@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { slotsForDate, providersForVisit } from './scheduling';
 import { normalizeSteps } from './workflowUtils';
+import { accessConfig, landingMethod, resolvePatientAccess } from './patientAccess';
+import { evalRule } from './ruleExpr';
 
 /* ── Constants ───────────────────────────────────────────── */
 
@@ -262,6 +264,8 @@ const CONDITION_LABELS = {
   clinic_hours:   'Clinic hours',
   form_answer:    'Answer to a form question',
   insurance_status: 'Insurance status',
+  auth_method:    'How the patient signed in',
+  rule:           'a custom rule',
 };
 
 function BranchChoiceStep({ step, onSelect, onBack }) {
@@ -276,7 +280,10 @@ function BranchChoiceStep({ step, onSelect, onBack }) {
       </div>
       <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{step.label || 'Conditional Branch'}</p>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 18 }}>
-        Branching on <strong>{label}</strong>. In a real visit this is resolved automatically — pick a path to preview it.
+        Branching on <strong>{label}</strong>.{' '}
+        {step.conditionType === 'rule'
+          ? 'One of these rules tests an answer this walkthrough does not collect, so pick a path to preview it.'
+          : 'In a real visit this is resolved automatically — pick a path to preview it.'}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {branches.length === 0 && (
@@ -285,13 +292,20 @@ function BranchChoiceStep({ step, onSelect, onBack }) {
         {branches.map(b => (
           <button
             key={b.id || b.condition}
-            onClick={() => onSelect(b.condition)}
+            onClick={() => onSelect(b.condition ?? b.id)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: 'white', border: '1px solid var(--border)', borderRadius: 12, cursor: 'pointer', textAlign: 'left', transition: 'all 120ms' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--brand)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'white'; }}
           >
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{b.label}</p>
+              {b.kind === 'rule' && b.expr && (
+                <p style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{b.expr}</p>
+              )}
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                 {b.steps?.length ? `${b.steps.length} step${b.steps.length !== 1 ? 's' : ''} on this path` : 'No extra steps — continues the main flow'}
               </p>
@@ -554,123 +568,75 @@ function PaymentStep({ visit, clinic, selectedPt, onContinue, onBack }) {
   );
 }
 
-/* ── Step: Login ─────────────────────────────────────────── */
+/* ── Step: Account ───────────────────────────────────────── */
+// One screen per way in, all driven by the Account module's options. The
+// patient lands on the configured method and can switch to any other one
+// that's turned on.
 
-function LoginStep({ onContinue, onBack }) {
-  const [mode, setMode] = useState('login'); // login | guest
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const SSO_PROVIDER_LABELS = {
+  saml: 'Continue with clinic SSO',
+  google: 'Continue with Google',
+  apple: 'Continue with Apple',
+  microsoft: 'Continue with Microsoft',
+};
 
-  if (mode === 'guest') {
-    return (
-      <div>
-        <BackButton onClick={() => setMode('login')} label="Back to sign in" />
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Continue as Guest</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>No account needed — enter your name and email to get started.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>Full Name <span className="req">*</span></label>
-            <input type="text" placeholder="Jane Doe" className="input" style={{ fontSize: 13 }} />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>Email <span className="req">*</span></label>
-            <input type="email" placeholder="jane@example.com" className="input" style={{ fontSize: 13 }} />
-          </div>
-        </div>
-        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>Continue</button>
-      </div>
-    );
-  }
+const GUEST_FIELD_META = {
+  name:  { label: 'Full Name',     type: 'text',  placeholder: 'Jane Doe' },
+  email: { label: 'Email',         type: 'email', placeholder: 'jane@example.com' },
+  phone: { label: 'Phone',         type: 'tel',   placeholder: '(555) 123-4567' },
+  dob:   { label: 'Date of Birth', type: 'date',  placeholder: '' },
+};
 
+const ACCOUNT_VIEW_LABELS = {
+  signin: 'Sign in',
+  signup: 'Create an account',
+  sso: 'Use single sign-on',
+  guest: 'Continue as Guest',
+};
+
+function OrDivider({ label = 'OR' }) {
   return (
-    <div>
-      {onBack && <BackButton onClick={onBack} />}
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Sign In</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Sign in to your account to continue.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Email</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <button style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', textAlign: 'left' }}>Forgot password?</button>
-      </div>
-      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>Sign In</button>
-      <div style={{ textAlign: 'center', marginTop: 16 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Don't have an account? </span>
-        <button style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600 }} onClick={onContinue}>Sign Up</button>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>OR</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-      </div>
-      <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setMode('guest')}>Continue as Guest</button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
     </div>
   );
 }
 
-/* ── Step: Signup ─────────────────────────────────────────── */
-
-function SignupStep({ onContinue, onBack }) {
+/* Links to whichever other methods the clinic left on. */
+function MethodSwitch({ cfg, current, onSwitch }) {
+  const others = [
+    cfg.allowLogin && 'signin',
+    cfg.allowSignup && 'signup',
+    cfg.allowSSO && 'sso',
+    cfg.allowGuest && 'guest',
+  ].filter(v => v && v !== current);
+  if (others.length === 0) return null;
   return (
-    <div>
-      <BackButton onClick={onBack} />
-      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Create Account</p>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Register to book and manage your appointments.</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>First Name <span className="req">*</span></label>
-            <input type="text" placeholder="Jane" className="input" style={{ fontSize: 13 }} />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: 13 }}>Last Name <span className="req">*</span></label>
-            <input type="text" placeholder="Doe" className="input" style={{ fontSize: 13 }} />
-          </div>
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Date of Birth <span className="req">*</span></label>
-          <input type="date" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Gender</label>
-          <select className="input" style={{ fontSize: 13 }}><option>Select…</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select>
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Email <span className="req">*</span></label>
-          <input type="email" placeholder="jane@example.com" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Phone</label>
-          <input type="tel" placeholder="(555) 123-4567" className="input" style={{ fontSize: 13 }} />
-        </div>
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" style={{ fontSize: 13 }}>Password <span className="req">*</span></label>
-          <input type="password" placeholder="Min. 8 characters" className="input" style={{ fontSize: 13 }} />
-        </div>
+    <>
+      <OrDivider />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {others.map(v => (
+          <button key={v} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => onSwitch(v)}>
+            {ACCOUNT_VIEW_LABELS[v]}
+          </button>
+        ))}
       </div>
-      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>Create Account</button>
-    </div>
+    </>
   );
 }
 
-/* ── Step: Signup Verification ────────────────────────────── */
-
-function SignupVerificationStep({ onContinue, onBack }) {
+function CodeEntry({ onContinue, title, blurb, icon }) {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   return (
-    <div>
-      <BackButton onClick={onBack} />
+    <>
       <div style={{ textAlign: 'center', marginBottom: 24 }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#EFF6FF', border: '2px solid var(--info)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--info)" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+          {icon}
         </div>
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Verify your email</p>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>We sent a 6-digit code to your email. Enter it below.</p>
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{blurb}</p>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 24 }}>
         {code.map((d, i) => (
@@ -682,6 +648,250 @@ function SignupVerificationStep({ onContinue, onBack }) {
       </div>
       <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={onContinue}>Verify</button>
       <button style={{ width: '100%', marginTop: 12, background: 'none', border: 'none', fontSize: 12, color: 'var(--brand)', cursor: 'pointer', textAlign: 'center' }}>Resend code</button>
+    </>
+  );
+}
+
+const MAIL_ICON = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--info)" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>;
+const PHONE_ICON = <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--info)" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>;
+
+function AccountStep({ access, onContinue, onBack }) {
+  const cfg = accessConfig(access);
+  const landing = landingMethod(access);
+  // Report the outcome, not just "next" — the flow can branch on it.
+  const done = (method) => onContinue(method);
+  // ssoAutoRedirect skips the chooser entirely and hands off to the provider.
+  const [view, setView] = useState(cfg.allowSSO && cfg.ssoAutoRedirect ? 'sso' : landing || 'none');
+
+  // After registering, walk whichever verification steps are switched on.
+  const afterSignup = () => {
+    if (cfg.verifyEmail) setView('verify_email');
+    else if (cfg.verifyPhone) setView('verify_phone');
+    else done('account');
+  };
+  const afterEmailVerify = () => {
+    if (cfg.verifyPhone) setView('verify_phone');
+    else done('account');
+  };
+
+  const backToLanding = () => setView(landing || 'none');
+  const showBack = view !== (landing || 'none');
+  const back = showBack
+    ? <BackButton onClick={backToLanding} label="Back" />
+    : (onBack ? <BackButton onClick={onBack} /> : null);
+
+  /* No method enabled — the editor warns about this, but the preview still has
+     to be walkable so the rest of the flow can be demoed. */
+  if (view === 'none') {
+    return (
+      <div>
+        {onBack && <BackButton onClick={onBack} />}
+        <div style={{ padding: '14px 16px', background: 'var(--warning-light)', border: '1px solid #FDE68A', borderRadius: 12, marginBottom: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#92400E', marginBottom: 4 }}>No sign-in method enabled</p>
+          <p style={{ fontSize: 12.5, color: '#92400E', lineHeight: 1.45 }}>Every access method is switched off for this room, so patients would be stuck here. Turn one on under Patient Access.</p>
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => done('account')}>Skip for preview</button>
+      </div>
+    );
+  }
+
+  if (view === 'verify_email') {
+    return (
+      <div>
+        <BackButton onClick={() => setView('signup')} label="Back" />
+        <CodeEntry
+          onContinue={afterEmailVerify}
+          title="Verify your email"
+          blurb="We sent a 6-digit code to your email. Enter it below."
+          icon={MAIL_ICON}
+        />
+      </div>
+    );
+  }
+
+  if (view === 'verify_phone') {
+    return (
+      <div>
+        <BackButton onClick={() => setView(cfg.verifyEmail ? 'verify_email' : 'signup')} label="Back" />
+        <CodeEntry
+          onContinue={() => done('account')}
+          title="Verify your phone"
+          blurb="We texted a 6-digit code to your phone. Enter it below."
+          icon={PHONE_ICON}
+        />
+      </div>
+    );
+  }
+
+  if (view === 'magic_link') {
+    return (
+      <div>
+        <BackButton onClick={backToLanding} label="Back" />
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Sign in without a password</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>We'll email you a one-time link. Open it on this device to continue.</p>
+        <div className="form-group" style={{ marginBottom: 24 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Email <span className="req">*</span></label>
+          <input type="email" placeholder="you@example.com" className="input" style={{ fontSize: 13 }} />
+        </div>
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => done('account')}>Email me a link</button>
+      </div>
+    );
+  }
+
+  if (view === 'sso') {
+    const providers = cfg.ssoProviders.length ? cfg.ssoProviders : ['saml'];
+    return (
+      <div>
+        {back}
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Single sign-on</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Continue with the account you already use.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {providers.map(p => (
+            <button key={p} className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => done('sso')}>
+              {SSO_PROVIDER_LABELS[p] || 'Continue with SSO'}
+            </button>
+          ))}
+        </div>
+        {!cfg.ssoAutoRedirect && <MethodSwitch cfg={cfg} current="sso" onSwitch={setView} />}
+      </div>
+    );
+  }
+
+  if (view === 'guest') {
+    const fields = cfg.guestFields.length ? cfg.guestFields : ['name'];
+    return (
+      <div>
+        {back}
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Continue as Guest</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>No account needed — just a few details to get started.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+          {fields.map(f => {
+            const meta = GUEST_FIELD_META[f];
+            if (!meta) return null;
+            return (
+              <div key={f} className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: 13 }}>{meta.label} <span className="req">*</span></label>
+                <input type={meta.type} placeholder={meta.placeholder} className="input" style={{ fontSize: 13 }} />
+              </div>
+            );
+          })}
+        </div>
+        {cfg.guestUpgrade && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 20, cursor: 'pointer' }}>
+            <input type="checkbox" defaultChecked style={{ accentColor: 'var(--brand)', marginTop: 2 }} />
+            Save my details as an account after this visit
+          </label>
+        )}
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => done('guest')}>Continue</button>
+        <MethodSwitch cfg={cfg} current="guest" onSwitch={setView} />
+      </div>
+    );
+  }
+
+  if (view === 'signup') {
+    const gated = cfg.signupAccess !== 'open';
+    return (
+      <div>
+        {back}
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Create Account</p>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Register to book and manage your appointments.</p>
+
+        {gated && (
+          <div style={{ padding: '10px 12px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, marginBottom: 16, display: 'flex', gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--info)" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span style={{ fontSize: 12, color: '#1E40AF', lineHeight: 1.45 }}>
+              {cfg.signupAccess === 'invite'
+                ? 'This clinic requires an access code from your care team.'
+                : cfg.eligibilitySource === 'employer_domain'
+                  ? 'Registration is limited to eligible members — use your work email address.'
+                  : cfg.eligibilitySource === 'payer_api'
+                    ? 'We’ll check your coverage with your insurer before finishing registration.'
+                    : 'We’ll check your details against this clinic’s member list.'}
+            </span>
+          </div>
+        )}
+
+        {cfg.signupAccess === 'invite' && (
+          <div className="form-group" style={{ marginBottom: 14 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Access Code <span className="req">*</span></label>
+            <input type="text" placeholder="e.g. CLINIC-2024" className="input" style={{ fontSize: 13 }} />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 13 }}>First Name <span className="req">*</span></label>
+              <input type="text" placeholder="Jane" className="input" style={{ fontSize: 13 }} />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 13 }}>Last Name <span className="req">*</span></label>
+              <input type="text" placeholder="Doe" className="input" style={{ fontSize: 13 }} />
+            </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Date of Birth <span className="req">*</span></label>
+            <input type="date" className="input" style={{ fontSize: 13 }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Gender</label>
+            <select className="input" style={{ fontSize: 13 }}><option>Select…</option><option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option></select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Email <span className="req">*</span></label>
+            <input type="email" placeholder="jane@example.com" className="input" style={{ fontSize: 13 }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Phone {cfg.verifyPhone && <span className="req">*</span>}</label>
+            <input type="tel" placeholder="(555) 123-4567" className="input" style={{ fontSize: 13 }} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: 13 }}>Password <span className="req">*</span></label>
+            <input type="password" placeholder="Min. 8 characters" className="input" style={{ fontSize: 13 }} />
+          </div>
+        </div>
+        <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={afterSignup}>Create Account</button>
+        <MethodSwitch cfg={cfg} current="signup" onSwitch={setView} />
+      </div>
+    );
+  }
+
+  /* Sign in */
+  return (
+    <div>
+      {back}
+      <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Sign In</p>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Sign in to your account to continue.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Email</label>
+          <input type="email" placeholder="you@example.com" className="input" style={{ fontSize: 13 }} />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ fontSize: 13 }}>Password</label>
+          <input type="password" placeholder="••••••••" className="input" style={{ fontSize: 13 }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          {cfg.rememberMe ? (
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" defaultChecked style={{ accentColor: 'var(--brand)' }} />
+              Remember me
+            </label>
+          ) : <span />}
+          <button style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--brand)', cursor: 'pointer' }}>Forgot password?</button>
+        </div>
+      </div>
+      <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => done('account')}>Sign In</button>
+      {cfg.allowMagicLink && (
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
+          onClick={() => setView('magic_link')}
+        >
+          Email me a sign-in link
+        </button>
+      )}
+      <MethodSwitch cfg={cfg} current="signin" onSwitch={setView} />
     </div>
   );
 }
@@ -1423,7 +1633,7 @@ function BookedStep({ visit, ptId, onReset }) {
 // Takes a workflow's steps and a selectedPt (patient type), and
 // returns a flat array of { key, type, step } entries the preview walks through.
 
-function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchChoices = {}, skipVisitSelection = false) {
+function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchChoices = {}, skipVisitSelection = false, authMethod = null, ruleContext = {}) {
   const flat = [];
   if (!steps) return flat;
 
@@ -1446,7 +1656,53 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchCh
           b.condition === selectedPt || b.label?.toLowerCase().replace(/[^a-z]/g, '').includes(selectedPt.replace('-', ''))
         );
         if (branch?.steps?.length) {
-          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection));
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection, authMethod, ruleContext));
+        }
+        continue;
+      }
+
+      /* Lo-code rules: evaluate top-down against what this walkthrough knows.
+         Only if a rule leans on something the demo can't supply (a real form
+         answer, say) do we fall back to asking which path to simulate. */
+      if (ctype === 'rule') {
+        const ruleBranches = (step.branches || []).filter(b => b.kind === 'rule');
+        const otherwise = (step.branches || []).find(b => b.kind === 'otherwise');
+        let matched = null;
+        let undecidable = false;
+
+        for (const b of ruleBranches) {
+          if (!b.rule) continue;                    // no rule yet — never matches
+          const { value, unknown } = evalRule(b.rule, ruleContext);
+          if (unknown.length > 0) { undecidable = true; break; }
+          if (value) { matched = b; break; }
+        }
+
+        if (undecidable) {
+          const chosenId = branchChoices[step.id];
+          if (chosenId === undefined) {
+            flat.push({ key: step.id, type: 'choose_branch', step });
+            break;
+          }
+          const picked = step.branches?.find(b => b.id === chosenId || b.condition === chosenId);
+          if (picked?.steps?.length) {
+            flat.push(...flattenWorkflow(picked.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection, authMethod, ruleContext));
+          }
+          continue;
+        }
+
+        const taken = matched || otherwise;
+        if (taken?.steps?.length) {
+          flat.push(...flattenWorkflow(taken.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection, authMethod, ruleContext));
+        }
+        continue;
+      }
+
+      // How the patient signed in is already known — the entry gate settled it,
+      // so there is nothing to ask.
+      if (ctype === 'auth_method' && authMethod) {
+        const branch = step.branches?.find(b => b.condition === authMethod);
+        if (branch?.steps?.length) {
+          flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection, authMethod, ruleContext));
         }
         continue;
       }
@@ -1460,7 +1716,7 @@ function flattenWorkflow(steps, selectedPt, selectedVisitId, clinicPts, branchCh
       }
       const branch = step.branches?.find(b => b.condition === chosen);
       if (branch?.steps?.length) {
-        flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection));
+        flat.push(...flattenWorkflow(branch.steps, selectedPt, selectedVisitId, clinicPts, branchChoices, skipVisitSelection, authMethod, ruleContext));
       }
     } else {
       flat.push({ key: step.id, type: step.type, step });
@@ -1478,18 +1734,46 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
   const [currentIndex, setCurrentIndex] = useState(0);
   const [booked, setBooked] = useState(false);
   const [branchChoices, setBranchChoices] = useState({}); // stepId → branch condition
+  const [authMethod, setAuthMethod] = useState(null);      // account | sso | guest
   const bookedRef = useRef(false);
 
   const visibleVisits = room.visitOptions.filter(v => v.visible);
   const selectedVisit = visibleVisits.find(v => v.id === selectedVisitId);
   const clinicPts = clinic.patientTypes || [];
 
-  // Flatten the clinic workflow — visit_selection becomes a chooser step
+  /* Patient Access is a precondition, not a workflow step, so the entry gate is
+     prepended to the flow rather than living inside it. Once it's cleared the
+     rest of the flow knows how the patient got in. */
+  const access = useMemo(() => resolvePatientAccess(clinic, room), [clinic, room]);
+
+  /* Values a lo-code rule can be evaluated against. Deliberately partial: the
+     walkthrough doesn't collect real form answers, so `form.*` stays absent and
+     any rule touching it falls back to "pick a path to simulate". */
+  const ruleContext = useMemo(() => {
+    const visit = visibleVisits.find(v => v.id === selectedVisitId) || null;
+    const modes = visit ? (Array.isArray(visit.mode) ? visit.mode : [visit.mode]) : [];
+    return {
+      patient: { type: selectedPt ?? undefined, isReturning: authMethod === 'account' ? true : undefined },
+      auth: { method: authMethod ?? undefined },
+      visit: visit
+        ? { mode: modes[0], name: visit.name, duration: parseInt(visit.duration, 10) || undefined }
+        : {},
+      clinic: { isOpen: true },
+      insurance: { status: selectedPt === 'insurance' ? 'eligible' : undefined },
+    };
+  }, [visibleVisits, selectedVisitId, selectedPt, authMethod]);
+
+  // Flatten the clinic workflow — visit_selection becomes a chooser step.
+  // The gate is always entry 0 so step indexes stay stable once it's cleared.
   const flatSteps = useMemo(() => {
+    const gate = [{ key: '_access', type: 'access_gate' }];
     const workflow = clinic.defaultWorkflow;
-    if (!workflow?.steps) return [];
-    return flattenWorkflow(normalizeSteps(workflow.steps), selectedPt, selectedVisitId, clinicPts, branchChoices, !!initialVisitId);
-  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices, initialVisitId]);
+    if (!workflow?.steps) return gate;
+    return [
+      ...gate,
+      ...flattenWorkflow(normalizeSteps(workflow.steps), selectedPt, selectedVisitId, clinicPts, branchChoices, !!initialVisitId, authMethod, ruleContext),
+    ];
+  }, [clinic.defaultWorkflow, selectedPt, selectedVisitId, clinicPts, branchChoices, initialVisitId, authMethod, ruleContext]);
 
   const totalSteps = flatSteps.length;
   const currentStep = flatSteps[currentIndex] || null;
@@ -1511,6 +1795,7 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
     setCurrentIndex(0);
     setBooked(false);
     setBranchChoices({});
+    setAuthMethod(null);
   };
 
   const handleSelectBranch = (stepId, condition) => {
@@ -1558,6 +1843,7 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
         setSelectedPt(null);
         setBranchChoices({});
       }
+      if (prevStep?.type === 'access_gate') setAuthMethod(null);
       setCurrentIndex(i => i - 1);
     }
   };
@@ -1574,9 +1860,7 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
     : currentIndex;
 
   const STEP_LABELS = {
-    login: 'Sign In',
-    signup: 'Sign Up',
-    signup_verification: 'Verify Email',
+    access_gate: 'Get Started',
     dependant_list: 'Who Is This For?',
     visit_selection: 'Visit Selection',
     scheduling: 'Scheduling',
@@ -1663,16 +1947,12 @@ export default function PatientPreview({ room, clinic, initialVisitId = null, em
         {/* Content */}
         <div style={{ padding: 20, minHeight: 360, maxHeight: 560, overflowY: 'auto', background: '#f8f9fb' }}>
 
-          {currentView === 'login' && (
-            <LoginStep onContinue={handleNext} onBack={currentIndex > 0 ? handleBack : undefined} />
-          )}
-
-          {currentView === 'signup' && (
-            <SignupStep onContinue={handleNext} onBack={handleBack} />
-          )}
-
-          {currentView === 'signup_verification' && (
-            <SignupVerificationStep onContinue={handleNext} onBack={handleBack} />
+          {currentView === 'access_gate' && (
+            <AccountStep
+              access={access}
+              onContinue={method => { setAuthMethod(method); handleNext(); }}
+              onBack={currentIndex > 0 ? handleBack : undefined}
+            />
           )}
 
           {currentView === 'dependant_list' && (

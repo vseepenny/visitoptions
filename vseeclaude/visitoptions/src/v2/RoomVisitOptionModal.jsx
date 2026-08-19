@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DURATIONS, TYPES, SYNC_MODES, ASYNC_MODES } from '../data/initialData';
 import { PATIENT_TYPES } from '../components/PatientTypes';
 import WorkflowCustomizer, { WorkflowPreview } from './WorkflowCustomizer';
+import { resolvePatientAccess } from './patientAccess';
 import { useAnnotationPage } from './Annotations';
 import { NotesTemplatePreview } from './TemplateEditors';
 
@@ -231,7 +232,7 @@ function VisitModePicker({ modes, onChange, error }) {
 
 /* ── Component ───────────────────────────────────────────── */
 
-export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, initialTab, onSave, onClose, onSaveTemplate, onUpdateTemplate, onDeleteTemplate }) {
+export default function RoomVisitOptionModal({ existing, allowedPatientTypes, clinic, room, initialTab, onSave, onClose, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onConfigureClinic }) {
   const [form, setForm] = useState(existing ? {
     ...EMPTY, ...existing,
     notesTemplateId:  existing.notesTemplateId  ?? null,
@@ -612,6 +613,9 @@ export default function RoomVisitOptionModal({ existing, allowedPatientTypes, cl
                   workflow={form.workflowOverride}
                   onChange={wf => set('workflowOverride', wf)}
                   clinic={clinic}
+                  access={resolvePatientAccess(clinic, room)}
+                  onConfigureAccess={onConfigureClinic}
+                  accessScopeLabel="Patient Access"
                   customTemplates={clinic.workflowTemplates || []}
                   onSaveTemplate={onSaveTemplate}
                   onUpdateTemplate={onUpdateTemplate}
