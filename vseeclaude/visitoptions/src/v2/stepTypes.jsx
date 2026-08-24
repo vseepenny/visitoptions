@@ -204,3 +204,26 @@ export function createStep(type, clinic) {
       return { ...base, label };
   }
 }
+
+/* Switching what a conditional branches on rebuilds its branch set, keeping any
+   steps whose branch survives the change (matched by condition key). Shared by
+   the vertical editor and the graph inspector so they can't drift. */
+export function changeConditionType(step, newType, clinic) {
+  const newBranches = branchesForCondition(newType, clinic);
+  const oldMap = {};
+  for (const b of (step.branches || [])) {
+    if (b.condition) oldMap[b.condition] = b.steps || [];
+  }
+  for (const b of newBranches) {
+    if (oldMap[b.condition]) b.steps = oldMap[b.condition];
+  }
+  // Keep the step name in sync while it is still auto-generated; a name the
+  // admin typed themselves is left alone.
+  const autoLabels = CONDITION_TYPES.map(ct => `By ${ct.label}`);
+  const label = (!step.label || step.label === 'Conditional Branch' || autoLabels.includes(step.label))
+    ? `By ${CONDITION_TYPES.find(ct => ct.id === newType)?.label || 'Condition'}`
+    : step.label;
+  const next = { ...step, conditionType: newType, branches: newBranches, label };
+  if (newType !== 'form_answer') { delete next.conditionFormId; delete next.conditionFieldId; }
+  return next;
+}

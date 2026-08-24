@@ -1,5 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { STEP_TYPES, CONDITION_TYPES } from './stepTypes';
+import { STEP_TYPES, CONDITION_TYPES, changeConditionType, uid as freshId } from './stepTypes';
+import { RuleEditor } from './RuleEditor';
+import { scopeForStep, conditionIssue } from './flowScope';
+import { formFields } from './forms';
 import { normalizeSteps } from './workflowUtils';
 import { accessConfig, accessSummary, guestBlockReason } from './patientAccess';
 import { layoutFlow, elbowPath } from './flowLayout';
@@ -155,50 +158,116 @@ function flatten(steps, depth = 0, out = []) {
 
 function Outline({ steps, selection, onPick }) {
   const rows = flatten(steps);
+  /* Numbering is what makes this read as an outline of *this* flow rather than
+     a palette of step types you could drag in. Top-level steps get 1, 2, 3;
+     steps inside a branch get 3a.1, 3a.2 and so on. */
+  const numbered = [];
+  const counters = [0];
+  let branchLetter = {};
+  for (const r of rows) {
+    const d = r.depth;
+    if (r.branch) {
+      const key = d;
+      branchLetter[key] = (branchLetter[key] || 0) + 1;
+      numbered.push({ ...r, marker: String.fromCharCode(96 + branchLetter[key]) });
+      counters[d + 1] = 0;
+      continue;
+    }
+    counters[d] = (counters[d] || 0) + 1;
+    for (let i = d + 1; i < counters.length; i++) counters[i] = 0;
+    if (d === 0) branchLetter = {};
+    numbered.push({ ...r, marker: String(counters[d]) });
+  }
+
   return (
     <div style={{
-      width: 208, flexShrink: 0, borderRight: '1px solid var(--border)',
-      height: VIEWPORT_H, overflowY: 'auto', background: 'var(--grey-50)', padding: '8px 6px',
+      width: 214, flexShrink: 0, borderRight: '1px solid var(--border)',
+      height: VIEWPORT_H, overflowY: 'auto', background: 'white',
     }}>
-      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', padding: '2px 6px 6px' }}>
-        Outline
-      </p>
-      {rows.length === 0 && <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)', padding: '0 6px' }}>No steps yet.</p>}
-      {rows.map((r, i) => {
-        if (r.branch) {
-          const color = r.branch.kind === 'otherwise' ? 'var(--grey-500)' : BRANCH_COLORS[i % BRANCH_COLORS.length];
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 1, background: 'white',
+        padding: '9px 12px 7px', borderBottom: '1px solid var(--border)',
+      }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-secondary)' }}>
+          Flow outline
+        </p>
+        <p style={{ fontSize: 10.5, color: 'var(--text-tertiary)', marginTop: 1 }}>
+          {countSteps(steps)} steps, in order
+        </p>
+      </div>
+
+      <div style={{ padding: '6px 0 10px' }}>
+        {numbered.length === 0 && (
+          <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)', padding: '8px 12px' }}>No steps yet.</p>
+        )}
+        {numbered.map((r) => {
+          const indent = 12 + r.depth * 11;
+
+          if (r.branch) {
+            const color = r.branch.kind === 'otherwise' ? 'var(--grey-500)' : BRANCH_COLORS[(r.depth + (r.marker.charCodeAt(0) - 97)) % BRANCH_COLORS.length];
+            return (
+              <div key={`b${r.branch.id}`} style={{ position: 'relative', paddingLeft: indent, paddingRight: 8, marginTop: 3 }}>
+                <Guides depth={r.depth} />
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, padding: '2px 0' }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', minWidth: 12 }}>{r.marker})</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.04em',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{r.branch.label}</span>
+                </div>
+              </div>
+            );
+          }
+
+          const def = STEP_TYPES.find(t => t.id === r.step.type);
+          const on = selection.has(r.step.id);
+          const isCond = r.step.type === 'conditional';
           return (
-            <div key={`b${r.branch.id}`} style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '2px 6px', paddingLeft: 6 + r.depth * 9,
-              fontSize: 10.5, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.03em',
-            }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.branch.label}</span>
+            <div key={r.step.id} style={{ position: 'relative', paddingLeft: indent, paddingRight: 6 }}>
+              <Guides depth={r.depth} />
+              <button
+                onClick={() => onPick(r.step.id)}
+                style={{
+                  display: 'flex', alignItems: 'baseline', gap: 6, width: '100%',
+                  padding: '3px 6px 3px 0', background: 'none', border: 'none',
+                  borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                  color: on ? 'var(--brand)' : 'var(--text-primary)',
+                }}
+                onMouseEnter={e => { if (!on) e.currentTarget.style.color = 'var(--brand)'; }}
+                onMouseLeave={e => { if (!on) e.currentTarget.style.color = 'var(--text-primary)'; }}
+              >
+                <span style={{
+                  fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                  color: on ? 'var(--brand)' : 'var(--text-tertiary)', minWidth: 13, flexShrink: 0,
+                }}>{r.marker}.</span>
+                <span style={{
+                  fontSize: 11.5, fontWeight: on ? 700 : isCond ? 600 : 400,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  textDecoration: on ? 'underline' : 'none', textUnderlineOffset: 2,
+                }}>
+                  {r.step.label || def?.label}
+                </span>
+              </button>
             </div>
           );
-        }
-        const def = STEP_TYPES.find(t => t.id === r.step.type);
-        const on = selection.has(r.step.id);
-        return (
-          <button
-            key={r.step.id}
-            onClick={() => onPick(r.step.id)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-              padding: '3px 6px', paddingLeft: 6 + r.depth * 9,
-              background: on ? 'var(--brand-50)' : 'none',
-              border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-              fontSize: 11.5, fontWeight: on ? 700 : 500,
-              color: on ? 'var(--brand)' : 'var(--text-primary)',
-            }}
-          >
-            <span style={{ color: def?.color, display: 'flex', flexShrink: 0, opacity: 0.9 }}>{def?.icon}</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.step.label || def?.label}</span>
-          </button>
-        );
-      })}
+        })}
+      </div>
     </div>
+  );
+}
+
+/* Indent guides — the vertical rules that make nesting legible in a tree. */
+function Guides({ depth }) {
+  if (depth === 0) return null;
+  return (
+    <>
+      {Array.from({ length: depth }, (_, i) => (
+        <span key={i} style={{
+          position: 'absolute', left: 16 + i * 11, top: 0, bottom: 0,
+          width: 1, background: 'var(--border)', pointerEvents: 'none',
+        }} />
+      ))}
+    </>
   );
 }
 
@@ -321,15 +390,19 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
   const [size, setSize] = useState({ w: 800, h: VIEWPORT_H });
   const [rootW, setRootW] = useState(900);
   const [outlineOn, setOutlineOn] = useState(showOutline);
+  const [inspectorOn, setInspectorOn] = useState(true);
   const viewportRef = useRef(null);
   const rootRef = useRef(null);
   const panRef = useRef(null);
 
-  /* The outline is a genuine win on a long flow, but it costs ~210px — in a
-     784px container that leaves the canvas too cramped to read. So it only
-     offers itself when there's room for both. */
-  const roomForOutline = rootW >= 700;
+  /* Side panels cost width the canvas needs. The inspector earns its place
+     first — it's where editing happens — so it appears from 660px up, and the
+     outline only once there's room for both. */
+  const INSPECTOR_W = 268;
+  const roomForInspector = rootW >= 660;
+  const roomForOutline = rootW >= 1000;
   const outlineVisible = outlineOn && roomForOutline;
+  const inspectorVisible = inspectorOn && roomForInspector;
 
   const vertical = axis === 'vertical';
   const guestAllowed = accessConfig(access).allowGuest;
@@ -468,7 +541,7 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
   const actions = useRef({});
   useEffect(() => { actions.current = { deleteSelected, copySelected, pasteClipboard, fit }; });
   // Re-fit when the flow's shape changes, or when the space available for it does
-  useEffect(() => { actions.current.fit?.(); }, [layout.width, layout.height, outlineVisible, size.w, size.h]);
+  useEffect(() => { actions.current.fit?.(); }, [layout.width, layout.height, outlineVisible, inspectorVisible, size.w, size.h]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -503,8 +576,14 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
           className={`btn btn-xs ${outlineVisible ? 'btn-secondary' : 'btn-ghost'}`}
           onClick={() => setOutlineOn(o => !o)}
           disabled={!roomForOutline}
-          title={roomForOutline ? 'Toggle the outline list' : 'Not enough width for the outline alongside the canvas'}
+          title={roomForOutline ? 'Toggle the flow outline' : 'Needs ~1000px of width to show alongside the canvas and inspector'}
         >Outline</button>
+        <button
+          className={`btn btn-xs ${inspectorVisible ? 'btn-secondary' : 'btn-ghost'}`}
+          onClick={() => setInspectorOn(o => !o)}
+          disabled={!roomForInspector}
+          title={roomForInspector ? 'Toggle the step editor' : 'Not enough width for the side editor'}
+        >Editor</button>
         <button className="btn btn-ghost btn-xs" onClick={() => setJumping(true)} title="Jump to a step (⌘K)">⌘K Jump</button>
         <button className="btn btn-ghost btn-xs" onClick={() => setCollapsed(new Set(allConditionalIds(steps)))}>Collapse all</button>
         <button className="btn btn-ghost btn-xs" onClick={() => setCollapsed(new Set())}>Expand all</button>
@@ -589,10 +668,13 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
               }}>continues straight on</div>
             ))}
 
-            {/* Insert points */}
+            {/* Insert points — a real affordance, not a faint dot. Generous
+                transparent hit area, branded circle, and a label on hover so
+                it's obvious what clicking does. */}
             {layout.slots.map((slot, i) => {
               const key = `${slot.containerId || 'root'}-${slot.branchIndex ?? '-'}-${slot.index}-${i}`;
               const active = hoverSlot === key;
+              const HIT = 30;
               return (
                 <button
                   key={key}
@@ -601,16 +683,42 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
                   onMouseDown={e => { e.stopPropagation(); onAddStep?.(slot); }}
                   title="Insert a step here"
                   style={{
-                    position: 'absolute', left: slot.x - 9, top: slot.y - 9,
-                    width: 18, height: 18, borderRadius: '50%', padding: 0,
-                    border: `1.5px ${active ? 'solid' : 'dashed'} ${active ? 'var(--brand)' : 'var(--border-strong)'}`,
-                    background: active ? 'var(--brand)' : 'white',
-                    color: active ? 'white' : 'var(--text-tertiary)',
-                    fontSize: 12, lineHeight: 1, cursor: 'pointer',
+                    position: 'absolute', left: slot.x - HIT / 2, top: slot.y - HIT / 2,
+                    width: HIT, height: HIT, padding: 0, border: 'none', background: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    opacity: active ? 1 : 0.5, transition: 'all 120ms', zIndex: 3,
+                    cursor: 'pointer', zIndex: 4,
                   }}
-                >+</button>
+                >
+                  {/* Neutral at rest — 18 of these along a long flow, so brand
+                      colour on every one competes with the steps. Visibility
+                      comes from size, a solid edge and the shadow lifting it off
+                      the connector; green is saved for hover. */}
+                  <span style={{
+                    width: active ? 26 : 22, height: active ? 26 : 22, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: active ? 'var(--brand)' : 'white',
+                    border: `2px solid ${active ? 'var(--brand)' : 'var(--border-strong)'}`,
+                    color: active ? 'white' : 'var(--text-secondary)',
+                    boxShadow: active
+                      ? '0 0 0 4px rgba(13,135,92,0.18), 0 2px 6px rgba(0,0,0,0.12)'
+                      : '0 1px 3px rgba(0,0,0,0.10)',
+                    transition: 'all 120ms',
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                  </span>
+                  {active && (
+                    <span style={{
+                      position: 'absolute',
+                      ...(vertical ? { left: '100%', marginLeft: 8 } : { top: '100%', marginTop: 6 }),
+                      padding: '3px 8px', borderRadius: 'var(--r-full)',
+                      background: 'var(--brand)', color: 'white',
+                      fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap',
+                      pointerEvents: 'none', boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    }}>Add step</span>
+                  )}
+                </button>
               );
             })}
 
@@ -645,9 +753,38 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
             {vertical ? 'scroll to move down the flow' : 'scroll to move along the flow'} · ⌘scroll zoom · dbl-click rename · shift-click multi · ⌘C/⌘V · ⌫ delete
           </div>
         </div>
+
+        {inspectorVisible && (
+          <Inspector
+            step={selectedStep}
+            count={selection.size}
+            clinic={clinic}
+            steps={steps}
+            access={access}
+            onChange={commit}
+            onRename={rename}
+            width={INSPECTOR_W}
+          />
+        )}
       </div>
 
-      <Inspector step={selectedStep} count={selection.size} clinic={clinic} steps={steps} onChange={commit} onRename={rename} />
+      {/* Too narrow for a side panel — fall back to a strip under the canvas */}
+      {!inspectorVisible && selectedStep && (
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: STEP_TYPES.find(t => t.id === selectedStep.type)?.color, display: 'flex' }}>
+            {STEP_TYPES.find(t => t.id === selectedStep.type)?.icon}
+          </span>
+          <input
+            value={selectedStep.label || ''}
+            onChange={e => rename(selectedStep.id, e.target.value)}
+            className="input"
+            style={{ height: 28, fontSize: 12.5, fontWeight: 600, maxWidth: 240 }}
+          />
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            Widen the panel to edit {selectedStep.type === 'conditional' ? 'this branch condition' : 'its settings'}.
+          </span>
+        </div>
+      )}
 
       {jumping && (
         <JumpPalette
@@ -676,24 +813,33 @@ function findParentOf(steps, id, containerId = null, branchIndex = null) {
 }
 
 /* ── Inspector ────────────────────────────────────────────── */
-// Everything that used to pad out every card: the description, the form
-// picker, the branch list.
+// Lives on the right, beside the canvas. Holds everything that used to pad out
+// every card: the description, the form picker, and the full conditional
+// editor — condition type, its operands, and the per-branch rules.
 
-function Inspector({ step, count, clinic, steps, onChange, onRename }) {
+function Inspector({ step, count, clinic, steps, access, onChange, onRename, width }) {
+  const shell = {
+    width, flexShrink: 0, borderLeft: '1px solid var(--border)',
+    height: VIEWPORT_H, overflowY: 'auto', background: 'white', padding: '12px 14px',
+  };
+
   if (count > 1) {
     return (
-      <div style={inspectorShell}>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          <strong>{count} steps selected.</strong> ⌘C to copy, ⌫ to delete, or click one to inspect it.
+      <div style={shell}>
+        <InspectorHeader title={`${count} steps selected`} />
+        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          ⌘C to copy, ⌫ to delete, or click a single step to edit it.
         </p>
       </div>
     );
   }
+
   if (!step) {
     return (
-      <div style={inspectorShell}>
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Select a step to edit it. Every branch is visible on the canvas — nothing is hidden behind a tab.
+      <div style={shell}>
+        <InspectorHeader title="Nothing selected" />
+        <p style={{ fontSize: 11.5, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+          Click a step on the canvas or in the outline to edit it here.
         </p>
       </div>
     );
@@ -702,69 +848,249 @@ function Inspector({ step, count, clinic, steps, onChange, onRename }) {
   const def = STEP_TYPES.find(t => t.id === step.type);
   const isCond = step.type === 'conditional';
   const forms = allForms(clinic);
+  const set = (patch) => onChange(mapStep(steps, step.id, s => ({ ...s, ...patch })));
+  const replace = (nextStep) => onChange(mapStep(steps, step.id, () => nextStep));
 
   return (
-    <div style={inspectorShell}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ color: def?.color, display: 'flex' }}>{def?.icon}</span>
+    <div style={shell}>
+      <InspectorHeader title={def?.category || 'Step'} icon={def?.icon} color={def?.color} />
+
+      <div className="form-group" style={{ marginBottom: 12 }}>
+        <label style={fieldLabel}>Name</label>
         <input
           value={step.label || ''}
           onChange={e => onRename(step.id, e.target.value)}
           className="input"
-          style={{ height: 28, fontSize: 12.5, fontWeight: 600, maxWidth: 260 }}
+          style={{ height: 30, fontSize: 12.5, fontWeight: 600 }}
         />
-        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{def?.category}</span>
       </div>
 
       {def?.desc && !isCond && (
-        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 8 }}>{def.desc}</p>
+        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{def.desc}</p>
       )}
 
       {step.type === 'form' && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text-secondary)' }}>
-          Form
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <label style={fieldLabel}>Form</label>
           <select
             value={step.formId || ''}
             onChange={e => {
               const formId = e.target.value || null;
               const f = forms.find(x => x.id === formId);
-              onChange(mapStep(steps, step.id, s => ({ ...s, formId, label: f?.name || s.label })));
+              set({ formId, label: f?.name || step.label });
             }}
             className="input"
-            style={{ height: 28, fontSize: 12, padding: '0 26px 0 8px', maxWidth: 240 }}
+            style={{ height: 30, fontSize: 12, padding: '0 26px 0 8px' }}
           >
             <option value="">— Select a form —</option>
             {forms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
-        </label>
+        </div>
+      )}
+
+      {step.type === 'pharmacy' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          <label style={fieldLabel}>Options</label>
+          {[
+            { key: 'allowSearch', label: 'Directory search' },
+            { key: 'showMap', label: 'Show map' },
+            { key: 'allowMailOrder', label: 'Mail-order option' },
+            { key: 'allowSkip', label: 'Allow skip' },
+          ].map(o => (
+            <label key={o.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, cursor: 'pointer' }}>
+              <input type="checkbox" checked={step[o.key] ?? true} onChange={e => set({ [o.key]: e.target.checked })} style={{ accentColor: 'var(--brand)' }} />
+              {o.label}
+            </label>
+          ))}
+        </div>
       )}
 
       {isCond && (
-        <div>
-          <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 6 }}>
-            Branching on <strong>{CONDITION_TYPES.find(c => c.id === step.conditionType)?.label}</strong>.
-            {step.conditionType === 'rule' && ' Rules are checked top to bottom; the first match runs.'}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {(step.branches || []).map((b, bi) => (
-              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: b.kind === 'otherwise' ? 'var(--grey-500)' : BRANCH_COLORS[bi % BRANCH_COLORS.length] }} />
-                <input
-                  value={b.label || ''}
-                  onChange={e => onChange(updateBranch(steps, step.id, bi, { label: e.target.value }))}
-                  className="input"
-                  style={{ height: 24, fontSize: 11.5, maxWidth: 180 }}
-                />
-                <span style={{ color: 'var(--text-tertiary)' }}>{(b.steps || []).length} steps</span>
-                <span style={{ flex: 1 }} />
-                <button className="btn btn-ghost btn-xs" onClick={() => onChange(duplicateBranch(steps, step.id, bi, uid))} title="Duplicate this branch and its steps">Duplicate</button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ConditionalInspector
+          step={step}
+          steps={steps}
+          clinic={clinic}
+          access={access}
+          onChange={onChange}
+          onReplace={replace}
+        />
       )}
     </div>
   );
 }
 
-const inspectorShell = { padding: '12px 14px', borderTop: '1px solid var(--border)', background: 'white', minHeight: 76 };
+function InspectorHeader({ title, icon, color }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+      paddingBottom: 8, borderBottom: '1px solid var(--border)',
+    }}>
+      {icon && <span style={{ color, display: 'flex' }}>{icon}</span>}
+      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-secondary)' }}>
+        {title}
+      </span>
+    </div>
+  );
+}
+
+const fieldLabel = {
+  display: 'block', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase',
+  letterSpacing: '0.05em', color: 'var(--text-tertiary)', marginBottom: 4,
+};
+
+/* ── Conditional editor ───────────────────────────────────── */
+// The graph view previously showed the condition type as read-only text, so
+// there was no way to change what a branch tested. This is the full editor:
+// condition type, its operands, prerequisite warnings, and per-branch rules.
+
+function ConditionalInspector({ step, steps, clinic, access, onChange, onReplace }) {
+  const scope = scopeForStep(steps, step.id, clinic, access);
+  const issue = conditionIssue(step, scope, clinic);
+  const isRule = (step.conditionType || 'patient_type') === 'rule';
+  const branches = step.branches || [];
+
+  const setBranch = (bi, patch) => onChange(updateBranch(steps, step.id, bi, patch));
+
+  const addRule = () => {
+    const next = [...branches];
+    const at = next.findIndex(b => b.kind === 'otherwise');
+    const n = next.filter(b => b.kind === 'rule').length + 1;
+    next.splice(at === -1 ? next.length : at, 0, { id: freshId(), kind: 'rule', label: `Rule ${n}`, expr: '', rule: null, steps: [] });
+    onReplace({ ...step, branches: next });
+  };
+
+  const moveRule = (from, dir) => {
+    const to = from + dir;
+    const next = [...branches];
+    if (to < 0 || to >= next.length || next[to].kind === 'otherwise' || next[from].kind === 'otherwise') return;
+    [next[from], next[to]] = [next[to], next[from]];
+    onReplace({ ...step, branches: next });
+  };
+
+  const removeRule = (bi) => onReplace({ ...step, branches: branches.filter((_, i) => i !== bi) });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label style={fieldLabel}>Branch on</label>
+        <select
+          value={step.conditionType || 'patient_type'}
+          onChange={e => onReplace(changeConditionType(step, e.target.value, clinic))}
+          className="input"
+          style={{ height: 30, fontSize: 12, padding: '0 26px 0 8px' }}
+        >
+          {CONDITION_TYPES.map(ct => <option key={ct.id} value={ct.id}>{ct.label}</option>)}
+        </select>
+      </div>
+
+      {issue && (
+        <div style={warnBox}>
+          <strong>
+            {issue.kind === 'missing_step' && `Add a ${issue.step} step above this. `}
+            {issue.kind === 'stale_form' && 'Form is no longer in scope. '}
+            {issue.kind === 'no_forms' && 'No form to test. '}
+            {issue.kind === 'no_dob' && 'No date of birth collected. '}
+          </strong>
+          {issue.why}
+        </div>
+      )}
+
+      {/* Form-answer needs a form and a question, both scoped to what runs earlier */}
+      {step.conditionType === 'form_answer' && (() => {
+        const selForm = scope.forms.find(f => f.id === step.conditionFormId);
+        const fields = formFields(selForm);
+        return (
+          <>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label style={fieldLabel}>Form</label>
+              <select
+                value={step.conditionFormId || ''}
+                onChange={e => onReplace({ ...step, conditionFormId: e.target.value || null, conditionFieldId: null })}
+                className="input"
+                style={{ height: 30, fontSize: 12, padding: '0 26px 0 8px' }}
+              >
+                <option value="">{scope.forms.length ? '— Select a form —' : '— No forms run before this —'}</option>
+                {scope.forms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+            {selForm && (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={fieldLabel}>Question</label>
+                <select
+                  value={step.conditionFieldId || ''}
+                  onChange={e => onReplace({ ...step, conditionFieldId: e.target.value || null })}
+                  className="input"
+                  style={{ height: 30, fontSize: 12, padding: '0 26px 0 8px' }}
+                >
+                  <option value="">— Select a question —</option>
+                  {fields.length === 0 && <option disabled>No fields on this form</option>}
+                  {fields.map(f => <option key={f.id} value={f.id}>{f.label || f.id}</option>)}
+                </select>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
+          <label style={{ ...fieldLabel, marginBottom: 0 }}>{isRule ? 'Rules' : 'Branches'}</label>
+          <span style={{ flex: 1 }} />
+          {isRule && <button className="btn btn-ghost btn-xs" onClick={addRule}>+ Add rule</button>}
+        </div>
+
+        {isRule && (
+          <p style={{ fontSize: 10.5, color: 'var(--text-tertiary)', lineHeight: 1.45, marginBottom: 8 }}>
+            Checked top to bottom. The first match runs; anyone left over takes Otherwise.
+          </p>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {branches.map((b, bi) => {
+            const color = b.kind === 'otherwise' ? 'var(--grey-500)' : BRANCH_COLORS[bi % BRANCH_COLORS.length];
+            return (
+              <div key={b.id} style={{
+                border: '1px solid var(--border)', borderLeft: `3px solid ${color}`,
+                borderRadius: 'var(--r-md)', padding: '8px 9px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                  {b.kind === 'otherwise' ? (
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color, flex: 1 }}>{b.label}</span>
+                  ) : (
+                    <input
+                      value={b.label || ''}
+                      onChange={e => setBranch(bi, { label: e.target.value })}
+                      className="input"
+                      style={{ height: 24, fontSize: 11.5, fontWeight: 600, flex: 1, minWidth: 0 }}
+                    />
+                  )}
+                  <span style={{ fontSize: 10, color: 'var(--text-tertiary)', flexShrink: 0 }}>{(b.steps || []).length}</span>
+                  {isRule && b.kind === 'rule' && (
+                    <>
+                      <button className="btn-icon" style={miniBtn} title="Check earlier" disabled={bi === 0} onClick={() => moveRule(bi, -1)}>↑</button>
+                      <button className="btn-icon" style={miniBtn} title="Check later" disabled={branches[bi + 1]?.kind !== 'rule'} onClick={() => moveRule(bi, 1)}>↓</button>
+                      <button className="btn-icon danger" style={miniBtn} title="Remove rule" disabled={branches.filter(x => x.kind === 'rule').length <= 1} onClick={() => removeRule(bi)}>×</button>
+                    </>
+                  )}
+                  {!isRule && (
+                    <button className="btn btn-ghost btn-xs" style={{ flexShrink: 0 }} onClick={() => onChange(duplicateBranch(steps, step.id, bi, freshId))} title="Duplicate this branch and its steps">Copy</button>
+                  )}
+                </div>
+
+                {b.kind === 'rule' && (
+                  <RuleEditor branch={b} variables={scope.variables} onChange={nb => setBranch(bi, nb)} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const miniBtn = { width: 20, height: 20, flexShrink: 0, fontSize: 11, lineHeight: 1, padding: 0 };
+const warnBox = {
+  padding: '7px 10px', background: 'var(--warning-light)', border: '1px solid #FDE68A',
+  borderRadius: 'var(--r-md)', fontSize: 11, color: '#92400E', lineHeight: 1.45,
+};

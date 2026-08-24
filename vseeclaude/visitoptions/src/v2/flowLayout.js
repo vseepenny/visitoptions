@@ -20,7 +20,7 @@ export const NODE_H = 46;
 const AXES = {
   vertical: {
     nodeMain: NODE_H, nodeCross: NODE_W,
-    mainGap: 30, crossGap: 20,
+    mainGap: 40, crossGap: 20,
     labelMain: 20, labelCross: 0,   // branch name sits at the top of its column
     terminalMain: NODE_H, terminalCross: 132,
   },
