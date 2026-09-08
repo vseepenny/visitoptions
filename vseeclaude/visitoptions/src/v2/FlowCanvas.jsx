@@ -8,9 +8,10 @@ import { accessConfig, accessSummary, guestBlockReason } from './patientAccess';
 import { layoutFlow, elbowPath } from './flowLayout';
 import {
   findStep, mapStep, removeSteps, insertSteps, updateBranch, duplicateBranch, reId,
-  countSteps, allConditionalIds,
+  countSteps, allConditionalIds, pathOf, moveStep,
 } from './flowTree';
 import { allForms } from './forms';
+import { FormStepEditor } from './FormStepEditor';
 
 /* Flow canvas.
  *
@@ -35,7 +36,7 @@ const VIEWPORT_H = 520;
 
 /* ── Node ─────────────────────────────────────────────────── */
 
-function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleCollapse }) {
+function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleCollapse, onDelete, onDragStart, onDragMove, onDragEnd, onDragCancel, dragOffset }) {
   const { step } = node;
   const def = STEP_TYPES.find(t => t.id === step.type);
   const isCond = step.type === 'conditional';
@@ -49,7 +50,19 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
   return (
     <div
       data-node-id={step.id}
-      onMouseDown={e => { e.stopPropagation(); onSelect(step.id, e.shiftKey); }}
+      onPointerDown={e => {
+        e.stopPropagation();
+        onSelect(step.id, e.shiftKey);
+        /* Capture routes every later move and the release back to this node,
+           whatever the pointer is over by then — without it a release over a
+           slot button, the panel or outside the canvas never reaches the
+           handler and the step stays stuck to the cursor. */
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* older browsers: window fallback */ }
+        onDragStart(step.id, e);
+      }}
+      onPointerMove={e => onDragMove(e)}
+      onPointerUp={e => onDragEnd(e)}
+      onPointerCancel={() => onDragCancel()}
       style={{
         position: 'absolute', left: node.x, top: node.y, width: node.w, height: node.h,
         display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 10px',
@@ -57,12 +70,27 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
         border: `1.5px solid ${selected ? 'var(--brand)' : isCond ? 'var(--warning)' : 'var(--border)'}`,
         borderLeft: `4px solid ${selected ? 'var(--brand)' : def?.color || 'var(--border)'}`,
         borderRadius: 'var(--r-md)',
-        boxShadow: selected ? '0 0 0 3px rgba(13,135,92,0.15)' : '0 1px 2px rgba(0,0,0,0.05)',
-        cursor: 'pointer', userSelect: 'none', boxSizing: 'border-box',
-        transition: 'box-shadow 120ms, border-color 120ms',
+        boxShadow: dragOffset
+          ? '0 8px 20px rgba(0,0,0,0.18)'
+          : selected ? '0 0 0 3px rgba(13,135,92,0.15)' : '0 1px 2px rgba(0,0,0,0.05)',
+        cursor: dragOffset ? 'grabbing' : 'pointer', userSelect: 'none', boxSizing: 'border-box',
+        transition: dragOffset ? 'none' : 'box-shadow 120ms, border-color 120ms',
+        ...(dragOffset && {
+          transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
+          zIndex: 20, opacity: 0.9,
+        }),
       }}
       title={def?.desc}
     >
+      <span style={{ color: 'var(--text-tertiary)', display: 'flex', flexShrink: 0, marginRight: -4, lineHeight: 1 }}
+        title="Drag to reorder">
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor">
+          <circle cx="2" cy="3" r="1"/><circle cx="6" cy="3" r="1"/>
+          <circle cx="2" cy="7" r="1"/><circle cx="6" cy="7" r="1"/>
+          <circle cx="2" cy="11" r="1"/><circle cx="6" cy="11" r="1"/>
+        </svg>
+      </span>
+
       <span style={{ color: def?.color, display: 'flex', flexShrink: 0 }}>{def?.icon}</span>
 
       <span style={{ flex: 1, minWidth: 0 }}>
@@ -84,7 +112,7 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
 
       {isCond && (
         <button
-          onMouseDown={e => { e.stopPropagation(); onToggleCollapse(step.id); }}
+          onPointerDown={e => { e.stopPropagation(); onToggleCollapse(step.id); }}
           title={collapsed ? 'Expand branches' : 'Collapse branches'}
           style={{
             width: 20, height: 20, flexShrink: 0, borderRadius: 4, cursor: 'pointer', padding: 0,
@@ -94,6 +122,25 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
             {collapsed ? <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></> : <line x1="5" y1="12" x2="19" y2="12"/>}
+          </svg>
+        </button>
+      )}
+
+      {/* Removing was ⌫-only, which is invisible next to the + that adds — and
+          dead the moment focus sits in the settings panel. */}
+      {selected && (
+        <button
+          onPointerDown={e => { e.stopPropagation(); e.preventDefault(); }}
+          onClick={e => { e.stopPropagation(); onDelete(step.id); }}
+          title={isCond ? 'Remove this branch and the steps inside it' : 'Remove this step'}
+          style={{
+            width: 20, height: 20, flexShrink: 0, borderRadius: 4, cursor: 'pointer', padding: 0,
+            border: '1px solid var(--border-strong, #D1D5DB)', background: 'white',
+            color: 'var(--danger, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       )}
@@ -265,7 +312,7 @@ function Minimap({ layout, view, size, onJump }) {
 
   return (
     <div
-      onMouseDown={e => { e.stopPropagation(); jump(e); }}
+      onPointerDown={e => { e.stopPropagation(); jump(e); }}
       title="Click to jump"
       style={{
         position: 'absolute', right: 10, bottom: 10, width: mw + 12, height: mh + 12,
@@ -353,13 +400,15 @@ function JumpPalette({ steps, onPick, onClose }) {
 
 /* ── Canvas ───────────────────────────────────────────────── */
 
-export default function FlowCanvas({ workflow, onChange, clinic, access, onAddStep, axis = 'vertical', showOutline = true }) {
+export default function FlowCanvas({ workflow, onChange, clinic, onClinicChange, access, onAddStep, axis = 'vertical', showOutline = true }) {
   const steps = useMemo(() => normalizeSteps(workflow?.steps || []), [workflow]);
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [selection, setSelection] = useState(() => new Set());
   const [clipboard, setClipboard] = useState(null);
   const [view, setView] = useState({ x: PAD, y: PAD, z: 1 });
   const [hoverSlot, setHoverSlot] = useState(null);
+  const [drag, setDrag] = useState(null);          // { id, x, y, slotKey } once past the threshold
+  const dragRef = useRef(null);                    // pointer origin, before we know it's a drag
   const [panning, setPanning] = useState(false);
   const [jumping, setJumping] = useState(false);
   const [size, setSize] = useState({ w: 800, h: VIEWPORT_H });
@@ -467,10 +516,111 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
       setView(v => ({ ...v, x: p.ox + (e.clientX - p.sx), y: p.oy + (e.clientY - p.sy) }));
     };
     const up = () => { panRef.current = null; setPanning(false); };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
   }, []);
+
+  /* ── Drag to reorder ──
+     Nodes still can't be dropped at an arbitrary position — array order IS
+     execution order, so the only legal targets are the insert slots the +
+     buttons already mark. A drag lifts a node, highlights the nearest legal
+     slot, and drops into it.
+
+     Custom pointer handling rather than HTML5 drag-and-drop: the canvas is
+     inside a translate/scale transform, where native drag images and drop
+     coordinates go wrong. */
+
+  const DRAG_THRESHOLD = 4;    // screen px before a click becomes a drag
+
+  const startDrag = (id, e) => {
+    dragRef.current = { id, sx: e.clientX, sy: e.clientY, active: false, target: null };
+  };
+
+  /* Slots inside the dragged step's own branches would reparent it into itself,
+     and the two slots either side of where it already sits are no-ops. */
+  const legalSlots = (id) => {
+    const found = findStep(steps, id);
+    if (!found) return [];
+    const ownIds = new Set(allConditionalIds([found.step]));
+    const from = pathOf(steps, id);
+    return layout.slots.map((slot, i) => ({ ...slot, key: slotKey(slot, i) })).filter(slot => {
+      if (slot.containerId && ownIds.has(slot.containerId)) return false;
+      const same = (from?.containerId ?? null) === (slot.containerId ?? null)
+        && (from?.branchIndex ?? null) === (slot.branchIndex ?? null);
+      if (same && (slot.index === found.index || slot.index === found.index + 1)) return false;
+      return true;
+    });
+  };
+
+  /* Nearest legal slot to the pointer, with no distance cutoff: a drag that
+     ends anywhere over the canvas commits somewhere sensible. Requiring the
+     release to land near a 22px dot is what made drops silently do nothing —
+     you aim at where the step should sit, not at the dot. Releasing outside
+     the canvas, or pressing Escape, cancels instead. */
+  const dropTargetFor = (id, e) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return { target: null, inside: false };
+    const inside = e.clientX >= rect.left && e.clientX <= rect.right
+      && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    const fx = (e.clientX - rect.left - view.x) / view.z;
+    const fy = (e.clientY - rect.top - view.y) / view.z;
+
+    let best = null;
+    let bestDist = Infinity;
+    for (const slot of legalSlots(id)) {
+      const dist = Math.hypot(slot.x - fx, slot.y - fy);
+      if (dist < bestDist) { bestDist = dist; best = slot; }
+    }
+    return { target: best, inside };
+  };
+
+  const dragMove = (e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.sx;
+    const dy = e.clientY - d.sy;
+    if (!d.active && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+    d.active = true;
+
+    const { target, inside } = dropTargetFor(d.id, e);
+    d.target = inside ? target : null;
+    setDrag({ id: d.id, x: dx / view.z, y: dy / view.z, slot: d.target });
+  };
+
+  const dragEnd = (e) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    setDrag(null);
+    if (!d?.active) return;
+    const target = e ? dropTargetFor(d.id, e) : { target: d.target, inside: true };
+    const slot = e ? (target.inside ? target.target : null) : d.target;
+    if (slot) commit(moveStep(steps, d.id, slot));
+  };
+
+  const dragCancel = () => { dragRef.current = null; setDrag(null); };
+
+  /* Safety net for a release the captured node never sees — a pointer lost to
+     a browser gesture, or a mouseup outside the document. */
+  useEffect(() => {
+    const up = (e) => { if (dragRef.current) dragEnd(e); };
+    const bail = () => { if (dragRef.current) dragCancel(); };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('mouseup', up);
+    window.addEventListener('pointercancel', bail);
+    window.addEventListener('blur', bail);
+    return () => {
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('pointercancel', bail);
+      window.removeEventListener('blur', bail);
+    };
+  });
 
   /* ── Editing ── */
 
@@ -486,6 +636,11 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+
+  const deleteStep = (id) => {
+    commit(removeSteps(steps, new Set([id])));
+    setSelection(prev => { const next = new Set(prev); next.delete(id); return next; });
+  };
 
   const deleteSelected = () => {
     if (selection.size === 0) return;
@@ -526,7 +681,10 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
       if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); a.deleteSelected(); }
       else if ((e.metaKey || e.ctrlKey) && e.key === 'c') a.copySelected();
       else if ((e.metaKey || e.ctrlKey) && e.key === 'v') { e.preventDefault(); a.pasteClipboard(); }
-      else if (e.key === 'Escape') setSelection(new Set());
+      else if (e.key === 'Escape') {
+        if (dragRef.current) { dragRef.current = null; setDrag(null); }
+        else setSelection(new Set());
+      }
       else if (e.key === '0' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); a.fit(); }
     };
     window.addEventListener('keydown', onKey);
@@ -576,7 +734,7 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
         <div
           ref={viewportRef}
           onWheel={onWheel}
-          onMouseDown={onBackgroundDown}
+          onPointerDown={onBackgroundDown}
           style={{
             position: 'relative', flex: 1, minWidth: 0, height: VIEWPORT_H, overflow: 'hidden',
             background: 'var(--grey-100)',
@@ -645,15 +803,16 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
                 transparent hit area, branded circle, and a label on hover so
                 it's obvious what clicking does. */}
             {layout.slots.map((slot, i) => {
-              const key = `${slot.containerId || 'root'}-${slot.branchIndex ?? '-'}-${slot.index}-${i}`;
-              const active = hoverSlot === key;
+              const key = slotKey(slot, i);
+              const dropTarget = drag?.slot?.key === key;
+              const active = dropTarget || (!drag && hoverSlot === key);
               const HIT = 30;
               return (
                 <button
                   key={key}
                   onMouseEnter={() => setHoverSlot(key)}
                   onMouseLeave={() => setHoverSlot(null)}
-                  onMouseDown={e => { e.stopPropagation(); onAddStep?.(slot); }}
+                  onPointerDown={e => { e.stopPropagation(); onAddStep?.(slot); }}
                   title="Insert a step here"
                   style={{
                     position: 'absolute', left: slot.x - HIT / 2, top: slot.y - HIT / 2,
@@ -681,7 +840,7 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
                       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                   </span>
-                  {active && (
+                  {active && !drag && (
                     <span style={{
                       position: 'absolute',
                       ...(vertical ? { left: '100%', marginLeft: 8 } : { top: '100%', marginTop: 6 }),
@@ -695,6 +854,30 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
               );
             })}
 
+            {/* Where the step will land. The slot dot lights up too, but a bar
+                across the lane reads at a glance while a node is in the air. */}
+            {drag?.slot && (
+              <div style={{
+                position: 'absolute', zIndex: 6, pointerEvents: 'none',
+                background: 'var(--brand)', borderRadius: 3,
+                boxShadow: '0 0 0 3px rgba(13,135,92,0.18)',
+                ...(vertical
+                  ? { left: drag.slot.x - 90, top: drag.slot.y - 2, width: 180, height: 4 }
+                  : { left: drag.slot.x - 2, top: drag.slot.y - 30, width: 4, height: 60 }),
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  ...(vertical
+                    ? { left: '100%', marginLeft: 10, top: '50%', transform: 'translateY(-50%)' }
+                    : { top: '100%', marginTop: 10, left: '50%', transform: 'translateX(-50%)' }),
+                  padding: '3px 8px', borderRadius: 'var(--r-full)',
+                  background: 'var(--brand)', color: 'white',
+                  fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                }}>Move here</span>
+              </div>
+            )}
+
             {layout.nodes.map(node => (
               <FlowNode
                 key={node.id}
@@ -704,6 +887,12 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
                 guestBlocked={guestAllowed ? guestBlockReason(node.step) : null}
                 onSelect={select}
                 onToggleCollapse={toggleCollapse}
+                onDelete={deleteStep}
+                onDragStart={startDrag}
+                onDragMove={dragMove}
+                onDragEnd={dragEnd}
+                onDragCancel={dragCancel}
+                dragOffset={drag?.id === node.id ? { x: drag.x, y: drag.y } : null}
               />
             ))}
 
@@ -722,7 +911,7 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
             position: 'absolute', left: 10, bottom: 10, fontSize: 10, color: 'var(--text-tertiary)',
             background: 'rgba(255,255,255,0.85)', padding: '3px 8px', borderRadius: 'var(--r-full)', pointerEvents: 'none',
           }}>
-            {vertical ? 'scroll to move down the flow' : 'scroll to move along the flow'} · ⌘scroll zoom · shift-click multi · ⌘C/⌘V · ⌫ delete
+            {vertical ? 'scroll to move down the flow' : 'scroll to move along the flow'} · ⌘scroll zoom · drag a step to reorder · shift-click multi · ⌘C/⌘V · ⌫ delete
           </div>
         </div>
 
@@ -731,9 +920,12 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
             step={selectedStep}
             count={selection.size}
             clinic={clinic}
+            onClinicChange={onClinicChange}
             steps={steps}
             access={access}
             onChange={commit}
+            onDelete={deleteStep}
+            onDeleteSelection={deleteSelected}
             width={INSPECTOR_W}
           />
         )}
@@ -748,9 +940,10 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
           <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {selectedStep.label || STEP_TYPES.find(t => t.id === selectedStep.type)?.label}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>
             Widen the panel to change its type{selectedStep.type === 'conditional' ? ' or branch condition' : ' or settings'}.
           </span>
+          <button className="btn btn-danger-outline btn-xs" onClick={() => deleteStep(selectedStep.id)}>Remove step</button>
         </div>
       )}
 
@@ -764,6 +957,8 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
     </div>
   );
 }
+
+const slotKey = (slot, i) => `${slot.containerId || 'root'}-${slot.branchIndex ?? '-'}-${slot.index}-${i}`;
 
 const zBtn = { width: 26, height: 24, border: 'none', background: 'white', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1, padding: 0 };
 
@@ -785,7 +980,7 @@ function findParentOf(steps, id, containerId = null, branchIndex = null) {
 // every card: the description, the form picker, and the full conditional
 // editor — condition type, its operands, and the per-branch rules.
 
-function Inspector({ step, count, clinic, steps, access, onChange, width }) {
+function Inspector({ step, count, clinic, onClinicChange, steps, access, onChange, onDelete, onDeleteSelection, width }) {
   const shell = {
     width, flexShrink: 0, borderLeft: '1px solid var(--border)',
     height: VIEWPORT_H, overflowY: 'auto', background: 'white', padding: '12px 14px',
@@ -795,9 +990,12 @@ function Inspector({ step, count, clinic, steps, access, onChange, width }) {
     return (
       <div style={shell}>
         <InspectorHeader title={`${count} steps selected`} />
-        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          ⌘C to copy, ⌫ to delete, or click a single step to edit it.
+        <p style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>
+          ⌘C to copy, or click a single step to edit it.
         </p>
+        <button className="btn btn-danger-outline btn-xs" style={{ width: '100%' }} onClick={onDeleteSelection}>
+          Remove {count} steps
+        </button>
       </div>
     );
   }
@@ -875,6 +1073,16 @@ function Inspector({ step, count, clinic, steps, access, onChange, width }) {
         </div>
       )}
 
+      {step.type === 'form' && (
+        <FormStepEditor
+          step={step}
+          steps={steps}
+          clinic={clinic}
+          onClinicChange={onClinicChange}
+          onStepChange={set}
+        />
+      )}
+
       {step.type === 'pharmacy' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
           <label style={fieldLabel}>Options</label>
@@ -902,6 +1110,17 @@ function Inspector({ step, count, clinic, steps, access, onChange, width }) {
           onReplace={replace}
         />
       )}
+
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        {nested > 0 && (
+          <p style={{ fontSize: 10.5, color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 6 }}>
+            Also removes the {nested} step{nested === 1 ? '' : 's'} inside this branch.
+          </p>
+        )}
+        <button className="btn btn-danger-outline btn-xs" style={{ width: '100%' }} onClick={() => onDelete(step.id)}>
+          Remove step
+        </button>
+      </div>
     </div>
   );
 }

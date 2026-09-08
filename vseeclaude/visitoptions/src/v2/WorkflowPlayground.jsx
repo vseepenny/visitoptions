@@ -117,6 +117,7 @@ export default function WorkflowPlayground() {
               workflow={state.workflow}
               onChange={setWorkflow}
               clinic={state.clinic}
+              onClinicChange={c => setState(s => ({ ...s, clinic: c }))}
               access={access}
               onAddStep={slot => setAddTarget(slot)}
             />
@@ -130,6 +131,7 @@ export default function WorkflowPlayground() {
               workflow={state.workflow}
               onChange={setWorkflow}
               clinic={state.clinic}
+              onClinicChange={c => setState(s => ({ ...s, clinic: c }))}
               access={access}
               onAddStep={slot => setAddTarget(slot)}
             />

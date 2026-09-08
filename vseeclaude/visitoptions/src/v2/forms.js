@@ -88,8 +88,59 @@ export const BUILTIN_FORMS = [
   },
 ];
 
+/* A clinic can customize a built-in form: a library entry reusing the built-in's
+   id overrides it in place, so every step already pointing at that id picks up
+   the clinic's version without being repointed. Order is preserved so the form
+   picker doesn't reshuffle the moment a built-in is edited. */
 export function allForms(clinic) {
-  return [...BUILTIN_FORMS, ...((clinic?.formLibrary) || [])];
+  const lib = clinic?.formLibrary || [];
+  const byId = new Map(lib.map(f => [f.id, f]));
+  const builtinIds = new Set(BUILTIN_FORMS.map(f => f.id));
+  return [
+    ...BUILTIN_FORMS.map(f => byId.get(f.id) || f),
+    ...lib.filter(f => !builtinIds.has(f.id)),
+  ];
+}
+
+export function isBuiltinForm(formId) {
+  return BUILTIN_FORMS.some(f => f.id === formId);
+}
+
+/* A built-in the clinic has already saved over. */
+export function isCustomizedBuiltin(clinic, formId) {
+  return isBuiltinForm(formId) && (clinic?.formLibrary || []).some(f => f.id === formId);
+}
+
+/* Writes a form into the clinic library, replacing any entry with the same id.
+   Saving over a built-in creates its first library entry — that is what
+   customizing a built-in means. */
+export function putForm(clinic, form) {
+  const lib = clinic?.formLibrary || [];
+  const exists = lib.some(f => f.id === form.id);
+  return {
+    ...clinic,
+    formLibrary: exists ? lib.map(f => (f.id === form.id ? form : f)) : [...lib, form],
+  };
+}
+
+export const newFormId = () => `form_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+export const newFieldId = () => `fld_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+
+export function blankField(type = 'text', label = '') {
+  const field = { id: newFieldId(), label, type, required: false, enabled: true };
+  if (type === 'select') field.options = ['Option 1', 'Option 2'];
+  return field;
+}
+
+/* How many form steps in a tree point at a given form — the number that
+   changes if the template is saved over. */
+export function countFormUsage(steps, formId) {
+  let n = 0;
+  for (const s of steps || []) {
+    if (s.type === 'form' && s.formId === formId) n++;
+    if (s.branches) for (const b of s.branches) n += countFormUsage(b.steps || [], formId);
+  }
+  return n;
 }
 
 export function findForm(clinic, formId) {

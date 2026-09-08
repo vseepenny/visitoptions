@@ -111,3 +111,41 @@ export function allConditionalIds(steps, out = []) {
   }
   return out;
 }
+
+/* The path to a step's container: null/null means the root spine, otherwise the
+   conditional it sits under and which branch. */
+export function pathOf(steps, id, containerId = null, branchIndex = null) {
+  for (const s of steps || []) {
+    if (s.id === id) return { containerId, branchIndex };
+    if (s.branches) {
+      for (let bi = 0; bi < s.branches.length; bi++) {
+        const hit = pathOf(s.branches[bi].steps || [], id, s.id, bi);
+        if (hit) return hit;
+      }
+    }
+  }
+  return null;
+}
+
+/* Moves one step to an insert slot — the same {containerId, branchIndex, index}
+   the + buttons carry. Array order is execution order, so this is the only
+   thing dragging a node is allowed to change.
+ *
+ * The slot index was measured before the step was lifted out, so pulling it
+ * from an earlier position in the same container shifts every later index down
+ * by one. */
+export function moveStep(steps, id, target) {
+  const found = findStep(steps, id);
+  if (!found) return steps;
+  const from = pathOf(steps, id);
+  const sameContainer =
+    (from?.containerId ?? null) === (target.containerId ?? null) &&
+    (from?.branchIndex ?? null) === (target.branchIndex ?? null);
+
+  let index = target.index;
+  if (sameContainer && found.index < target.index) index -= 1;
+  if (sameContainer && index === found.index) return steps;
+
+  const without = removeSteps(steps, new Set([id]));
+  return insertSteps(without, target.containerId ?? null, target.branchIndex ?? null, index, [found.step]);
+}
