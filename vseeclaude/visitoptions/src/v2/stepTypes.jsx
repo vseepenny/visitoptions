@@ -227,3 +227,21 @@ export function changeConditionType(step, newType, clinic) {
   if (newType !== 'form_answer') { delete next.conditionFormId; delete next.conditionFieldId; }
   return next;
 }
+
+/* Swapping a step's type rebuilds it from scratch — every type carries its own
+   settings, so carrying the old ones over would leave orphaned fields behind.
+   The id survives so selection, copy buffers and edges keep pointing at it. */
+export function changeStepType(step, newType, clinic) {
+  if (step.type === newType) return step;
+  return { ...createStep(newType, clinic), id: step.id };
+}
+
+/* Every type in use anywhere in the tree, branches included — a singleton is
+   used up wherever it sits. */
+export function usedStepTypes(steps, out = new Set()) {
+  for (const s of steps || []) {
+    out.add(s.type);
+    if (s.branches) s.branches.forEach(b => usedStepTypes(b.steps, out));
+  }
+  return out;
+}

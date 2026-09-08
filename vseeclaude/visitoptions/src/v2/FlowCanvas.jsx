@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { STEP_TYPES, CONDITION_TYPES, changeConditionType, uid as freshId } from './stepTypes';
+import { STEP_TYPES, CONDITION_TYPES, changeConditionType, changeStepType, usedStepTypes, uid as freshId } from './stepTypes';
 import { RuleEditor } from './RuleEditor';
 import { scopeForStep, conditionIssue } from './flowScope';
 import { formFields } from './forms';
@@ -35,18 +35,10 @@ const VIEWPORT_H = 520;
 
 /* ── Node ─────────────────────────────────────────────────── */
 
-function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleCollapse, onRename }) {
+function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleCollapse }) {
   const { step } = node;
   const def = STEP_TYPES.find(t => t.id === step.type);
   const isCond = step.type === 'conditional';
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-
-  const commit = () => {
-    const v = draft.trim();
-    if (v && v !== step.label) onRename(step.id, v);
-    setEditing(false);
-  };
 
   const branchCount = isCond
     ? (step.conditionType === 'rule'
@@ -58,7 +50,6 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
     <div
       data-node-id={step.id}
       onMouseDown={e => { e.stopPropagation(); onSelect(step.id, e.shiftKey); }}
-      onDoubleClick={e => { e.stopPropagation(); setDraft(step.label || def?.label || ''); setEditing(true); }}
       style={{
         position: 'absolute', left: node.x, top: node.y, width: node.w, height: node.h,
         display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 10px',
@@ -75,26 +66,10 @@ function FlowNode({ node, selected, collapsed, guestBlocked, onSelect, onToggleC
       <span style={{ color: def?.color, display: 'flex', flexShrink: 0 }}>{def?.icon}</span>
 
       <span style={{ flex: 1, minWidth: 0 }}>
-        {editing ? (
-          <input
-            autoFocus
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commit();
-              if (e.key === 'Escape') setEditing(false);
-              e.stopPropagation();
-            }}
-            onMouseDown={e => e.stopPropagation()}
-            style={{ width: '100%', font: 'inherit', fontSize: 12, fontWeight: 600, border: '1px solid var(--brand)', borderRadius: 4, padding: '1px 4px' }}
-          />
-        ) : (
-          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {step.label || def?.label}
-          </span>
-        )}
-        {isCond && !editing && (
+        <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {step.label || def?.label}
+        </span>
+        {isCond && (
           <span style={{ display: 'block', fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {CONDITION_TYPES.find(c => c.id === step.conditionType)?.label} · {branchCount}
           </span>
@@ -506,8 +481,6 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
     return next;
   });
 
-  const rename = (id, label) => commit(mapStep(steps, id, s => ({ ...s, label })));
-
   const toggleCollapse = (id) => setCollapsed(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -731,7 +704,6 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
                 guestBlocked={guestAllowed ? guestBlockReason(node.step) : null}
                 onSelect={select}
                 onToggleCollapse={toggleCollapse}
-                onRename={rename}
               />
             ))}
 
@@ -750,7 +722,7 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
             position: 'absolute', left: 10, bottom: 10, fontSize: 10, color: 'var(--text-tertiary)',
             background: 'rgba(255,255,255,0.85)', padding: '3px 8px', borderRadius: 'var(--r-full)', pointerEvents: 'none',
           }}>
-            {vertical ? 'scroll to move down the flow' : 'scroll to move along the flow'} · ⌘scroll zoom · dbl-click rename · shift-click multi · ⌘C/⌘V · ⌫ delete
+            {vertical ? 'scroll to move down the flow' : 'scroll to move along the flow'} · ⌘scroll zoom · shift-click multi · ⌘C/⌘V · ⌫ delete
           </div>
         </div>
 
@@ -762,7 +734,6 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
             steps={steps}
             access={access}
             onChange={commit}
-            onRename={rename}
             width={INSPECTOR_W}
           />
         )}
@@ -774,14 +745,11 @@ export default function FlowCanvas({ workflow, onChange, clinic, access, onAddSt
           <span style={{ color: STEP_TYPES.find(t => t.id === selectedStep.type)?.color, display: 'flex' }}>
             {STEP_TYPES.find(t => t.id === selectedStep.type)?.icon}
           </span>
-          <input
-            value={selectedStep.label || ''}
-            onChange={e => rename(selectedStep.id, e.target.value)}
-            className="input"
-            style={{ height: 28, fontSize: 12.5, fontWeight: 600, maxWidth: 240 }}
-          />
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {selectedStep.label || STEP_TYPES.find(t => t.id === selectedStep.type)?.label}
+          </span>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            Widen the panel to edit {selectedStep.type === 'conditional' ? 'this branch condition' : 'its settings'}.
+            Widen the panel to change its type{selectedStep.type === 'conditional' ? ' or branch condition' : ' or settings'}.
           </span>
         </div>
       )}
@@ -817,7 +785,7 @@ function findParentOf(steps, id, containerId = null, branchIndex = null) {
 // every card: the description, the form picker, and the full conditional
 // editor — condition type, its operands, and the per-branch rules.
 
-function Inspector({ step, count, clinic, steps, access, onChange, onRename, width }) {
+function Inspector({ step, count, clinic, steps, access, onChange, width }) {
   const shell = {
     width, flexShrink: 0, borderLeft: '1px solid var(--border)',
     height: VIEWPORT_H, overflowY: 'auto', background: 'white', padding: '12px 14px',
@@ -851,18 +819,37 @@ function Inspector({ step, count, clinic, steps, access, onChange, onRename, wid
   const set = (patch) => onChange(mapStep(steps, step.id, s => ({ ...s, ...patch })));
   const replace = (nextStep) => onChange(mapStep(steps, step.id, () => nextStep));
 
+  /* A step's name comes from its type (or, for a form step, the form it points
+     at) — the admin picks what a step IS, not what it's called. Singletons
+     already placed elsewhere are left out, but the current type always stays in
+     the list so the select can't render blank on a legacy workflow. */
+  const usedTypes = usedStepTypes(steps);
+  const typeOptions = STEP_TYPES.filter(t =>
+    t.id === step.type || (!t.legacy && (!t.singleton || !usedTypes.has(t.id)))
+  );
+  const nested = isCond ? countSteps(step.branches?.flatMap(b => b.steps || []) || []) : 0;
+
   return (
     <div style={shell}>
       <InspectorHeader title={def?.category || 'Step'} icon={def?.icon} color={def?.color} />
 
       <div className="form-group" style={{ marginBottom: 12 }}>
-        <label style={fieldLabel}>Name</label>
-        <input
-          value={step.label || ''}
-          onChange={e => onRename(step.id, e.target.value)}
+        <label style={fieldLabel}>Step type</label>
+        <select
+          value={step.type}
+          onChange={e => replace(changeStepType(step, e.target.value, clinic))}
           className="input"
-          style={{ height: 30, fontSize: 12.5, fontWeight: 600 }}
-        />
+          style={{ height: 30, fontSize: 12.5, fontWeight: 600, padding: '0 26px 0 8px' }}
+        >
+          {typeOptions.map(t => (
+            <option key={t.id} value={t.id}>{t.label}{t.legacy ? ' (legacy)' : ''}</option>
+          ))}
+        </select>
+        {nested > 0 && (
+          <p style={{ fontSize: 11, color: 'var(--warning-dark, #B45309)', lineHeight: 1.45, marginTop: 5 }}>
+            Changing the type drops the {nested} step{nested === 1 ? '' : 's'} inside this branch.
+          </p>
+        )}
       </div>
 
       {def?.desc && !isCond && (
